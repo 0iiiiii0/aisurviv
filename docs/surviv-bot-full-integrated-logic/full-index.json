@@ -1,0 +1,19 @@
+{
+  "version": "integrated-full-2026-07-24",
+  "main": "SURVIV_BOT_FULL_INTEGRATED_LOGIC.md",
+  "specs": [
+    "ammo-share-v2.json",
+    "arbiter-order.json",
+    "crate-threat-matrix.json",
+    "doors-taxonomy.json",
+    "gas-flare-rules.json",
+    "interact-vault-panel.json",
+    "mode-50v50-deep.json",
+    "modes-index.json",
+    "no-wallbang-crate.json",
+    "obstacle-loot-ev.json",
+    "search-fight-heal-rules.json",
+    "unarmed-priority.json",
+    "weapon-tiers.json"
+  ]
+}

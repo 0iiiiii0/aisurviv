@@ -1,0 +1,58 @@
+{
+  "recordingFormatVersion": 2,
+  "sessions": 6,
+  "frames": 8249,
+  "duelBots": [
+    {
+      "session": "2026-07-27T03-31-07-527Z_pid-5488",
+      "difficulty": "forbidden",
+      "weaponPair": [
+        "mosin",
+        "sv98"
+      ],
+      "durationSeconds": 81.623,
+      "frames": 160,
+      "confirmedShots": 35,
+      "observedSlotChanges": 9,
+      "adjacentShotAlternations": 7,
+      "adjacentShotPairs": 34,
+      "alternationRate": 0.2059
+    },
+    {
+      "session": "2026-07-27T03-27-23-413Z_pid-7884",
+      "difficulty": "legit",
+      "weaponPair": [
+        "sv98",
+        "mosin"
+      ],
+      "durationSeconds": 72.205,
+      "frames": 66,
+      "confirmedShots": 0,
+      "observedSlotChanges": 0,
+      "adjacentShotAlternations": 0,
+      "adjacentShotPairs": 0,
+      "alternationRate": 0.0
+    },
+    {
+      "session": "2026-07-27T03-29-05-178Z_pid-8368",
+      "difficulty": "legit",
+      "weaponPair": [
+        "mosin",
+        "sv98"
+      ],
+      "durationSeconds": 97.198,
+      "frames": 190,
+      "confirmedShots": 44,
+      "observedSlotChanges": 9,
+      "adjacentShotAlternations": 5,
+      "adjacentShotPairs": 43,
+      "alternationRate": 0.1163
+    }
+  ],
+  "activeDuelBots": 2,
+  "combinedConfirmedShots": 79,
+  "combinedObservedSlotChanges": 18,
+  "combinedAdjacentShotAlternations": 12,
+  "combinedAdjacentShotPairs": 77,
+  "combinedAlternationRate": 0.1558
+}

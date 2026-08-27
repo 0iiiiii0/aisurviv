@@ -527,10 +527,6 @@ export const Main: MapDef = {
             { name: "frag", count: 3, weight: 1 },
             { name: "mirv", count: 2, weight: 1 },
         ],
-        tier_health_healer: [
-            { name: "bandage", count: 5, weight: 4 },
-            { name: "healthkit", count: 1, weight: 6 },
-        ],
         tier_scavenger_adv: [
             { name: "m9", count: 1, weight: 1 },
             { name: "ots38_dual", count: 1, weight: 1 },
@@ -623,6 +619,11 @@ export const Main: MapDef = {
             { name: "awc", count: 1, weight: 0.75 },
             { name: "pkp", count: 1, weight: 1 },
             { name: "m249", count: 1, weight: 1 },
+        ],
+        // 金空投（airdrop_crate_03 / crate_12）专属霰弹枪池：super90（m1014）与 usas12（usas）。
+        tier_airdrop_golden_shotguns: [
+            { name: "m1014", count: 1, weight: 1 },
+            { name: "usas", count: 1, weight: 1 },
         ],
         tier_airdrop_ammo: [
             { name: "9mm", count: 30, weight: 3 },

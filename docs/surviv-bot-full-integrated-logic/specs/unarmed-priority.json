@@ -1,0 +1,9 @@
+{
+  "multipliers": {
+    "ground_gun": 3,
+    "loot_container": 2.25,
+    "vault_panel": 2,
+    "fight": 0.15
+  },
+  "interrupt_break_on_ground_gun": true
+}

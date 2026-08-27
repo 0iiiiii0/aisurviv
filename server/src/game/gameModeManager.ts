@@ -16,6 +16,18 @@ enum GameMode {
     Faction,
 }
 
+/**
+ * PlayerStatus does not serialize player ids, so the server and client must use
+ * exactly the same implicit ordering. The client keeps player ids sorted; sort
+ * here as well so async multi-worker joins cannot attach one player's map
+ * status to another player.
+ */
+export function orderPlayersForStatus<T extends { __id: number }>(
+    players: readonly T[],
+): T[] {
+    return [...players].sort((a, b) => a.__id - b.__id);
+}
+
 export class GameModeManager {
     readonly game: Game;
     readonly mode: GameMode;
@@ -115,24 +127,114 @@ export class GameModeManager {
         }
     }
 
-    getWinningTeamId() {
+    /** true if the room should transition to game-over. */
+    /** true if game needs to end */
+    handleGameEnd(): boolean {
+        // Aim training is a persistent practice room. A human may enter before
+        // the moving target process is ready, and the room must remain alive
+        // even when only one participant is connected.
+        if (this.game.mapName === "aim_training") return false;
+        const zombieMode = Boolean(this.game.map.mapDef.gameMode.zombieMode);
+        // 僵尸模式先走专属判定（僵尸不计入最后幸存）。
+        if (zombieMode) {
+            if (!this.game.started) return false;
+            const humanAlive = this.game.playerBarn.livingPlayers.filter(
+                (player) => !player.serverBot && !player.spectatorOnly,
+            );
+            // Completing the nuclear objective is the zombie-mode win
+            // condition. Do not let a leaked generic server bot hold the room
+            // open by being mistaken for a surviving zombie.
+            if (this.game.zombieMode?.missionCompleted) {
+                for (const player of humanAlive) {
+                    player.addGameOverMsg(player.teamId);
+                }
+                return true;
+            }
+            if (
+                humanAlive.length === 0
+                && this.game.zombieMode?.detonating !== true
+            ) {
+                return true;
+            }
+            const anyZombie = this.game.playerBarn.livingPlayers.some(
+                (player) => player.serverBot && !player.spectatorOnly,
+            );
+            if (!anyZombie && this.game.zombieMode?.detonating !== true) {
+                for (const player of humanAlive) {
+                    player.addGameOverMsg(player.teamId);
+                }
+                return true;
+            }
+            return false;
+        }
+        if (!this.game.started || this.aliveCount() > 1) return false;
+        // Extraction: no last-man-standing victory. Matches end only by
+        // extraction or the 10-minute time limit, while replacement AI keeps
+        // the arena populated. An empty arena (time-up/extraction of the last
+        // contestant) still ends the room lifecycle without a winner banner.
+        if (this.game.map.mapDef.gameMode.extractionMode) {
+            return this.aliveCount() === 0;
+        }
+        // Every contestant is dead or has been removed. There is no winner to
+        // declare, but the room lifecycle must still close the empty match;
+        // otherwise a started room where everyone died (and stayed connected
+        // to spectate) never ends and leaks in the manager forever.
+        if (this.aliveCount() === 0) return true;
+        return this.aliveCount() === 1;
+    }
+
+    sendGameOverMsgs() {
         switch (this.mode) {
             case GameMode.Solo: {
                 const winner = this.game.playerBarn.livingPlayers[0];
-                return winner.teamId;
+                winner.addGameOverMsg(winner.teamId);
+                break;
             }
             case GameMode.Team: {
                 const winner = this.game.playerBarn.getAliveGroups()[0];
-                return winner.id;
+                for (const player of winner.players) {
+                    if (!player.disconnected && !player.dead) {
+                        player.addGameOverMsg(winner.id);
+                    }
+                }
+                break;
             }
             case GameMode.Faction: {
                 const winner = this.game.playerBarn.getAliveTeams()[0];
-                return winner.id;
+                for (const player of winner.livingPlayers) {
+                    player.addGameOverMsg(winner.id);
+                }
+                break;
             }
         }
     }
 
     isGameStarted(): boolean {
+        if (this.game.mapName === "aim_training") {
+            return this.game.playerBarn.livingPlayers.some(
+                (player) => !player.serverBot && !player.spectatorOnly && !player.disconnected,
+            );
+        }
+        // 僵尸模式：有存活真人即开始（僵尸由房间系统自行刷新）。
+        if (this.game.map.mapDef.gameMode.zombieMode) {
+            return this.game.playerBarn.livingPlayers.some(
+                (player) => !player.serverBot && !player.spectatorOnly && !player.disconnected,
+            );
+        }
+        // 绝密房间会在 init 阶段先生成 Boss/护卫；这些原生 NPC 不能在
+        // 真人进房前启动对局计时。普通搜打撤也统一以首个真人入场为开局。
+        if (this.game.map.mapDef.gameMode.extractionMode) {
+            return this.game.playerBarn.livingPlayers.some(
+                (player) => !player.serverBot && !player.spectatorOnly && !player.disconnected,
+            );
+        }
+        // Arena players are deliberately frozen until every contestant has
+        // joined. While frozen, Player.update() does not advance timeAlive, so
+        // the normal canDespawn() grace-period gate below can never complete.
+        // Use the authoritative connected contestant count for arenas instead.
+        if (this.game.map.mapDef.arena?.lockPlayersUntilFull) {
+            return this.game.connectedCount >= this.game.roomMaxPlayers;
+        }
         return this.cantDespawnAliveCount() > 1;
     }
 
@@ -169,25 +271,53 @@ export class GameModeManager {
         }
     }
 
+    getSpectatablePlayers(player: Player): Player[] {
+        const livingPlayers = this.game.playerBarn.livingPlayers
+            .filter(
+                (candidate) =>
+                    candidate !== player
+                    && !candidate.dead
+                    && !candidate.disconnected
+                    && !candidate.spectatorOnly,
+            )
+            // Spectators should see real players first. Preserve the existing
+            // player-barn order inside each class so next/previous remains stable.
+            .sort((a, b) => Number(a.serverBot) - Number(b.serverBot));
+        if (player.spectatorOnly) return livingPlayers;
+
+        let playerFilter: (p: Player) => boolean;
+        if (this.getPlayerAlivePlayersContext(player).length != 0) {
+            playerFilter = (p: Player) => p.teamId == player.teamId;
+        } else {
+            playerFilter = () => true;
+        }
+        // livingPlayers is used here instead of a more "efficient" option because its sorted while other options are not
+        return livingPlayers.filter(playerFilter);
+    }
+
     getPlayerStatusPlayers(player: Player): Player[] {
         switch (this.mode) {
             case GameMode.Solo:
                 return [];
             case GameMode.Team:
-                return player.group!.players;
+                // 观战者没有加入队伍/分组：直接返回空，避免 netSync 崩溃。
+                return player.group
+                    ? orderPlayersForStatus(player.group.players)
+                    : [];
             case GameMode.Faction:
-                return this.game.playerBarn.players;
+                return orderPlayersForStatus(this.game.playerBarn.players);
         }
     }
 
     getPlayerAlivePlayersContext(player: Player): Player[] {
+        if (player.spectatorOnly) return [];
         switch (this.mode) {
             case GameMode.Solo:
                 return !player.dead ? [player] : [];
             case GameMode.Team:
-                return player.group!.livingPlayers;
+                return player.group?.livingPlayers ?? [];
             case GameMode.Faction:
-                return player.team!.livingPlayers;
+                return player.team?.livingPlayers ?? [];
         }
     }
 

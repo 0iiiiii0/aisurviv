@@ -1,10 +1,23 @@
+import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
-
+import { AchievementDefs, isAchievementId } from "../../shared/defs/achievementDefs.ts";
+import {
+    EXTRACTION_HOLD_SECONDS,
+    EXTRACTION_MATCH_TIME_LIMIT_SECONDS,
+    EXTRACTION_SECRET_OPEN_SECONDS,
+    EXTRACTION_TIME_WARNING_SECONDS,
+    EXTRACTION_ZONE_RADIUS,
+    farthestExtractionPoint,
+    generateExtractionPoints,
+    insideExtractionZone,
+} from "../../shared/defs/extractionDefs.ts";
+import { ZOMBIE_MISSION_ELEMENT_NAMES, ZOMBIE_RUSH_RANGE, ZOMBIE_WIN_TIME_SEC } from "../../shared/defs/zombieDefs.ts";
 import { GameConfig, Input, TeamMode, WeaponSlot } from "../../shared/gameConfig.ts";
 import * as net from "../../shared/net/net.ts";
 import { ObjectType } from "../../shared/net/objectSerializeFns.ts";
 import { math } from "../../shared/utils/math.ts";
 import { v2 } from "../../shared/utils/v2.ts";
+import { getZombieMissionInteractionTarget } from "../../shared/zombieMissionInteraction.ts";
 import type { Ambiance } from "./ambiance.ts";
 import type { AudioManager } from "./audioManager.ts";
 import { Camera } from "./camera.ts";
@@ -22,9 +35,10 @@ import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
 import { errorLogManager } from "./errorLogs.ts";
+import { extractionMarkerState } from "./extractionMarker.ts";
 import { Gas } from "./gas.ts";
 import { helpers } from "./helpers.ts";
-import { type InputHandler, Key } from "./input.ts";
+import { type InputHandler, Key, MouseButton, MouseWheel } from "./input.ts";
 import type { InputBinds, InputBindUi } from "./inputBinds.ts";
 import type { SoundHandle } from "./lib/createJS.ts";
 import { Map } from "./map.ts";
@@ -40,6 +54,8 @@ import { ParticleBarn } from "./objects/particles.ts";
 import { PlaneBarn } from "./objects/plane.ts";
 import { type Player, PlayerBarn } from "./objects/player.ts";
 import { ProjectileBarn } from "./objects/projectile.ts";
+import { SandevistanFx } from "./objects/sandevistanFx.ts";
+import { SandevistanPostFilter } from "./objects/sandevistanPostFilter.ts";
 import { ShotBarn } from "./objects/shot.ts";
 import { SmokeBarn } from "./objects/smoke.ts";
 import { Renderer } from "./renderer.ts";
@@ -59,7 +75,26 @@ export interface Ctx {
     decalBarn: DecalBarn;
 }
 
+const ZOMBIE_MISSION_ELEMENT_ICON_PATHS = [
+    "/img/zombie-mission/uranium.png",
+    "/img/zombie-mission/plutonium.png",
+    "/img/zombie-mission/tritium.png",
+] as const;
+const ZOMBIE_MISSION_DEVICE_ICON_PATH = "/img/zombie-mission/nuclear-console.png";
+const ZOMBIE_NUKE_SHAKE_DURATION_MS = 2600;
+const ZOMBIE_NUKE_SHAKE_CONTINUOUS_INTENSITY = 12;
+const ZOMBIE_NUKE_SHAKE_IMPACT_INTENSITY = 16;
+const ZOMBIE_GEIGER_DETECTION_RANGE = 55;
+const ZOMBIE_GEIGER_NEAR_INTERVAL_MS = 190;
+const ZOMBIE_GEIGER_FAR_INTERVAL_MS = 1200;
+
 export class Game {
+    privateDuelMatch = false;
+    /** True for a public share-code observer, enabling full-map overlays/chat. */
+    sharedSpectator = false;
+    /** Server-declared connection role; never infer this from the camera target. */
+    joinedSpectatorOnly = false;
+    joinedTrainingTarget = false;
     initialized = false;
     teamMode: TeamMode = TeamMode.Solo;
 
@@ -104,6 +139,8 @@ export class Game {
     m_playingTicker!: number;
     m_updateRecvCount!: number;
     m_localId!: number;
+    /** 当前实际加入的服务端对局 ID；新版匹配不会把它写进网页 URL。 */
+    m_matchId = "";
     m_activeId!: number;
     m_activePlayer!: Player;
     m_validateAlpha!: boolean;
@@ -113,6 +150,46 @@ export class Game {
 
     editor!: Editor;
     debugHUD!: DebugHUD;
+
+    // ---- 网络波动自动重连（保留画面，不退出对局） ----
+    private autoReconnectUrl = "";
+    private autoReconnectJoinToken = "";
+    private autoReconnectLoadoutPriv = "";
+    private autoReconnectQuestPriv = "";
+    private autoReconnectEnabled = false;
+    private autoReconnectAttempts = 0;
+    private autoReconnectTimer: number | null = null;
+    private autoReconnectInProgress = false;
+    /** 最大重连尝试次数（约 4 分钟递增退避；超过则回大厅并保留对局 URL）。 */
+    private readonly autoReconnectMaxAttempts = 20;
+
+    extractionDisplay!: PIXI.Graphics;
+    zombieMissionDisplay!: PIXI.Graphics;
+    private zombieMissionDeviceSprite: PIXI.Sprite | null = null;
+    private zombieMissionElementSprites: PIXI.Sprite[] = [];
+    disconnectMsg: GameWsDisconnectReason | "" = "";
+    freeSpectating = false;
+    freeCameraPos = v2.create(0, 0);
+    freeCameraZoom = 1;
+    freeCameraLastMouse = v2.create(0, 0);
+    freeCameraNetAt = 0;
+    /** Server-authoritative elapsed match time (seconds) for time-limited modes. */
+    matchStartedTime = -1;
+    /** 服务端同步的固定撤离点索引与权威停留进度。 */
+    extractionPointIndex = -1;
+    extractionHoldServer = 0;
+    /** 本局是否已处理过"撤离成功"（防止重复触发返回仓库）。 */
+    private extractionSuccessShown = false;
+    freeCameraDirty = false;
+    freeCameraLayer = 0;
+    private liveAnnouncementTimer = 0;
+    private liveAnnouncementGeneration = 0;
+    sandevistanFx!: SandevistanFx;
+    sandevistanPostFilter!: SandevistanPostFilter | null;
+    /** Live worldTimeScale from the server (site_info), 0 = use shared default. */
+    private sandevistanWorldTimeScaleOverride = 0;
+    /** Throttle for polling the live sandevistan config while in the mode. */
+    private sandevistanConfigRefreshAt = 0;
 
     seq!: number;
     seqInFlight!: boolean;
@@ -140,7 +217,143 @@ export class Game {
         }
     }
 
-    tryJoinGame(url: string, joinToken: string, onConnectFail: () => void) {
+    /**
+     * 记录当前对局的连接参数，网络波动导致 ws 断开时自动重连（保留画面）。
+     * 由 main.ts 每次 joinGame 时调用。
+     */
+    enableAutoReconnect(
+        url: string,
+        joinToken: string,
+        loadoutPriv: string,
+        questPriv: string,
+    ) {
+        this.autoReconnectUrl = url;
+        this.autoReconnectJoinToken = joinToken;
+        this.autoReconnectLoadoutPriv = loadoutPriv;
+        this.autoReconnectQuestPriv = questPriv;
+        this.autoReconnectEnabled = true;
+        this.autoReconnectAttempts = 0;
+        this.autoReconnectInProgress = false;
+    }
+
+    /** 停止自动重连（对局结束 / 主动退出时调用）。 */
+    stopAutoReconnect(): void {
+        this.autoReconnectEnabled = false;
+        if (this.autoReconnectTimer !== null) {
+            window.clearTimeout(this.autoReconnectTimer);
+            this.autoReconnectTimer = null;
+        }
+        this.autoReconnectInProgress = false;
+        this.hideReconnectNotice();
+    }
+
+    /** 网络波动后定时重连（递增退避）。 */
+    private scheduleAutoReconnect(): void {
+        if (this.m_gameOver || this.disconnectMsg || !this.autoReconnectEnabled) return;
+        if (this.autoReconnectTimer !== null) return;
+        if (this.autoReconnectAttempts >= this.autoReconnectMaxAttempts) {
+            this.stopAutoReconnect();
+            this.onQuit("host_closed");
+            return;
+        }
+        this.autoReconnectAttempts += 1;
+        const delay = Math.min(
+            1000 * 2 ** Math.min(this.autoReconnectAttempts - 1, 3),
+            8000,
+        );
+        this.showReconnectNotice(this.autoReconnectAttempts);
+        this.autoReconnectTimer = window.setTimeout(() => {
+            this.autoReconnectTimer = null;
+            if (this.m_gameOver || this.disconnectMsg || !this.autoReconnectEnabled) {
+                this.hideReconnectNotice();
+                return;
+            }
+            this.openAutoReconnectSocket();
+        }, delay);
+    }
+
+    /** 建立重连 socket 并发送 Join（复用同一 match token）。 */
+    private openAutoReconnectSocket(): void {
+        if (this.connecting || this.connected || this.autoReconnectInProgress) return;
+        if (!this.autoReconnectUrl) return;
+        this.autoReconnectInProgress = true;
+        this.connecting = true;
+        try {
+            const ws = new WebSocket(this.autoReconnectUrl);
+            ws.binaryType = "arraybuffer";
+            this.m_ws = ws;
+            ws.onopen = () => {
+                this.connecting = false;
+                this.autoReconnectInProgress = false;
+                this.connected = true;
+                this.autoReconnectAttempts = 0;
+                const joinMessage = new net.JoinMsg();
+                joinMessage.protocol = GameConfig.protocolVersion;
+                joinMessage.joinToken = this.autoReconnectJoinToken;
+                joinMessage.loadoutPriv = this.autoReconnectLoadoutPriv;
+                joinMessage.questPriv = this.autoReconnectQuestPriv;
+                joinMessage.name = this.m_config.get("playerName")!;
+                joinMessage.useTouch = device.touch;
+                joinMessage.isMobile = device.mobile || window.mobile!;
+                joinMessage.bot = false;
+                joinMessage.loadout = this.m_config.get("loadout")!;
+                this.m_sendMessage(net.MsgType.Join, joinMessage, 8192);
+            };
+            ws.onerror = () => ws.close();
+            ws.onmessage = (e) => {
+                const msgStream = new net.MsgStream(e.data);
+                while (true) {
+                    const type = msgStream.deserializeMsgType();
+                    if (type === net.MsgType.None) break;
+                    this.m_onMsg(type, msgStream.getStream());
+                    msgStream.stream.readAlignToNextByte();
+                }
+                this.debugHUD?.netInGraph.addEntry(msgStream.stream.buffer.byteLength);
+            };
+            ws.onclose = (event) => {
+                this.autoReconnectInProgress = false;
+                this.connecting = false;
+                this.connected = false;
+                const displayingStats = this.m_uiManager?.displayingStats;
+                const explicitReason = (this.disconnectMsg || event.reason) as
+                    | GameWsDisconnectReason
+                    | "";
+                if (this.m_gameOver || displayingStats) return;
+                if (explicitReason) {
+                    this.stopAutoReconnect();
+                    this.onQuit(explicitReason);
+                } else if (this.autoReconnectEnabled) {
+                    this.scheduleAutoReconnect();
+                }
+            };
+        } catch (error) {
+            console.error(error);
+            this.autoReconnectInProgress = false;
+            this.connecting = false;
+            this.connected = false;
+            if (!this.m_gameOver && !this.disconnectMsg && this.autoReconnectEnabled) {
+                this.scheduleAutoReconnect();
+            }
+        }
+    }
+
+    private showReconnectNotice(attempt: number): void {
+        // 自动重连照常进行，但不弹出任何提示（按需求去掉“网络波动，正在自动重连”）。
+        void attempt;
+    }
+
+    private hideReconnectNotice(): void {
+        const el = document.getElementById("reconnect-notice");
+        if (el) el.style.display = "none";
+    }
+
+    tryJoinGame(
+        url: string,
+        joinToken: string,
+        loadoutPriv: string,
+        questPriv: string,
+        onConnectFail: () => void,
+    ) {
         if (!this.connecting && !this.connected && !this.initialized) {
             if (this.m_ws) {
                 this.m_ws.onerror = function() {};
@@ -165,6 +378,8 @@ export class Game {
                     const joinMessage = new net.JoinMsg();
                     joinMessage.protocol = GameConfig.protocolVersion;
                     joinMessage.joinToken = joinToken;
+                    joinMessage.loadoutPriv = loadoutPriv;
+                    joinMessage.questPriv = questPriv;
                     joinMessage.name = name;
                     joinMessage.useTouch = device.touch;
                     joinMessage.isMobile = device.mobile || window.mobile!;
@@ -195,8 +410,19 @@ export class Game {
                     if (connecting) {
                         onConnectFail();
                     } else if (connected && !this.m_gameOver && !displayingStats) {
-                        const errMsg = (e.reason as GameWsDisconnectReason) || "host_closed";
-                        this.onQuit(errMsg);
+                        const explicitReason = (this.disconnectMsg || e.reason) as
+                            | GameWsDisconnectReason
+                            | "";
+                        if (
+                            this.autoReconnectEnabled
+                            && this.autoReconnectUrl
+                            && !explicitReason
+                        ) {
+                            // 网络波动（服务器未主动断开）：保留画面自动重连。
+                            this.scheduleAutoReconnect();
+                        } else {
+                            this.onQuit(explicitReason || "host_closed");
+                        }
                     }
                 };
             } catch (err) {
@@ -241,6 +467,26 @@ export class Game {
             this.m_inputBindUi,
         );
         this.m_ui2Manager = new UiManager2(this.m_localization, this.m_inputBinds);
+
+        this.sandevistanPostFilter = null;
+        if (
+            GameConfig.player.sandevistan.qualityLevel > 0
+            && this.m_pixi.renderer.type === PIXI.RENDERER_TYPE.WEBGL
+        ) {
+            try {
+                this.sandevistanPostFilter = new SandevistanPostFilter();
+                this.sandevistanPostFilter.resolution = 1;
+                this.sandevistanPostFilter.multisample = 0;
+            } catch (error) {
+                console.error("Sandevistan post filter disabled:", error);
+                this.sandevistanPostFilter = null;
+            }
+        }
+        this.sandevistanFx = new SandevistanFx(
+            this.sandevistanPostFilter,
+            this.m_pixi.stage,
+            this.m_pixi.screen,
+        );
         this.m_emoteBarn = new EmoteBarn(
             this.m_audioManager,
             this.m_uiManager,
@@ -251,9 +497,9 @@ export class Game {
         this.m_shotBarn = new ShotBarn();
         this.debugHUD = new DebugHUD(this.m_config);
 
-        // this.particleBarn,
-        // this.audioManager,
-        // this.uiManager
+        // this.m_particleBarn,
+        // this.m_audioManager,
+        // this.m_uiManager
 
         // Register types
         const TypeToPool = {
@@ -280,6 +526,11 @@ export class Game {
         }
         // Render ordering
         this.m_debugDisplay = new PIXI.Graphics();
+        this.extractionDisplay = new PIXI.Graphics();
+        this.zombieMissionDisplay = new PIXI.Graphics();
+        this.zombieMissionDeviceSprite = null;
+        this.zombieMissionElementSprites = [];
+        this.m_renderer.layers[1].addChildAt(this.sandevistanFx.afterimageContainer, 0);
         const pixiContainers = [
             this.m_map.display.ground,
             this.m_renderer.layers[0],
@@ -287,8 +538,11 @@ export class Game {
             this.m_renderer.layers[1],
             this.m_renderer.layers[2],
             this.m_renderer.layers[3],
+            this.extractionDisplay,
+            this.zombieMissionDisplay,
             this.m_debugDisplay,
             this.m_gas.gasRenderer.display,
+            this.sandevistanFx.overlayContainer,
             this.m_touch.container,
             this.m_emoteBarn.container,
             this.m_uiManager.container,
@@ -320,6 +574,42 @@ export class Game {
         this.m_targetZoom = 1;
         this.m_debugZoom = 1;
         this.m_useDebugZoom = false;
+        this.disconnectMsg = "";
+        this.sharedSpectator = false;
+        this.joinedSpectatorOnly = false;
+        this.joinedTrainingTarget = false;
+        this.freeSpectating = false;
+        this.freeCameraPos = v2.create(0, 0);
+        this.freeCameraZoom = 1;
+        this.freeCameraLastMouse = v2.copy(this.m_input.mousePos);
+        this.freeCameraNetAt = 0;
+        this.freeCameraDirty = false;
+        this.freeCameraLayer = 0;
+        // Extraction / match-timer state is reset here because the Game
+        // instance is reused across matches; otherwise the countdown, hold
+        // progress and the 2:30 reminder leak into the next game.
+        this.matchStartedTime = -1;
+        this.extractionPointIndex = -1;
+        this.extractionHoldServer = 0;
+        this.extractionHoldClient = 0;
+        this.zombieMissionMsg = null;
+        this.zombieMissionPrevPlacedMask = 0;
+        this.zombieMissionPrevCarriedElement = 0xff;
+        this.zombieMissionLastNukeSequence = -1;
+        this.zombieNukeShakeUntil = 0;
+        this.zombieMissionSnapshotReceived = false;
+        this.zombieMissionCountdownDeadline = 0;
+        this.zombieGeigerNextClickAt = 0;
+        if (this.zombieMissionAlarm) {
+            this.m_audioManager.stopSound(this.zombieMissionAlarm);
+            this.zombieMissionAlarm = null;
+        }
+        if (this.zombieMissionEvacuationSiren) {
+            this.m_audioManager.stopSound(this.zombieMissionEvacuationSiren);
+            this.zombieMissionEvacuationSiren = null;
+        }
+        this.matchTimeReminderShown = false;
+        this.extractionSuccessShown = false;
 
         // Latency determination
 
@@ -337,13 +627,18 @@ export class Game {
         this.m_camera.m_setRotationEnabled(this.m_config.get("localRotation")!);
         this.m_playerBarn.anonPlayerNames = this.m_config.get("anonPlayerNames")!;
         this.initialized = true;
+        this.startLiveAnnouncementPolling();
     }
 
-    free() {
-        if (this.m_ws) {
-            this.m_ws.onmessage = function() {};
-            this.m_ws.close();
-            this.m_ws = null;
+    free(keepWs = false) {
+        this.stopLiveAnnouncementPolling();
+        if (!keepWs) {
+            this.stopAutoReconnect();
+            if (this.m_ws) {
+                this.m_ws.onmessage = function() {};
+                this.m_ws.close();
+                this.m_ws = null;
+            }
         }
         this.connecting = false;
         this.connected = false;
@@ -362,7 +657,8 @@ export class Game {
             this.m_renderer.m_free();
             this.m_input.m_free();
             this.m_audioManager.stopAll();
-
+            this.sandevistanFx?.reset();
+            if (this.m_pixi.stage.filters) this.m_pixi.stage.filters = null;
             while (this.m_pixi.stage.children.length > 0) {
                 const c = this.m_pixi.stage.children[0];
                 this.m_pixi.stage.removeChild(c);
@@ -370,6 +666,56 @@ export class Game {
                     children: true,
                 });
             }
+        }
+    }
+
+    private startLiveAnnouncementPolling() {
+        this.stopLiveAnnouncementPolling();
+        const generation = ++this.liveAnnouncementGeneration;
+        void this.pollLiveAnnouncement(generation);
+        this.liveAnnouncementTimer = window.setInterval(() => {
+            void this.pollLiveAnnouncement(generation);
+        }, 2000);
+    }
+
+    private stopLiveAnnouncementPolling() {
+        this.liveAnnouncementGeneration++;
+        if (this.liveAnnouncementTimer) {
+            window.clearInterval(this.liveAnnouncementTimer);
+            this.liveAnnouncementTimer = 0;
+        }
+        this.m_uiManager?.displayLiveAnnouncement("");
+    }
+
+    private async pollLiveAnnouncement(generation: number) {
+        try {
+            const response = await fetch(
+                `/api/live-announcement?_=${Date.now()}`,
+                { cache: "no-store" },
+            );
+            if (!response.ok) return;
+            const announcement = (await response.json()) as {
+                active?: boolean;
+                message?: string;
+                expiresAt?: string;
+            };
+            if (
+                generation !== this.liveAnnouncementGeneration
+                || !this.initialized
+            ) {
+                return;
+            }
+            const expiresAt = Date.parse(announcement.expiresAt ?? "");
+            const active = announcement.active === true
+                && typeof announcement.message === "string"
+                && announcement.message.length > 0
+                && Number.isFinite(expiresAt)
+                && expiresAt > Date.now();
+            this.m_uiManager.displayLiveAnnouncement(
+                active ? announcement.message! : "",
+            );
+        } catch {
+            // A temporary status request failure must not affect the game session.
         }
     }
 
@@ -381,6 +727,617 @@ export class Game {
             && !this.m_spectating
             && !this.m_uiManager.displayingStats
         );
+    }
+
+    private updateFreeSpectateCamera(dt: number) {
+        const left = this.m_input.keyDown(Key.A) || this.m_input.keyDown(Key.Left);
+        const right = this.m_input.keyDown(Key.D) || this.m_input.keyDown(Key.Right);
+        const up = this.m_input.keyDown(Key.W) || this.m_input.keyDown(Key.Up);
+        const down = this.m_input.keyDown(Key.S) || this.m_input.keyDown(Key.Down);
+        let move = v2.create(Number(right) - Number(left), Number(up) - Number(down));
+        const moveLen = v2.length(move);
+        if (moveLen > 0) {
+            move = v2.mul(move, 1 / moveLen);
+            const fast = this.m_input.keyDown(Key.Shift) ? 1.9 : 1;
+            const speed = (42 * fast) / math.clamp(this.freeCameraZoom, 0.45, 2.8);
+            this.freeCameraPos = v2.add(this.freeCameraPos, v2.mul(move, dt * speed));
+            this.freeCameraDirty = true;
+        }
+
+        const dragging = this.m_input.mouseDown(MouseButton.Middle)
+            || this.m_input.mouseDown(MouseButton.Right);
+        if (dragging) {
+            const delta = v2.sub(this.m_input.mousePos, this.freeCameraLastMouse);
+            if (Math.abs(delta.x) + Math.abs(delta.y) > 0) {
+                this.freeCameraPos.x -= delta.x / this.m_camera.m_z();
+                this.freeCameraPos.y += delta.y / this.m_camera.m_z();
+                this.freeCameraDirty = true;
+            }
+        }
+        this.freeCameraLastMouse = v2.copy(this.m_input.mousePos);
+
+        const wheel = this.m_input.mouseWheel();
+        const zoomIn = wheel === MouseWheel.Up || this.m_input.keyPressed(Key.Plus);
+        const zoomOut = wheel === MouseWheel.Down || this.m_input.keyPressed(Key.Minus);
+        if (zoomIn || zoomOut) {
+            this.freeCameraZoom = math.clamp(
+                this.freeCameraZoom * (zoomIn ? 1.16 : 1 / 1.16),
+                0.42,
+                3.2,
+            );
+            this.freeCameraDirty = true;
+        }
+
+        this.freeCameraPos.x = math.clamp(this.freeCameraPos.x, 0, this.m_map.width);
+        this.freeCameraPos.y = math.clamp(this.freeCameraPos.y, 0, this.m_map.height);
+        this.m_camera.m_pos = v2.copy(this.freeCameraPos);
+        this.m_camera.m_targetZoom = this.freeCameraZoom;
+        this.m_camera.m_zoom = math.lerp(
+            math.clamp(dt * 8, 0, 1),
+            this.m_camera.m_zoom,
+            this.m_camera.m_targetZoom,
+        );
+    }
+
+    private freeCameraViewRadius(): number {
+        const z = Math.max(0.1, this.m_camera.m_z());
+        const halfWidth = this.m_camera.m_screenWidth * 0.5 / z;
+        const halfHeight = this.m_camera.m_screenHeight * 0.5 / z;
+        return math.clamp(Math.hypot(halfWidth, halfHeight) + 10, 12, 180);
+    }
+
+    /**
+     * World time dilation for the client-side simulation. The server advances
+     * bullets / throwables / flares at worldTimeScale while the implant is
+     * active, but this client simulates those tracers locally at 60fps, so the
+     * same scale must be applied here or they visibly keep full speed.
+     */
+    private sandevistanWorldTimeScale(): number {
+        if (!this.m_map?.mapDef?.gameMode?.sandevistanMode) return 1;
+        if (!this.m_activePlayer?.localData?.sandevistanActive) return 1;
+        const scale = this.sandevistanWorldTimeScaleOverride > 0
+            ? this.sandevistanWorldTimeScaleOverride
+            : Number(GameConfig.player.sandevistan.worldTimeScale);
+        return Number.isFinite(scale) && scale > 0 && scale < 1 ? scale : 1;
+    }
+
+    /** Sync the live server worldTimeScale (admin-tunable) into client sims. */
+    setSandevistanWorldTimeScale(scale: number): void {
+        if (Number.isFinite(scale) && scale > 0) {
+            this.sandevistanWorldTimeScaleOverride = scale;
+        }
+    }
+
+    /** Pull the admin-tunable sandevistan scale from the server (throttled).
+     * Runs only while a sandevistan map is loaded so the dashboard's
+     * "对局速度" slider takes effect in-game without a page reload. */
+    private refreshSandevistanConfig(): void {
+        if (!this.m_map?.mapDef?.gameMode?.sandevistanMode) return;
+        const now = Date.now();
+        if (now < this.sandevistanConfigRefreshAt) return;
+        this.sandevistanConfigRefreshAt = now + 5000;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 5000);
+        fetch("/api/sandevistan/config", { signal: controller.signal })
+            .then((response) => response.json() as Promise<{ worldTimeScale?: number }>)
+            .then((data) => {
+                if (typeof data.worldTimeScale === "number") {
+                    this.setSandevistanWorldTimeScale(data.worldTimeScale);
+                }
+            })
+            .catch(() => {})
+            .finally(() => window.clearTimeout(timeout));
+    }
+
+    private extractionHudEl: HTMLElement | null = null;
+    private matchTimerEl: HTMLElement | null = null;
+    private extractionHoldClient = 0;
+    private matchTimeReminderShown = false;
+    private zombieWinAnnounced = false;
+    private zombieMissionMsg: net.ZombieMissionMsg | null = null;
+    private zombieMissionPrevPlacedMask = 0;
+    private zombieMissionPrevCarriedElement = 0xff;
+    private zombieMissionLastNukeSequence = -1;
+    private zombieMissionAlarm: SoundHandle | null = null;
+    private zombieMissionEvacuationSiren: SoundHandle | null = null;
+    private zombieNukeShakeUntil = 0;
+    private zombieMissionSnapshotReceived = false;
+    /** Monotonic local deadline derived from authoritative server snapshots. */
+    private zombieMissionCountdownDeadline = 0;
+    private zombieGeigerNextClickAt = 0;
+
+    private updateExtraction(dt: number): void {
+        const extractionMode = Boolean(this.m_map?.mapDef?.gameMode?.extractionMode);
+        const hudEl = this.extractionHudEl
+            ?? (this.extractionHudEl = document.getElementById("extraction-hud"));
+        const matchTimerEl = this.matchTimerEl
+            ?? (this.matchTimerEl = document.getElementById("ui-match-timer"));
+        if (!extractionMode || !this.m_playing) {
+            this.extractionDisplay?.clear();
+            if (hudEl) hudEl.style.display = "none";
+            if (matchTimerEl) matchTimerEl.style.display = "none";
+            return;
+        }
+
+        // Match time limit countdown (10 minutes for extraction).
+        if (matchTimerEl) {
+            if (this.matchStartedTime < 0) {
+                this.matchTimeReminderShown = false;
+                matchTimerEl.style.display = "none";
+            } else {
+                const remain = Math.max(
+                    0,
+                    EXTRACTION_MATCH_TIME_LIMIT_SECONDS - Math.floor(this.matchStartedTime),
+                );
+                if (
+                    !this.m_spectating
+                    && !this.matchTimeReminderShown
+                    && remain <= EXTRACTION_TIME_WARNING_SECONDS
+                ) {
+                    this.matchTimeReminderShown = true;
+                    this.m_uiManager.displayAnnouncement(
+                        "对局剩余 2 分 30 秒，请尽快撤离！",
+                    );
+                }
+                const minutes = Math.floor(remain / 60);
+                const seconds = remain % 60;
+                matchTimerEl.textContent = `${minutes}:${`0${seconds}`.slice(-2)}`;
+                matchTimerEl.classList.toggle("urgent", remain <= 60);
+                matchTimerEl.style.display = "block";
+            }
+        }
+
+        // 撤离点标记状态：非对局/绝密未开放 → 隐藏；否则（含观战者）
+        // 绘制撤离点圈。观战者不隐藏：服务端已按 0.2s 间隔同步被观战者
+        // 的撤离点索引，继续绘制其撤离点圈；仅隐藏 HUD 进度文字。
+        if (this.m_spectating && hudEl) {
+            hudEl.style.display = "none";
+        }
+
+        // 绝密模式：撤离点前 5 分钟关闭，隐藏撤离标记并提示。
+        // 由当前房间地图决定（绝密搜打撤为独立播放列表，与普通搜打撤同时运行）。
+        const secretMode = Boolean(
+            this.m_map?.mapDef?.gameMode?.extractionSecretMode,
+        );
+        const marker = extractionMarkerState({
+            playing: this.m_playing,
+            secretMode,
+            matchStartedTime: this.matchStartedTime,
+        });
+        if (marker.kind === "hidden-secret-closed") {
+            this.extractionDisplay?.clear();
+            if (hudEl) {
+                const minutes = Math.floor(
+                    (marker.remainForOpen - EXTRACTION_SECRET_OPEN_SECONDS) / 60,
+                );
+                const seconds = (marker.remainForOpen - EXTRACTION_SECRET_OPEN_SECONDS) % 60;
+                hudEl.textContent = `撤离点未开放 · ${minutes}:${
+                    `0${seconds}`.slice(
+                        -2,
+                    )
+                } 后开放`;
+                hudEl.style.display = "block";
+                hudEl.style.color = "#ffb84d";
+            }
+            return;
+        }
+        if (hudEl) {
+            hudEl.textContent = "";
+        }
+
+        const points = generateExtractionPoints(
+            this.m_map.mapName,
+            this.m_map.width,
+            this.m_map.height,
+        );
+        const pos = this.m_activePlayer.m_pos;
+        const active = this.extractionPointIndex >= 0
+                && this.extractionPointIndex < points.length
+            ? points[this.extractionPointIndex]
+            : farthestExtractionPoint(points, pos);
+
+        // World beacon: same camera transform as the terrain layer.
+        const p0 = this.m_camera.m_pointToScreen(v2.create(0, 0));
+        const p1 = this.m_camera.m_pointToScreen(v2.create(1, 1));
+        const s = v2.sub(p1, p0);
+        this.extractionDisplay.position.set(p0.x, p0.y);
+        this.extractionDisplay.scale.set(s.x, s.y);
+        this.extractionDisplay.clear();
+        const pulse = 3 + Math.sin(performance.now() / 280) * 1.4;
+        this.extractionDisplay.lineStyle(3, 0x22dd55, 0.95);
+        this.extractionDisplay.drawCircle(
+            active.x,
+            active.y,
+            EXTRACTION_ZONE_RADIUS + pulse,
+        );
+        this.extractionDisplay.lineStyle(1.5, 0x22dd55, 0.5);
+        this.extractionDisplay.drawCircle(active.x, active.y, EXTRACTION_ZONE_RADIUS + 7);
+
+        if (!hudEl) return;
+        if (insideExtractionZone(active, pos)) {
+            // 权威进度由服务端同步（0.2s 间隔）。
+            const remain = Math.max(
+                0,
+                EXTRACTION_HOLD_SECONDS - this.extractionHoldServer,
+            );
+            hudEl.style.display = "block";
+            hudEl.textContent = `撤离中 ${remain.toFixed(1)}s`;
+        } else {
+            this.extractionHoldClient = 0;
+            // 撤离点距离提示已按要求移除；开启点仍由世界中的绿色光柱标记。
+            hudEl.style.display = "none";
+        }
+    }
+
+    /** 僵尸模式：6 分钟倒计时 + 胜利公告（纯客户端展示，权威在服务端）。 */
+    private zombieRushSoundUntil = 0;
+    /** 已播放过冲刺音效的自爆僵尸 ID（每个自爆步兵最多响一次）。 */
+    private zombieRushSoundPlayedIds = new Set<number>();
+
+    /** 僵尸任务素材只在僵尸房间加载，避免其它模式下载大图。 */
+    private initializeZombieMissionIcons(): void {
+        const createIcon = (path: string): PIXI.Sprite => {
+            const sprite = PIXI.Sprite.from(path);
+            sprite.anchor.set(0.5, 0.5);
+            sprite.visible = false;
+            sprite.alpha = 0.98;
+            this.zombieMissionDisplay.addChild(sprite);
+            return sprite;
+        };
+        this.zombieMissionDeviceSprite = createIcon(
+            ZOMBIE_MISSION_DEVICE_ICON_PATH,
+        );
+        this.zombieMissionElementSprites = ZOMBIE_MISSION_ELEMENT_ICON_PATHS.map(createIcon);
+    }
+
+    private updateZombie(_dt: number): void {
+        const zombieMode = Boolean(this.m_map?.mapDef?.gameMode?.zombieMode);
+        const matchTimerEl = this.matchTimerEl
+            ?? (this.matchTimerEl = document.getElementById("ui-match-timer"));
+        if (!zombieMode || !this.m_playing) {
+            this.m_ui2Manager.zombieMissionInteractionText = null;
+            this.zombieGeigerNextClickAt = 0;
+            this.zombieMissionDisplay?.clear();
+            if (this.zombieMissionDisplay) {
+                this.zombieMissionDisplay.visible = false;
+            }
+            const missionHud = document.getElementById("zombie-mission-hud");
+            if (missionHud) missionHud.style.display = "none";
+            if (this.zombieMissionAlarm) {
+                this.m_audioManager.stopSound(this.zombieMissionAlarm);
+                this.zombieMissionAlarm = null;
+            }
+            if (this.zombieMissionEvacuationSiren) {
+                this.m_audioManager.stopSound(this.zombieMissionEvacuationSiren);
+                this.zombieMissionEvacuationSiren = null;
+            }
+            if (matchTimerEl && !this.m_map?.mapDef?.gameMode?.extractionMode) {
+                matchTimerEl.style.display = "none";
+            }
+            return;
+        }
+        if (matchTimerEl) {
+            if (this.matchStartedTime < 0) {
+                this.zombieWinAnnounced = false;
+                matchTimerEl.style.display = "none";
+            } else {
+                const remain = Math.max(
+                    0,
+                    ZOMBIE_WIN_TIME_SEC - Math.floor(this.matchStartedTime),
+                );
+                const minutes = Math.floor(remain / 60);
+                const seconds = remain % 60;
+                matchTimerEl.textContent = `僵尸 ${minutes}:${`0${seconds}`.slice(-2)}`;
+                matchTimerEl.classList.toggle("urgent", remain <= 60);
+                matchTimerEl.style.display = "block";
+            }
+        }
+        this.updateZombieMissionUi();
+        this.updateZombieGeigerCounter();
+        // 自爆变种冲刺音效：僵尸进入冲刺（Windwalk haste）且接近玩家时播放。
+        // 每个自爆步兵最多只播放一次（按僵尸 ID 追踪），全局 1.5s 节流防刷屏。
+        const now = performance.now();
+        if (now >= this.zombieRushSoundUntil && this.m_activePlayer) {
+            const myPos = this.m_activePlayer.m_pos;
+            const pool = this.m_playerBarn.playerPool.m_getPool();
+            for (const player of pool) {
+                const info = this.m_playerBarn.getPlayerInfo(player.__id);
+                if (!info.isBot || player.m_netData.m_dead) continue;
+                if (this.zombieRushSoundPlayedIds.has(player.__id)) continue;
+                if (!player.m_netData.m_hasteType) continue; // 未冲刺
+                const dist = Math.hypot(
+                    player.m_pos.x - myPos.x,
+                    player.m_pos.y - myPos.y,
+                );
+                if (dist < ZOMBIE_RUSH_RANGE + 10) {
+                    this.m_audioManager.playSound("zombie_rush", {
+                        channel: "sfx",
+                    });
+                    this.zombieRushSoundPlayedIds.add(player.__id);
+                    this.zombieRushSoundUntil = now + 1500;
+                    break;
+                }
+            }
+            // 清理已死亡/离场僵尸的记录，避免集合无限增长。
+            if (this.zombieRushSoundPlayedIds.size > 128) {
+                for (const id of this.zombieRushSoundPlayedIds) {
+                    const p = this.m_playerBarn.getPlayerById(id);
+                    if (!p || p.m_netData.m_dead) {
+                        this.zombieRushSoundPlayedIds.delete(id);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Play isolated Geiger clicks near mission elements, faster at close range. */
+    private updateZombieGeigerCounter(): void {
+        const msg = this.zombieMissionMsg;
+        const player = this.m_activePlayer;
+        if (
+            !msg
+            || !player
+            || this.m_spectating
+            || msg.phase !== net.ZombieMissionPhase.Collecting
+        ) {
+            this.zombieGeigerNextClickAt = 0;
+            return;
+        }
+
+        let intervalMs: number | null = null;
+        if (msg.carriedElement !== 0xff) {
+            const cadenceRoll = Math.random();
+            if (cadenceRoll < 0.45) {
+                // Dense clusters make carried radioactive material sound unstable.
+                intervalMs = 55 + Math.random() * 65;
+            } else if (cadenceRoll < 0.9) {
+                intervalMs = 120 + Math.random() * 110;
+            } else {
+                // Occasional pause prevents a recognizable repeating rhythm.
+                intervalMs = 250 + Math.random() * 170;
+            }
+        } else {
+            let closestDistance = Number.POSITIVE_INFINITY;
+            for (let i = 0; i < 3; i++) {
+                if ((msg.groundMask & (1 << i)) === 0) continue;
+                closestDistance = Math.min(
+                    closestDistance,
+                    v2.distance(player.m_pos, msg.elementPositions[i]),
+                );
+            }
+            if (closestDistance <= ZOMBIE_GEIGER_DETECTION_RANGE) {
+                const distanceRatio = Math.min(
+                    1,
+                    closestDistance / ZOMBIE_GEIGER_DETECTION_RANGE,
+                );
+                intervalMs = ZOMBIE_GEIGER_NEAR_INTERVAL_MS
+                    + (ZOMBIE_GEIGER_FAR_INTERVAL_MS
+                            - ZOMBIE_GEIGER_NEAR_INTERVAL_MS)
+                        * distanceRatio
+                        * distanceRatio;
+                const cadenceRoll = Math.random();
+                if (cadenceRoll < 0.25) {
+                    intervalMs *= 0.35 + Math.random() * 0.35;
+                } else if (cadenceRoll > 0.88) {
+                    intervalMs *= 1.6 + Math.random();
+                } else {
+                    intervalMs *= 0.7 + Math.random() * 0.65;
+                }
+            }
+        }
+
+        if (intervalMs === null) {
+            this.zombieGeigerNextClickAt = 0;
+            return;
+        }
+        const now = performance.now();
+        if (now < this.zombieGeigerNextClickAt) return;
+        this.m_audioManager.playSound("zombie_geiger_click", {
+            channel: "sfx",
+            volumeScale: 0.62 + Math.random() * 0.28,
+            detune: -140 + Math.random() * 280,
+        });
+        this.zombieGeigerNextClickAt = now + intervalMs;
+    }
+
+    private updateZombieMissionUi(): void {
+        const msg = this.zombieMissionMsg;
+        const hud = document.getElementById("zombie-mission-hud");
+        // Reset every frame so the mobile interaction button disappears as
+        // soon as the player leaves the server-authoritative interaction range.
+        this.m_ui2Manager.zombieMissionInteractionText = null;
+        if (!msg || !this.m_playing) {
+            this.zombieMissionDisplay?.clear();
+            if (this.zombieMissionDisplay) {
+                this.zombieMissionDisplay.visible = false;
+            }
+            if (hud) hud.style.display = "none";
+            return;
+        }
+
+        this.zombieMissionDisplay.visible = true;
+
+        const names = ZOMBIE_MISSION_ELEMENT_NAMES;
+        if (this.m_activePlayer?.layer === 0) {
+            const target = getZombieMissionInteractionTarget(
+                msg,
+                this.m_activePlayer.m_pos,
+            );
+            if (target) {
+                const elementName = names[target.elementIndex] ?? "元素";
+                this.m_ui2Manager.zombieMissionInteractionText = target.kind === "pickup"
+                    ? `拾取 ${elementName}`
+                    : `放入中心装置：${elementName}`;
+            }
+        }
+        const placedCount = ((msg.placedMask >> 0) & 1)
+            + ((msg.placedMask >> 1) & 1)
+            + ((msg.placedMask >> 2) & 1);
+        let text: string;
+        if (msg.phase === net.ZombieMissionPhase.Collecting) {
+            text = `任务：收集铀、钚、氚并放入中心装置 ${placedCount}/3`;
+            if (msg.carriedElement !== 0xff) {
+                const distance = this.m_activePlayer
+                    ? Math.round(v2.distance(this.m_activePlayer.m_pos, msg.devicePos))
+                    : 0;
+                text += `<br>负重：${names[msg.carriedElement] ?? "元素"} —— 中心距离 ${distance}m`;
+            } else {
+                let closest = -1;
+                let closestDistance = Number.POSITIVE_INFINITY;
+                if (this.m_activePlayer) {
+                    for (let i = 0; i < 3; i++) {
+                        if ((msg.groundMask & (1 << i)) === 0) continue;
+                        const distance = v2.distance(
+                            this.m_activePlayer.m_pos,
+                            msg.elementPositions[i],
+                        );
+                        if (distance < closestDistance) {
+                            closest = i;
+                            closestDistance = distance;
+                        }
+                    }
+                }
+                text += closest >= 0
+                    ? `<br>最近：${names[closest]} ${Math.round(closestDistance)}m，靠近后按互动`
+                    : "<br>靠近铀、钚或氚后按互动拾取";
+            }
+        } else if (msg.phase === net.ZombieMissionPhase.Armed) {
+            text = "进入地堡躲避<br>核爆倒计时准备中";
+        } else if (msg.phase === net.ZombieMissionPhase.Countdown) {
+            const remainingMs = Math.max(
+                0,
+                this.zombieMissionCountdownDeadline - performance.now(),
+            );
+            text = `${msg.inBunker ? "已进入地堡，保持隐蔽" : "进入地堡躲避"}<br>核爆倒计时 ${
+                (remainingMs / 1000).toFixed(3)
+            } 秒`;
+        } else {
+            // The normal end-of-match screen already confirms completion.
+            // Hide the mission HUD after detonation instead of leaving a
+            // redundant kill-count banner over the result screen.
+            text = "";
+        }
+        if (hud) {
+            hud.innerHTML = text;
+            hud.style.display = text ? "block" : "none";
+            hud.classList.toggle(
+                "danger",
+                msg.phase === net.ZombieMissionPhase.Countdown && !msg.inBunker,
+            );
+        }
+
+        const p0 = this.m_camera.m_pointToScreen(v2.create(0, 0));
+        const p1 = this.m_camera.m_pointToScreen(v2.create(1, 1));
+        const scale = v2.sub(p1, p0);
+        this.zombieMissionDisplay.position.set(p0.x, p0.y);
+        this.zombieMissionDisplay.scale.set(scale.x, scale.y);
+        this.zombieMissionDisplay.clear();
+
+        const deviceSprite = this.zombieMissionDeviceSprite;
+        if (deviceSprite) {
+            deviceSprite.visible = msg.phase !== net.ZombieMissionPhase.Detonated;
+            deviceSprite.position.set(msg.devicePos.x, msg.devicePos.y);
+            const deviceSize = 7.8;
+            deviceSprite.width = deviceSize;
+            deviceSprite.height = deviceSize;
+        }
+        for (let i = 0; i < 3; i++) {
+            const sprite = this.zombieMissionElementSprites[i];
+            if (!sprite) continue;
+            sprite.visible = (msg.groundMask & (1 << i)) !== 0;
+            if (!sprite.visible) continue;
+            const pos = msg.elementPositions[i];
+            sprite.position.set(pos.x, pos.y);
+            const elementSize = 4.4;
+            sprite.width = elementSize;
+            sprite.height = elementSize;
+        }
+        if (performance.now() < this.zombieNukeShakeUntil) {
+            this.m_camera.m_addShake(
+                v2.copy(this.m_camera.m_pos),
+                ZOMBIE_NUKE_SHAKE_CONTINUOUS_INTENSITY,
+            );
+        }
+    }
+
+    private applyZombieMissionMsg(msg: net.ZombieMissionMsg): void {
+        const firstSnapshot = !this.zombieMissionSnapshotReceived;
+        if (
+            !firstSnapshot
+            && msg.carriedElement !== this.zombieMissionPrevCarriedElement
+            && msg.carriedElement !== 0xff
+        ) {
+            const elementName = ZOMBIE_MISSION_ELEMENT_NAMES[msg.carriedElement] ?? "元素";
+            this.m_uiManager.displayAnnouncement(`已拾取${elementName}，当前负重`);
+        }
+        if (!firstSnapshot && msg.placedMask !== this.zombieMissionPrevPlacedMask) {
+            const newlyPlacedMask = msg.placedMask & ~this.zombieMissionPrevPlacedMask;
+            const placedIndex = ZOMBIE_MISSION_ELEMENT_NAMES.findIndex(
+                (_name, index) => (newlyPlacedMask & (1 << index)) !== 0,
+            );
+            const elementName = ZOMBIE_MISSION_ELEMENT_NAMES[placedIndex] ?? "元素";
+            this.m_uiManager.displayAnnouncement(`${elementName}已放入中心装置`);
+        }
+        const oldPhase = this.zombieMissionMsg?.phase ?? net.ZombieMissionPhase.Collecting;
+        if (msg.phase === net.ZombieMissionPhase.Countdown) {
+            const candidateDeadline = performance.now() + msg.countdownMs;
+            // Never let a delayed/out-of-order snapshot make the visible timer
+            // count backwards. Entering the phase establishes a fresh deadline;
+            // subsequent authoritative snapshots may only correct it earlier.
+            this.zombieMissionCountdownDeadline = oldPhase !== net.ZombieMissionPhase.Countdown
+                    || this.zombieMissionCountdownDeadline <= 0
+                ? candidateDeadline
+                : Math.min(this.zombieMissionCountdownDeadline, candidateDeadline);
+        } else {
+            this.zombieMissionCountdownDeadline = 0;
+        }
+        if (
+            msg.phase >= net.ZombieMissionPhase.Armed
+            && (firstSnapshot || oldPhase < net.ZombieMissionPhase.Armed)
+        ) {
+            this.zombieMissionAlarm = this.m_audioManager.playSound("zombie_nuke_alarm", {
+                channel: "sfx",
+                loop: true,
+                forceStart: true,
+            });
+            this.zombieMissionEvacuationSiren = this.m_audioManager.playSound(
+                "zombie_nuke_evacuation_siren",
+                {
+                    channel: "sfx",
+                    loop: true,
+                    forceStart: true,
+                },
+            );
+        }
+        if (
+            msg.nukeSequence !== this.zombieMissionLastNukeSequence
+            && msg.phase === net.ZombieMissionPhase.Detonated
+            && msg.nukeSequence !== 0
+        ) {
+            if (this.zombieMissionAlarm) {
+                this.m_audioManager.stopSound(this.zombieMissionAlarm);
+                this.zombieMissionAlarm = null;
+            }
+            if (this.zombieMissionEvacuationSiren) {
+                this.m_audioManager.stopSound(this.zombieMissionEvacuationSiren);
+                this.zombieMissionEvacuationSiren = null;
+            }
+            this.m_audioManager.playSound("zombie_nuke_explosion", {
+                channel: "sfx",
+                forceStart: true,
+            });
+            this.zombieNukeShakeUntil = performance.now() + ZOMBIE_NUKE_SHAKE_DURATION_MS;
+            this.m_camera.m_addShake(
+                v2.copy(this.m_camera.m_pos),
+                ZOMBIE_NUKE_SHAKE_IMPACT_INTENSITY,
+            );
+            this.m_uiManager.displayAnnouncement(`核爆已消灭 ${msg.nukeKills} 只僵尸！`);
+        }
+        this.zombieMissionPrevPlacedMask = msg.placedMask;
+        this.zombieMissionPrevCarriedElement = msg.carriedElement;
+        this.zombieMissionLastNukeSequence = msg.nukeSequence;
+        this.zombieMissionMsg = msg;
+        this.zombieMissionSnapshotReceived = true;
     }
 
     update(dt: number) {
@@ -405,6 +1362,9 @@ export class Game {
             debug = {} as DebugRenderOpts;
         }
 
+        this.refreshSandevistanConfig();
+        const worldDt = dt * this.sandevistanWorldTimeScale();
+
         const smokeParticles = this.m_smokeBarn.m_particles;
 
         if (this.m_playing) {
@@ -423,35 +1383,65 @@ export class Game {
             this.m_emoteBarn.wheelKeyTriggered,
             this.m_uiManager.displayingStats,
             this.m_spectating,
+            this.sharedSpectator,
         );
         this.updateAmbience();
 
-        this.m_camera.m_pos = v2.copy(this.m_activePlayer.m_visualPos);
-        this.m_camera.m_applyShake();
-        const zoom = this.m_activePlayer.m_getZoom();
+        if (this.m_spectating) {
+            try {
+                this.sandevistanFx.reset();
+            } catch (_) {
+                // Visual effects must never break the game loop.
+            }
+        } else {
+            try {
+                this.sandevistanFx.update(
+                    dt,
+                    this.m_activePlayer,
+                    this.m_playing,
+                    Boolean(this.m_map?.mapDef?.gameMode?.sandevistanMode),
+                    this.sandevistanWorldTimeScale(),
+                );
+            } catch (_) {
+                try {
+                    this.sandevistanFx.reset();
+                } catch (_) {
+                    // Ignore visual cleanup errors.
+                }
+            }
+        }
 
-        const minDim = math.min(
-            this.m_camera.m_screenWidth,
-            this.m_camera.m_screenHeight,
-        );
-        const maxDim = math.max(
-            this.m_camera.m_screenWidth,
-            this.m_camera.m_screenHeight,
-        );
-        const maxScreenDim = math.max(minDim * (16 / 9), maxDim);
-        this.m_camera.m_targetZoom = (maxScreenDim * 0.5) / (zoom * this.m_camera.m_ppu);
-        const zoomLerpIn = this.m_activePlayer.zoomFast ? 3 : 2;
-        const zoomLerpOut = this.m_activePlayer.zoomFast ? 3 : 1.4;
-        const zoomLerp = this.m_camera.m_targetZoom > this.m_camera.m_zoom ? zoomLerpIn : zoomLerpOut;
-        this.m_camera.m_zoom = math.lerp(
-            dt * zoomLerp,
-            this.m_camera.m_zoom,
-            this.m_camera.m_targetZoom,
-        );
+        if (this.m_spectating && this.freeSpectating) {
+            this.updateFreeSpectateCamera(dt);
+        } else {
+            this.m_camera.m_pos = v2.copy(this.m_activePlayer.m_visualPos);
+            this.m_camera.m_applyShake();
+            const zoom = this.m_activePlayer.m_getZoom();
+            const minDim = math.min(
+                this.m_camera.m_screenWidth,
+                this.m_camera.m_screenHeight,
+            );
+            const maxDim = math.max(
+                this.m_camera.m_screenWidth,
+                this.m_camera.m_screenHeight,
+            );
+            const maxScreenDim = math.max(minDim * (16 / 9), maxDim);
+            this.m_camera.m_targetZoom = (maxScreenDim * 0.5) / (zoom * this.m_camera.m_ppu);
+            const zoomLerpIn = this.m_activePlayer.zoomFast ? 3 : 2;
+            const zoomLerpOut = this.m_activePlayer.zoomFast ? 3 : 1.4;
+            const zoomLerp = this.m_camera.m_targetZoom > this.m_camera.m_zoom ? zoomLerpIn : zoomLerpOut;
+            this.m_camera.m_zoom = math.lerp(
+                dt * zoomLerp,
+                this.m_camera.m_zoom,
+                this.m_camera.m_targetZoom,
+            );
+        }
         this.m_audioManager.cameraPos = v2.copy(this.m_camera.m_pos);
         if (this.m_input.keyPressed(Key.Escape)) {
             this.m_uiManager.toggleEscMenu();
         }
+        this.updateExtraction(dt);
+        this.updateZombie(dt);
         // Large Map
         if (
             this.m_inputBinds.isBindPressed(Input.ToggleMap)
@@ -590,6 +1580,16 @@ export class Game {
                 }
             }
 
+            // Sandevistan activation: desktop uses the bound key/button, mobile
+            // uses the dedicated HUD button (tap queued by ui2Manager).
+            if (
+                this.m_inputBinds.isBindPressed(Input.Sandevistan)
+                || this.m_ui2Manager.sandevistanButtonPressed
+            ) {
+                inputMsg.addInput(Input.Sandevistan);
+                this.m_ui2Manager.sandevistanButtonPressed = false;
+            }
+
             // Handle Interact
             // Interact should not activate Revive, Use, or Loot if those inputs are bound separately.
             if (this.m_inputBinds.isBindPressed(Input.Interact)) {
@@ -708,24 +1708,85 @@ export class Game {
                 this.m_config.set("perkModeRole", roleSelectMessage.role);
             }
         }
-
         let specAction = this.m_uiManager.specAction;
-        if (specAction === SpectateAction.None && this.m_spectating) {
+        if (
+            specAction === SpectateAction.None
+            && this.m_spectating
+            && !this.freeSpectating
+        ) {
             if (this.m_input.keyPressed(Key.Right)) {
                 specAction = SpectateAction.Next;
             } else if (this.m_input.keyPressed(Key.Left)) {
                 specAction = SpectateAction.Prev;
             }
         }
-
-        if (specAction !== SpectateAction.None) {
+        const specBegin = specAction === SpectateAction.Begin;
+        const specNext = specAction === SpectateAction.Next;
+        const specPrev = specAction === SpectateAction.Prev;
+        const specFreeToggle = this.m_uiManager.specFreeToggle;
+        if (specFreeToggle) {
+            this.freeSpectating = !this.freeSpectating;
+            if (this.freeSpectating) {
+                this.freeCameraPos = v2.create(this.m_map.width / 2, this.m_map.height / 2);
+                this.freeCameraZoom = this.m_camera.m_zoom;
+                this.freeCameraLastMouse = v2.copy(this.m_input.mousePos);
+                this.freeCameraDirty = true;
+            }
+            this.m_uiManager.setFreeSpectating(this.freeSpectating);
+        }
+        if (
+            this.m_spectating
+            && this.freeSpectating
+            && this.m_uiManager.specLayerRequested !== null
+        ) {
+            this.freeCameraLayer = math.clamp(this.m_uiManager.specLayerRequested, 0, 3);
+            this.freeCameraDirty = true;
+            this.m_uiManager.setSpectatorLayer(this.freeCameraLayer);
+        }
+        if ((specNext || specPrev || specBegin) && this.freeSpectating) {
+            this.freeSpectating = false;
+            this.m_uiManager.setFreeSpectating(false);
+        }
+        const nowMs = performance.now();
+        const sendFreeCamera = this.m_spectating
+            && this.freeSpectating
+            && (this.freeCameraDirty || nowMs >= this.freeCameraNetAt);
+        if (
+            specBegin
+            || (this.m_spectating && (specNext || specPrev))
+            || specFreeToggle
+            || this.m_uiManager.specPlayersOnlyChanged
+            || sendFreeCamera
+        ) {
             const specMsg = new net.SpectateMsg();
             specMsg.action = specAction;
+            specMsg.specBegin = specBegin;
+            specMsg.specNext = specNext;
+            specMsg.specPrev = specPrev;
+            specMsg.specForce = specNext || specPrev;
+            specMsg.specFreeToggle = specFreeToggle;
+            specMsg.specFreeActive = this.freeSpectating;
+            specMsg.specPlayersOnlySet = this.m_uiManager.specPlayersOnlyChanged;
+            specMsg.specPlayersOnly = this.m_uiManager.specPlayersOnly;
+            if (this.freeSpectating) {
+                specMsg.freeCameraPos = v2.copy(this.freeCameraPos);
+                specMsg.freeCameraViewRadius = this.freeCameraViewRadius();
+                specMsg.freeCameraLayer = this.freeCameraLayer;
+                this.freeCameraDirty = false;
+                this.freeCameraNetAt = nowMs + 90;
+            }
             this.m_sendMessage(net.MsgType.Spectate, specMsg, 128);
-
-            this.m_uiManager.specAction = SpectateAction.None;
         }
-
+        this.m_uiManager.specAction = SpectateAction.None;
+        this.m_uiManager.specFreeToggle = false;
+        this.m_uiManager.specPlayersOnlyChanged = false;
+        this.m_uiManager.specLayerRequested = null;
+        if (this.m_spectating && this.m_uiManager.spectatorChatPending) {
+            const chat = new net.SpectatorChatMsg();
+            chat.text = this.m_uiManager.spectatorChatPending;
+            this.m_uiManager.spectatorChatPending = "";
+            this.m_sendMessage(net.MsgType.SpectatorChat, chat, 512);
+        }
         this.m_uiManager.reloadTouched = false;
         this.m_uiManager.interactionTouched = false;
         this.m_uiManager.swapWeapSlots = false;
@@ -793,6 +1854,10 @@ export class Game {
             this.m_camera,
             smokeParticles,
             debug,
+            // The spectator occluder-transparency toggle must work while
+            // following any target (not only free camera), so roofs and walls
+            // reveal what the watched player's view would hide.
+            this.m_spectating && this.m_uiManager.specTransparentObstacles,
         );
         this.m_lootBarn.m_update(
             dt,
@@ -803,7 +1868,7 @@ export class Game {
             debug,
         );
         this.m_bulletBarn.m_update(
-            dt,
+            worldDt,
             this.m_playerBarn,
             this.m_map,
             this.m_camera,
@@ -812,9 +1877,14 @@ export class Game {
             this.m_particleBarn,
             this.m_audioManager,
         );
-        this.m_flareBarn.m_update(dt, this.m_map, this.m_activePlayer, this.m_renderer);
+        this.m_flareBarn.m_update(
+            worldDt,
+            this.m_map,
+            this.m_activePlayer,
+            this.m_renderer,
+        );
         this.m_projectileBarn.m_update(
-            dt,
+            worldDt,
             this.m_particleBarn,
             this.m_audioManager,
             this.m_activePlayer,
@@ -1147,8 +2217,29 @@ export class Game {
 
             this.m_objectCreator.m_updateObjPart(obj.__id, obj, ctx);
         }
-        this.m_spectating = this.m_activeId != this.m_localId;
-        this.m_activePlayer = this.m_playerBarn.getPlayerById(this.m_activeId)!;
+        const aimTrainingHuman = this.m_map.mapName === "aim_training"
+            && !this.joinedSpectatorOnly
+            && !this.joinedTrainingTarget;
+        // A previous spectator implementation inferred connection identity from
+        // activePlayerId. During target reconnects that can transiently point at
+        // the bot and turn the human into an observer. Training humans always
+        // own their local player object; camera-target changes are ignored here.
+        if (aimTrainingHuman) this.m_activeId = this.m_localId;
+        this.m_spectating = this.joinedSpectatorOnly || this.m_activeId != this.m_localId;
+        if (!this.m_spectating && this.freeSpectating) {
+            this.freeSpectating = false;
+            this.m_uiManager.setFreeSpectating(false);
+        }
+        let activePlayer = this.m_playerBarn.getPlayerById(this.m_activeId);
+        if (!activePlayer && aimTrainingHuman) {
+            activePlayer = this.m_playerBarn.getPlayerById(this.m_localId);
+            this.m_activeId = this.m_localId;
+        }
+        if (!activePlayer) {
+            console.warn(`Missing active player ${this.m_activeId}; local=${this.m_localId}`);
+            return;
+        }
+        this.m_activePlayer = activePlayer;
         this.m_activePlayer.m_setLocalData(msg.activePlayerData);
         if (msg.activePlayerData.weapsDirty) {
             this.m_uiManager.weapsDirty = true;
@@ -1160,12 +2251,21 @@ export class Game {
                 this.teamMode,
                 this.m_playerBarn,
             );
+            if (this.freeSpectating) {
+                this.m_uiManager.setFreeSpectating(true);
+            }
             this.m_touch.hideAll();
         }
-        this.m_activePlayer.layer = this.m_activePlayer.m_netData.m_layer;
-        this.m_renderer.setActiveLayer(this.m_activePlayer.layer);
-        this.m_audioManager.activeLayer = this.m_activePlayer.layer;
-        const underground = this.m_activePlayer.isUnderground(this.m_map);
+        const cameraLayer = this.freeSpectating
+            ? this.freeCameraLayer
+            : this.m_activePlayer.m_netData.m_layer;
+        // `layer` is the local rendering layer; `netData.layer` remains the
+        // selected player's authoritative layer. Free camera must update this
+        // value too so tunnel buildings, loot and effects render correctly.
+        this.m_activePlayer.layer = cameraLayer;
+        this.m_renderer.setActiveLayer(cameraLayer);
+        this.m_audioManager.activeLayer = cameraLayer;
+        const underground = cameraLayer > 0 || this.m_activePlayer.isUnderground(this.m_map);
         this.m_renderer.setUnderground(underground);
         this.m_audioManager.underground = underground;
 
@@ -1220,8 +2320,12 @@ export class Game {
 
         // Update kill leader
         if (msg.killLeaderDirty) {
-            const leaderNameText = helpers.htmlEscape(
-                this.m_playerBarn.getPlayerName(msg.killLeaderId, this.m_activeId, true),
+            // ui.ts 用 .text() 渲染击杀王名字，这里传原始名字即可（不再预转义，
+            // 避免 .text() 把实体二次转义显示成 &amp;lt; 等）。
+            const leaderNameText = this.m_playerBarn.getPlayerName(
+                msg.killLeaderId,
+                this.m_activeId,
+                true,
             );
             this.m_uiManager.updateKillLeader(
                 msg.killLeaderId,
@@ -1238,14 +2342,31 @@ export class Game {
             case net.MsgType.Joined: {
                 const msg = new net.JoinedMsg();
                 msg.deserialize(stream);
-                this.onJoin();
+                if (!this.initialized) {
+                    this.onJoin();
+                } else {
+                    // 保留画面自动重连成功：服务器重发完整快照（Joined + Map +
+                    // 全量 Update），先清空本地世界再重新初始化，避免旧对象残留。
+                    this.free(true);
+                    this.connected = true;
+                    this.onJoin();
+                }
                 this.teamMode = msg.teamMode;
                 this.m_localId = msg.playerId;
+                this.joinedSpectatorOnly = msg.spectatorOnly;
+                this.joinedTrainingTarget = msg.trainingTarget;
+                this.sharedSpectator = msg.spectatorOnly;
+                const aimSettingsButton = document.getElementById("aim-training-settings-open");
+                if (aimSettingsButton) {
+                    aimSettingsButton.hidden = this.m_map.mapName === "aim_training"
+                        && (this.joinedSpectatorOnly || this.joinedTrainingTarget);
+                }
                 this.m_validateAlpha = true;
                 this.m_emoteBarn.updateEmoteWheel(msg.emotes);
-                if (!msg.started) {
-                    this.m_uiManager.setWaitingForPlayers(true);
-                }
+                // Always apply the authoritative state. Spectators can join an
+                // AI duel immediately after both contestants connect, and the
+                // UI defaults to the waiting overlay until explicitly cleared.
+                this.m_uiManager.setWaitingForPlayers(!msg.started);
                 this.m_uiManager.removeAds();
                 if (this.victoryMusic) {
                     this.victoryMusic.stop();
@@ -1275,13 +2396,47 @@ export class Game {
                     this.m_canvasMode,
                     this.m_particleBarn,
                 );
+                // Map-specific assets can only be initialized after MapMsg has
+                // populated the concrete map definition.
+                if (this.m_map.getMapDef().gameMode.zombieMode) {
+                    this.initializeZombieMissionIcons();
+                }
                 this.m_resourceManager.loadMapAssets(this.m_map.mapName);
                 this.m_map.renderMap(this.m_pixi.renderer, this.m_canvasMode);
                 this.m_renderer.resize(this.m_map, this.m_camera);
                 this.m_bulletBarn.onMapLoad(this.m_map);
                 this.m_particleBarn.onMapLoad(this.m_map);
                 this.m_uiManager.onMapLoad(this.m_map, this.m_camera);
-                if (this.m_map.perkMode && this.m_localId) {
+
+                const aimTraining = this.m_map.mapName === "aim_training";
+                document.body.classList.toggle("aim-training-active", aimTraining);
+                const aimStats = document.getElementById("ui-aim-training-stats");
+                if (aimStats) aimStats.hidden = !aimTraining;
+                const aimSettingsButton = document.getElementById("aim-training-settings-open");
+                if (aimSettingsButton) {
+                    aimSettingsButton.hidden = aimTraining
+                        && (this.joinedSpectatorOnly || this.joinedTrainingTarget);
+                }
+                if (aimTraining) {
+                    if (!this.joinedSpectatorOnly && !this.joinedTrainingTarget) {
+                        this.sharedSpectator = false;
+                        this.freeSpectating = false;
+                        this.m_uiManager.setFreeSpectating(false);
+                        this.m_uiManager.setSpectating(false, this.teamMode);
+                    }
+                    this.m_uiManager.setWaitingForPlayers(true);
+                    $("#ui-waiting-text").text("正在连接移动标靶…");
+                    const duelScore = document.getElementById("ui-duel-score");
+                    if (duelScore) duelScore.style.display = "none";
+                    $("#aim-training-shots, #aim-training-hits").text("0");
+                    $("#aim-training-accuracy").text("0.0%");
+                    $("#aim-training-damage").text("0.0");
+                    $("#aim-training-meta").text("正在同步训练设置…");
+                } else if (!this.m_map.getMapDef().arena?.rounds) {
+                    const duelScore = document.getElementById("ui-duel-score");
+                    if (duelScore) duelScore.style.display = "none";
+                }
+                if (this.m_map.perkMode) {
                     const player = this.m_activePlayer as Player | undefined;
                     if (!player?.m_netData.m_role) {
                         const role = this.m_config.get("perkModeRole")!;
@@ -1311,6 +2466,21 @@ export class Game {
             case net.MsgType.Kill: {
                 const msg = new net.KillMsg();
                 msg.deserialize(stream);
+                // 搜打撤撤离成功：物资已入库，提示并返回仓库页。
+                if (
+                    msg.killed
+                    && msg.damageType === GameConfig.DamageType.Extraction
+                    && msg.targetId === this.m_localId
+                    && !this.extractionSuccessShown
+                ) {
+                    this.extractionSuccessShown = true;
+                    this.m_uiManager.displayAnnouncement(
+                        "撤离成功，物资已存入仓库",
+                    );
+                    window.setTimeout(() => {
+                        window.location.href = "/storage";
+                    }, 1800);
+                }
                 const sourceType = msg.itemSourceType || msg.mapSourceType;
                 const activeTeamId = this.m_playerBarn.getPlayerInfo(
                     this.m_activeId,
@@ -1410,6 +2580,89 @@ export class Game {
                     );
                 }
 
+                break;
+            }
+            case net.MsgType.AimTrainingStats: {
+                const msg = new net.AimTrainingStatsMsg();
+                msg.deserialize(stream);
+                this.m_uiManager.setWaitingForPlayers(!msg.targetReady);
+                $("#ui-waiting-text").text(
+                    msg.targetReady ? "移动标靶已连接" : "移动标靶正在自动重连…",
+                );
+                const accuracy = msg.shotsFired > 0 ? msg.hits / msg.shotsFired * 100 : 0;
+                $("#aim-training-shots").text(msg.shotsFired.toLocaleString());
+                $("#aim-training-hits").text(msg.hits.toLocaleString());
+                $("#aim-training-accuracy").text(`${accuracy.toFixed(1)}%`);
+                $("#aim-training-damage").text(msg.damageDealt.toFixed(1));
+                const movement = msg.omnidirectionalRandomMovement
+                    ? "全向随机"
+                    : msg.verticalRandomMovement
+                    ? "上下随机"
+                    : "静止";
+                $("#aim-training-meta").text(
+                    `${
+                        msg.targetReady
+                            ? "标靶在线"
+                            : "标靶复活中"
+                    } · ${msg.weapon0} / ${msg.weapon1} · ${msg.throwable} · AI预估距离 ${msg.distance} · ${
+                        msg.targetBoost > 0 ? `激素阶段 ${msg.targetBoost}` : "无激素"
+                    } · ${movement} · ${msg.dodgeBullets ? "躲弹开启" : "躲弹关闭"} · ${
+                        msg.infiniteMagazine ? "弹匣无限" : "正常换弹"
+                    } · 头${msg.helmetLevel}/甲${msg.chestLevel} · ${
+                        msg.normalHealth ? "正常生命（自动复活）" : "无限生命"
+                    }`,
+                );
+                window.dispatchEvent(
+                    new CustomEvent("aim-training-settings-sync", {
+                        detail: {
+                            weapon0: msg.weapon0,
+                            weapon1: msg.weapon1,
+                            throwable: msg.throwable,
+                            infiniteMagazine: msg.infiniteMagazine,
+                            targetBoost: msg.targetBoost,
+                            helmetLevel: msg.helmetLevel,
+                            chestLevel: msg.chestLevel,
+                            normalHealth: msg.normalHealth,
+                            distance: msg.distance,
+                            verticalRandomMovement: msg.verticalRandomMovement,
+                            omnidirectionalRandomMovement: msg.omnidirectionalRandomMovement,
+                            dodgeBullets: msg.dodgeBullets,
+                        },
+                    }),
+                );
+                break;
+            }
+            case net.MsgType.SpectatorOverlay: {
+                const msg = new net.SpectatorOverlayMsg();
+                msg.deserialize(stream);
+                if (
+                    this.m_map.mapName === "aim_training"
+                    && !this.joinedSpectatorOnly
+                ) {
+                    break;
+                }
+                this.sharedSpectator = true;
+                this.m_playerBarn.applySpectatorOverlay(msg.players);
+                break;
+            }
+            case net.MsgType.SpectatorChat: {
+                const msg = new net.SpectatorChatMsg();
+                msg.deserialize(stream);
+                if (msg.delivered) {
+                    if (this.m_spectating) {
+                        this.m_uiManager.appendSpectatorChat(msg.sender, msg.text);
+                    } else {
+                        this.m_uiManager.showSpectatorMessage(msg.sender, msg.text);
+                    }
+                }
+                break;
+            }
+            case net.MsgType.ArenaRound: {
+                const msg = new net.ArenaRoundMsg();
+                msg.deserialize(stream);
+                if (this.m_map.mapName !== "aim_training") {
+                    this.updateArenaRoundUi(msg);
+                }
                 break;
             }
             case net.MsgType.RoleAnnouncement: {
@@ -1593,7 +2846,85 @@ export class Game {
                 }
                 break;
             }
+            case net.MsgType.MatchTime: {
+                const msg = new net.MatchTimeMsg();
+                msg.deserialize(stream);
+                this.matchStartedTime = msg.started ? msg.startedTime : -1;
+                break;
+            }
+            case net.MsgType.ZombieMission: {
+                const msg = new net.ZombieMissionMsg();
+                msg.deserialize(stream);
+                this.applyZombieMissionMsg(msg);
+                break;
+            }
+            case net.MsgType.AchievementUnlocked: {
+                const msg = new net.AchievementUnlockedMsg();
+                msg.deserialize(stream);
+                if (isAchievementId(msg.achievementId)) {
+                    const achievement = AchievementDefs[msg.achievementId];
+                    this.m_uiManager.displayAnnouncement(
+                        `成就解锁：${achievement.name}`,
+                    );
+                }
+                break;
+            }
+            case net.MsgType.ExtractionPoint: {
+                const msg = new net.ExtractionPointMsg();
+                msg.deserialize(stream);
+                this.extractionPointIndex = msg.pointIndex;
+                this.extractionHoldServer = msg.holdSeconds;
+                if (this.m_activePlayer) {
+                    this.m_activePlayer.extractionPointIndex = msg.pointIndex;
+                }
+                break;
+            }
         }
+    }
+
+    private updateArenaRoundUi(msg: net.ArenaRoundMsg): void {
+        const wrapper = document.getElementById("ui-duel-score")!;
+        const playerName = (id: number, fallback: string) =>
+            id ? this.m_playerBarn.getPlayerInfo(id).name || fallback : "等待对手";
+
+        const leftName = playerName(msg.playerIds[0], "玩家 1");
+        const rightName = playerName(msg.playerIds[1], "玩家 2");
+        const winnerName = playerName(msg.winnerId, "");
+
+        document.getElementById("ui-duel-round")!.textContent = `第 ${msg.round} / ${msg.totalRounds} 局`;
+        const leftPlayer = document.getElementById("ui-duel-player-left")!;
+        const rightPlayer = document.getElementById("ui-duel-player-right")!;
+        leftPlayer.textContent = leftName;
+        rightPlayer.textContent = rightName;
+        leftPlayer.title = leftName;
+        rightPlayer.title = rightName;
+        document.getElementById("ui-duel-score-left")!.textContent = String(
+            msg.scores[0],
+        );
+        document.getElementById("ui-duel-score-right")!.textContent = String(
+            msg.scores[1],
+        );
+
+        const status = document.getElementById("ui-duel-status")!;
+        switch (msg.state) {
+            case net.ArenaRoundState.Waiting:
+                this.m_uiManager.setWaitingForPlayers(true);
+                status.textContent = "等待对手加入";
+                break;
+            case net.ArenaRoundState.Playing:
+                this.m_uiManager.setWaitingForPlayers(false);
+                status.textContent = "";
+                break;
+            case net.ArenaRoundState.RoundOver:
+                status.textContent = `${winnerName} 赢得本局 · 下一局即将开始`;
+                break;
+            case net.ArenaRoundState.MatchOver:
+                status.textContent = `${winnerName} 获得五局总胜利`;
+                break;
+        }
+        wrapper.classList.toggle("has-status", status.textContent.length > 0);
+        wrapper.dataset.roundState = String(msg.state);
+        wrapper.style.display = "block";
     }
 
     m_sendMessage(type: net.MsgType, data: net.Msg, maxLen?: number) {
@@ -1601,6 +2932,27 @@ export class Game {
         const msgStream = new net.MsgStream(new ArrayBuffer(bufSz));
         msgStream.serializeMsg(type, data);
         this.m_sendMessageImpl(msgStream);
+    }
+
+    applyAimTrainingSettings(settings: {
+        weapon0: string;
+        weapon1: string;
+        throwable: string;
+        infiniteMagazine: boolean;
+        targetBoost: number;
+        helmetLevel: number;
+        chestLevel: number;
+        normalHealth: boolean;
+        distance: number;
+        verticalRandomMovement: boolean;
+        omnidirectionalRandomMovement: boolean;
+        dodgeBullets: boolean;
+        resetStats?: boolean;
+    }): void {
+        if (this.m_map.mapName !== "aim_training") return;
+        const msg = new net.AimTrainingSettingsMsg();
+        Object.assign(msg, settings);
+        this.m_sendMessage(net.MsgType.AimTrainingSettings, msg, 128);
     }
 
     m_sendMessageImpl(msgStream: net.MsgStream) {

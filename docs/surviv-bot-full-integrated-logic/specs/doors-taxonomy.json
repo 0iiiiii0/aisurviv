@@ -1,0 +1,12 @@
+{
+  "fields": [
+    "isDoor",
+    "open",
+    "canUse",
+    "locked",
+    "layer"
+  ],
+  "normal": "Interact if blocks path",
+  "locked": "panel_or_key_or_avoid",
+  "vault": "panel_not_melee"
+}

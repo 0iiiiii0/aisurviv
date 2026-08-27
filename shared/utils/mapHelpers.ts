@@ -1,5 +1,4 @@
-import type { BuildingDef } from "../defs/mapObjects/buildings/buildingDefs.ts";
-import type { StructureDef } from "../defs/mapObjects/structureDefs.ts";
+import type { BuildingDef, StructureDef } from "../defs/mapObjectsTyping.ts";
 import { MapObjectDefs } from "../defs/register.ts";
 import { type AABB, coldet, type Collider } from "./coldet.ts";
 import { collider } from "./collider.ts";

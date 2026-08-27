@@ -1,0 +1,36 @@
+{
+  "version": 49,
+  "baselineCommit": "63fcc86",
+  "recording": {
+    "sessions": 5,
+    "bots": 40,
+    "events": 17437,
+    "frames": 17911,
+    "mappedResourceTargetFrames": 770,
+    "noLootResourceTargetFrames": 593,
+    "noLootPercent": 77.01,
+    "noLootBreakdown": {
+      "tree_08f": 264,
+      "stone_01f": 207,
+      "house_window_01": 122
+    },
+    "requester4127": {
+      "requestObservations": 40,
+      "drops": 0
+    }
+  },
+  "validation": {
+    "serverBuild": "passed",
+    "clientTypecheck": "passed",
+    "serverTestScripts": {
+      "passed": 68,
+      "total": 68
+    },
+    "adminJavaScriptSyntax": "passed",
+    "resourceColliderCases": 3360,
+    "v49ReplaySmokeTest": "passed",
+    "patchApplyFromBaseline": "passed",
+    "patchedServerBuild": "passed",
+    "patchedV49ReplaySmokeTest": "passed"
+  }
+}

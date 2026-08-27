@@ -21,6 +21,7 @@ import { type PerkDef, PerkDefs } from "./gameObjects/perkDefs.ts";
 import { type PingDef, PingDefs } from "./gameObjects/pingDefs.ts";
 import { type QuestDef, QuestDefs } from "./gameObjects/questDefs.ts";
 import { type RoleDef, RoleDefs } from "./gameObjects/roleDefs.ts";
+import { type SandevistanChipDef, SandevistanChipDefs } from "./gameObjects/sandevistanChipDefs.ts";
 import { type ThrowableDef, ThrowableDefs } from "./gameObjects/throwableDefs.ts";
 import { type UnlockDef, UnlockDefs } from "./gameObjects/unlockDefs.ts";
 import { type XPDef, XPDefs } from "./gameObjects/xpDefs.ts";
@@ -48,7 +49,8 @@ export type GameObjectDef =
     | RoleDef
     | ThrowableDef
     | UnlockDef
-    | XPDef;
+    | XPDef
+    | SandevistanChipDef;
 
 export type LootDef =
     | AmmoDef
@@ -80,6 +82,7 @@ const ObjectDefsList: Array<Record<string, GameObjectDef>> = [
     PassDefs,
     PingDefs,
     RoleDefs,
+    SandevistanChipDefs,
     ThrowableDefs,
     UnlockDefs,
     XPDefs,

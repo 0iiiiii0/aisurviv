@@ -1,7 +1,8 @@
 import * as PIXI from "pixi.js-legacy";
 
-import type { BuildingDef, FloorImage } from "../../../shared/defs/mapObjects/buildings/buildingDefs.ts";
+import type { BuildingDef } from "../../../shared/defs/mapObjectsTyping.ts";
 import { MapObjectDefs } from "../../../shared/defs/register.ts";
+import type { FloorImage } from "../../../shared/defs/types/building.ts";
 import type { ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
 import type { Collider } from "../../../shared/utils/coldet.ts";
 import { collider } from "../../../shared/utils/collider.ts";
@@ -379,6 +380,7 @@ export class Building implements AbstractObject {
         renderer: Renderer,
         camera: Camera,
         debug: DebugRenderOpts,
+        transparentObstacles = false,
     ) {
         // Puzzle effects
         if (this.hasPuzzle) {
@@ -567,7 +569,11 @@ export class Building implements AbstractObject {
         // Position sprites for rendering
         for (let F = 0; F < this.imgs.length; F++) {
             const img = this.imgs[F];
-            const alpha = img.isCeiling ? this.ceiling.fadeAlpha : 1;
+            const alpha = img.isCeiling
+                ? transparentObstacles
+                    ? Math.min(this.ceiling.fadeAlpha, 0.42)
+                    : this.ceiling.fadeAlpha
+                : 1;
             this.positionSprite(img.sprite, alpha, camera);
 
             if (img.removeOnDamaged && this.ceilingDamaged) {

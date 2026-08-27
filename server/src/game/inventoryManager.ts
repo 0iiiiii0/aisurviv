@@ -2,6 +2,7 @@ import { SCOPE_LEVELS } from "../../../shared/defs/gameObjects/gearDefs.ts";
 import { PerkProperties } from "../../../shared/defs/gameObjects/perkDefs.ts";
 import { GameObjectDefs } from "../../../shared/defs/register.ts";
 import { GameConfig, type InventoryItem } from "../../../shared/gameConfig.ts";
+import { getBagCapacity } from "../../../shared/utils/bagCapacity.ts";
 import { math } from "../../../shared/utils/math.ts";
 import type { Player } from "./objects/player.ts";
 import { throwableList } from "./weaponManager.ts";
@@ -70,7 +71,15 @@ export class InventoryManager {
 
     getMaxCapacity(item: InventoryItem): number {
         const bagLevel = this.player.getGearLevel(this.player.backpack);
-        let amount = this.bagSizes[item][bagLevel];
+        const extractionMode = Boolean(
+            this.player.game.map.mapDef.gameMode.extractionMode,
+        );
+        let amount = getBagCapacity(
+            item,
+            bagLevel,
+            extractionMode,
+            this.bagSizes as Record<string, readonly number[]>,
+        );
         if (this.player.hasPerk("flak_jacket")) {
             if (item === "frag") {
                 amount += PerkProperties.flak_jacket.fragBonus;
@@ -170,6 +179,12 @@ export class InventoryManager {
         assertAmount(amount);
 
         const current = this.get(item);
+        // The maximum protocol value is an infinite-supply sentinel, not a
+        // real stack. Consuming it used to turn 4095 into 4094, which leaked a
+        // numeric count to the HUD and let bot sharing/death spill thousands
+        // of medical items into extraction matches.
+        if (current === GameConfig.inventoryInfiniteCount) return amount;
+
         const trueAmount = math.min(current, amount);
 
         this.set(item, current - trueAmount);

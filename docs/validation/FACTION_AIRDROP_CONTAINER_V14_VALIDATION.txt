@@ -1,0 +1,46 @@
+Surviv.io AI V14 validation summary
+==================================
+
+Base project:
+  surviv.io-main-role-navigation-potato-loot-v13-full.zip
+
+Build:
+  PASS - server TypeScript compilation (`npm run build`)
+
+New V14 tests:
+  PASS - faction airdrop/container smoke test
+    - military shell is a one-use delayed interaction
+    - heavy crate_12 is feasible under the dedicated 28-hit plan
+    - closed and rotated container entrance geometry
+    - open-through container chooses the nearer end
+    - wooden crate/board recognized as safe entrance blocker
+    - metal container wall rejected
+    - explosive barrel rejected
+  PASS - special role smoke test
+    - opening flare remains on learned friendly half when formation/objective are across midline
+
+Regression tests:
+  PASS - smart bot decision brain
+  PASS - bot input safety
+  PASS - loot/resource search
+  PASS - opening resource sweep
+  PASS - integrated logic specification
+  PASS - faction autofill (one AI every two seconds, 20+20 cap)
+  PASS - spectator/autofill
+  PASS - combat/heal safety
+  PASS - aim/reload control
+  PASS - potato weapon rotation
+  PASS - duel
+  PASS - duel lobby
+  PASS - admin
+  PASS - all modes (47 playlists / 17 maps)
+
+Archive integrity:
+  Recorded separately after package creation.
+
+Limitations:
+  Tests are deterministic build/smoke tests in the local project. They do not constitute a live, full-duration 40-bot faction match on the user's Windows server.
+
+Archive integrity:
+  PASS - update-only ZIP (`unzip -t`)
+  PASS - full ZIP (`unzip -t`)

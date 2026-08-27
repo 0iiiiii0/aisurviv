@@ -1,4 +1,8 @@
 import type { Vec2 } from "../utils/v2.ts";
+import type { BuildingDef } from "./types/building.ts";
+import type { DecalDef } from "./types/decal.ts";
+import type { ObstacleDef } from "./types/obstacle.ts";
+import type { StructureDef } from "./types/structure.ts";
 
 interface TerrainSpawnDef {
     grass?: boolean;
@@ -41,4 +45,11 @@ export interface LootSpawnerDef {
     terrain?: TerrainSpawnDef;
 }
 
-export type { TerrainSpawnDef };
+export type { BuildingDef, DecalDef, ObstacleDef, StructureDef, TerrainSpawnDef };
+
+export type MapObjectDef =
+    | ObstacleDef
+    | BuildingDef
+    | StructureDef
+    | DecalDef
+    | LootSpawnerDef;

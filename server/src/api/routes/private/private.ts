@@ -47,6 +47,7 @@ export const PrivateRouter = new Hono<Context>()
         }
 
         server.modes[index] = {
+            ...server.modes[index],
             mapName: (mapName ?? server.modes[index].mapName) as MapDefKey,
             teamMode: teamMode ?? server.modes[index].teamMode,
             enabled: enabled ?? server.modes[index].enabled,

@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="dark" />
+        <title>Surviv.io 控制台</title>
+        <link rel="stylesheet" href="/admin/admin.css" />
+    </head>
+    <body>
+        <div class="ambient ambient-one"></div>
+        <div class="ambient ambient-two"></div>
+
+        <section id="login-view" class="login-shell">
+            <form id="login-form" class="login-card">
+                <div class="brand-mark" aria-hidden="true">
+                    <span></span><span></span>
+                </div>
+                <p class="eyebrow">SERVER OPERATIONS</p>
+                <h1>Surviv.io 控制台</h1>
+                <p class="login-copy">输入管理员密码后才能进入服务器控制台。密码只用于建立当前标签页的管理会话。</p>
+                <label for="password-input">管理员密码</label>
+                <input
+                    id="password-input"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="输入管理员密码"
+                />
+                <p id="login-error" class="form-error" role="alert"></p>
+                <button class="primary-button" type="submit">登录后台</button>
+                <p class="security-note">登录会话只保存在当前浏览器标签页中；关闭标签页后需要重新登录。</p>
+            </form>
+        </section>
+
+        <div id="dashboard" class="dashboard" hidden>
+            <aside class="sidebar">
+                <a class="logo" href="/" aria-label="返回游戏">
+                    <span class="logo-target" aria-hidden="true"></span>
+                    <span><strong>SURVIV</strong><small>CONTROL</small></span>
+                </a>
+                <nav aria-label="后台导航">
+                    <a class="nav-item active" href="#overview">
+                        <span class="nav-icon">⌁</span>总览
+                    </a>
+                    <a class="nav-item" href="#rooms">
+                        <span class="nav-icon">◫</span>房间
+                    </a>
+                    <a class="nav-item" href="#bots">
+                        <span class="nav-icon">AI</span>人机补入
+                    </a>
+                    <a class="nav-item" href="#modes">
+                        <span class="nav-icon">◇</span>模式
+                    </a>
+                    <a class="nav-item" href="#stash">
+                        <span class="nav-icon">▣</span>仓库
+                    </a>
+                    <a class="nav-item" href="#equipment-returns">
+                        <span class="nav-icon">↩</span>装备返还
+                    </a>
+                    <a class="nav-item" href="#player-accounts">
+                        <span class="nav-icon">◈</span>玩家账号
+                    </a>
+                    <a class="nav-item" href="#shop">
+                        <span class="nav-icon">¥</span>商店
+                    </a>
+                    <a class="nav-item" href="#announcement">
+                        <span class="nav-icon">▤</span>主页公告
+                    </a>
+                </nav>
+                <div class="sidebar-footer">
+                    <div class="connection-state">
+                        <span class="pulse-dot"></span>
+                        <span><small>连接状态</small><strong>在线</strong></span>
+                    </div>
+                    <button id="logout-button" class="ghost-button" type="button">退出后台</button>
+                </div>
+            </aside>
+
+            <main>
+                <header class="topbar">
+                    <div>
+                        <p class="eyebrow">GAME SERVER</p>
+                        <h1>运行总览</h1>
+                    </div>
+                    <div class="topbar-actions">
+                        <span id="last-updated" class="last-updated">等待同步</span>
+                        <label class="auto-refresh-control" title="自动刷新间隔">
+                            <span class="sr-only">自动刷新间隔</span>
+                            <select id="auto-refresh-interval">
+                                <option value="0">自动刷新：关</option>
+                                <option value="1">自动刷新：1秒</option>
+                                <option value="2" selected>自动刷新：2秒</option>
+                                <option value="5">自动刷新：5秒</option>
+                                <option value="10">自动刷新：10秒</option>
+                                <option value="30">自动刷新：30秒</option>
+                            </select>
+                        </label>
+                        <button id="refresh-button" class="icon-button" type="button" title="立即刷新">↻</button>
+                        <a class="play-button" href="/">进入游戏</a>
+                    </div>
+                </header>
+
+                <section id="overview" class="content-section">
+                    <div class="status-strip">
+                        <div class="status-title">
+                            <span class="pulse-dot"></span>
+                            <div><strong>服务器运行正常</strong><small id="server-address">—</small></div>
+                        </div>
+                        <div class="server-tags">
+                            <span id="server-version">v—</span>
+                            <span id="server-region">区域 —</span>
+                            <span id="server-process">— 模式</span>
+                            <span id="server-uptime">运行 —</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-grid">
+                        <article class="metric-card accent-green">
+                            <div class="metric-label"><span>真人玩家</span><span class="metric-icon">●</span></div>
+                            <strong id="human-player-count">—</strong>
+                            <small><b id="spectator-count">—</b> 名纯观众</small>
+                        </article>
+                        <article class="metric-card accent-cyan">
+                            <div class="metric-label"><span>AI 玩家</span><span class="metric-icon">AI</span></div>
+                            <strong id="ai-player-count">—</strong>
+                            <small>服务器控制的人机连接</small>
+                        </article>
+                        <article class="metric-card accent-blue">
+                            <div class="metric-label"><span>活跃房间</span><span class="metric-icon">◫</span></div>
+                            <strong id="game-count">—</strong>
+                            <small><b id="joinable-count">—</b> 个仍可加入</small>
+                        </article>
+                        <article class="metric-card accent-orange">
+                            <div class="metric-label"><span>内存占用</span><span class="metric-icon">▥</span></div>
+                            <strong id="memory-rss">—</strong>
+                            <small>RSS / <b id="memory-heap">—</b> 堆内存</small>
+                        </article>
+                        <article class="metric-card accent-violet">
+                            <div class="metric-label"><span>已配置模式</span><span class="metric-icon">◇</span></div>
+                            <strong id="mode-count">—</strong>
+                            <small><b id="enabled-mode-count">—</b> 个公开启用</small>
+
+                        </article>
+                    </div>
+
+                    <div class="maintenance-panel">
+                        <div class="section-heading">
+                            <div><p class="eyebrow">MAINTENANCE</p><h2>更新维护（阻止开始对局）</h2></div>
+                            <div class="maintenance-status" id="update-block-status">未开启</div>
+                        </div>
+                        <p class="announcement-help">开启后所有玩家无法开始新对局（匹配/组队/1v1/靶场均被拦截）；一次性最长 10 分钟，到点自动解除。已在进行的对局不受影响。</p>
+                        <div class="maintenance-controls">
+                            <label for="update-block-minutes">
+                                <span>时长（分钟）</span>
+                                <input id="update-block-minutes" type="number" min="1" max="10" value="10" />
+                            </label>
+                            <button id="btn-update-block-on" class="primary-button compact danger" type="button">开启更新维护</button>
+                            <button id="btn-update-block-off" class="ghost-button compact" type="button" disabled>解除更新维护</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="rooms" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">ROOMS</p><h2>房间管理</h2></div>
+                        <form id="create-game-form" class="create-form">
+                            <label class="sr-only" for="mode-select">选择模式</label>
+                            <select id="mode-select"></select>
+                            <button class="primary-button compact" type="submit">＋ 创建房间</button>
+                        </form>
+                    </div>
+                    <div class="room-toolbar">
+                        <span id="room-count" class="toolbar-count">0 个房间</span>
+                        <label class="room-filter">
+                            <span class="sr-only">房间筛选</span>
+                            <select id="room-filter">
+                                <option value="all">全部房间</option>
+                                <option value="joinable">仅可加入</option>
+                                <option value="locked">仅已锁定</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="room-config-panel">
+                        <div class="room-config-block">
+                            <div class="room-config-heading">
+                                <strong>公开房间人数上限</strong>
+                                <small>同一队伍规格下的所有普通地图统一使用该上限；只影响新建房间。</small>
+                            </div>
+                            <form id="room-player-limits-form" class="room-config-form">
+                                <label>单排 <input id="room-limit-solo" type="number" min="1" max="100" step="1" inputmode="numeric" /></label>
+                                <label>双排 <input id="room-limit-duo" type="number" min="2" max="100" step="1" inputmode="numeric" /></label>
+                                <label>四排 <input id="room-limit-squad" type="number" min="4" max="100" step="1" inputmode="numeric" /></label>
+                                <label>50v50 <input id="room-limit-faction" type="number" min="2" max="100" step="1" inputmode="numeric" /></label>
+                                <button class="primary-button compact" type="submit">保存人数上限</button>
+                                <span id="room-player-limits-status" class="config-status"></span>
+                            </form>
+                            <small class="room-limit-hint">输入时不会自动补 0 或取整；双排需为 2 的倍数、四排需为 4 的倍数，保存时校验。</small>
+                        </div>
+                        <div class="room-config-block">
+                            <div class="room-config-heading">
+                                <strong>真人+AI 补齐目标</strong>
+                                <small>单人 / 双人 / 四人 / 50v50 分别设置；实际不会超过该模式房间人数上限。</small>
+                            </div>
+                            <form id="bot-fill-targets-form" class="room-config-form">
+                                <label>单人 <input id="bot-solo-target-player-count" type="number" min="1" max="100" step="1" inputmode="numeric" /></label>
+                                <label>双人 <input id="bot-duo-target-player-count" type="number" min="1" max="100" step="1" inputmode="numeric" /></label>
+                                <label>四人 <input id="bot-squad-target-player-count" type="number" min="1" max="100" step="1" inputmode="numeric" /></label>
+                                <label>50v50 <input id="bot-faction-target-player-count" type="number" min="1" max="100" step="1" inputmode="numeric" /></label>
+                                <label title="绝密搜打撤单人独立补齐目标（真人+AI）；填 0 表示跟随普通单人目标">
+                                    绝密单人
+                                    <input id="bot-secret-solo-target-player-count" type="number" min="0" max="100" step="1" inputmode="numeric" />
+                                </label>
+                                <label title="绝密搜打撤双人独立补齐目标（真人+AI）；填 0 表示跟随普通双人目标">
+                                    绝密双人
+                                    <input id="bot-secret-duo-target-player-count" type="number" min="0" max="100" step="1" inputmode="numeric" />
+                                </label>
+                                <label title="绝密搜打撤四人独立补齐目标（真人+AI）；填 0 表示跟随普通四人目标">
+                                    绝密四人
+                                    <input id="bot-secret-squad-target-player-count" type="number" min="0" max="100" step="1" inputmode="numeric" />
+                                </label>
+                                <button id="save-bot-fill-targets" class="primary-button compact" type="submit" disabled>保存补齐目标</button>
+                            </form>
+                            <small class="room-limit-hint">绝密单人/双人/四人 = 绝密搜打撤按队形分别设置独立 AI 补齐目标；0 = 跟随普通模式对应队形目标。</small>
+                        </div>
+                    </div>
+                    <div class="room-tools-grid">
+                        <form id="pure-ai-duel-form" class="room-tool-card pure-ai-tool">
+                            <div class="pure-ai-heading"><strong>创建纯 AI 1v1</strong><small>使用当前1v1公共护甲、倍镜、激素和投掷物配置；双方难度和武器可独立选择。</small></div>
+                            <div class="pure-ai-grid">
+                                <fieldset>
+                                    <legend>AI 1</legend>
+                                    <label>难度 <select id="pure-ai-difficulty-0"><option value="normal">普通</option><option value="hard">困难</option><option value="pro">Pro</option><option value="legit">LEGIT</option><option value="forbidden">HACKER</option></select></label>
+                                    <label>主武器 <select id="pure-ai-weapon-0-0"></select></label>
+                                    <label>副武器 <select id="pure-ai-weapon-0-1"></select></label>
+                                </fieldset>
+                                <fieldset>
+                                    <legend>AI 2</legend>
+                                    <label>难度 <select id="pure-ai-difficulty-1"><option value="normal">普通</option><option value="hard">困难</option><option value="pro">Pro</option><option value="legit">LEGIT</option><option value="forbidden">HACKER</option></select></label>
+                                    <label>主武器 <select id="pure-ai-weapon-1-0"></select></label>
+                                    <label>副武器 <select id="pure-ai-weapon-1-1"></select></label>
+                                </fieldset>
+                            </div>
+                            <div class="pure-ai-actions">
+                                <button id="create-pure-ai-duel" class="primary-button compact" type="submit">创建并生成观战链接</button>
+                                <a id="pure-ai-watch-link" class="ghost-button compact" href="#" target="_blank" rel="noopener" hidden>打开本局观战</a>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>房间 ID</th><th>地图 / 队伍</th><th>真人 / AI / 观众</th><th>运行时间</th><th>状态</th><th></th></tr>
+                            </thead>
+                            <tbody id="games-body"></tbody>
+                        </table>
+                        <div id="empty-games" class="empty-state" hidden>
+                            <span>◎</span><strong>还没有活跃房间</strong><small>从右上方选择一个模式并创建。</small>
+                        </div>
+                    </div>
+                </section>
+
+
+                <section id="bots" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">BOT AUTO FILL</p><h2>人机自动补入</h2></div>
+                        <span class="announcement-help">保存后立即影响后续加入的人机；不会踢出已经进入的AI</span>
+                    </div>
+                    <form id="bot-autofill-form" class="bot-autofill-panel">
+                        <div class="bot-autofill-toolbar">
+                            <label for="bot-global-interval">
+                                <span>AI统一加入间隔（所有模式共用）</span>
+                                <span class="number-suffix">
+                                    <input id="bot-global-interval" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" />
+                                    <span>秒</span>
+                                </span>
+                            </label>
+                            <label for="bot-max-workers" title="并发 bot worker 子进程上限；达到上限时暂停 AI 补员，防止搜打撤补员风暴导致 V8 Zone OOM">
+                                <span>AI worker 全局并发上限</span>
+                                <span class="number-suffix">
+                                    <input id="bot-max-workers" type="number" min="1" max="64" step="1" inputmode="numeric" />
+                                    <span>个进程</span>
+                                </span>
+                            </label>
+                            <button id="save-bot-autofill" class="primary-button compact" type="submit" disabled>保存AI补入配置</button>
+                        </div>
+                        <div class="bot-ai-tuning">
+                            <section class="bot-tuning-card">
+                                <div class="bot-tuning-heading">
+                                    <div>
+                                        <strong>AI 类型预期占比</strong>
+                                        <small>按后续自动补入的AI计算；四项必须合计100%</small>
+                                    </div>
+                                    <span id="bot-ratio-total" class="bot-ratio-total">合计 100%</span>
+                                </div>
+                                <div class="bot-ratio-grid">
+                                    <label for="bot-ratio-normal"><span>普通</span><span class="number-suffix"><input id="bot-ratio-normal" type="number" min="0" max="100" step="1" inputmode="numeric" /><span>%</span></span></label>
+                                    <label for="bot-ratio-hard"><span>困难</span><span class="number-suffix"><input id="bot-ratio-hard" type="number" min="0" max="100" step="1" inputmode="numeric" /><span>%</span></span></label>
+                                    <label for="bot-ratio-pro"><span>Pro</span><span class="number-suffix"><input id="bot-ratio-pro" type="number" min="0" max="100" step="1" inputmode="numeric" /><span>%</span></span></label>
+                                    <label for="bot-ratio-legit"><span>LEGIT</span><span class="number-suffix"><input id="bot-ratio-legit" type="number" min="0" max="100" step="1" inputmode="numeric" /><span>%</span></span></label>
+                                </div>
+                                <p>HACKER 不参与公开房间投放，只能在1v1房间中选择。</p>
+                            </section>
+                            <section class="bot-tuning-card">
+                                <div class="bot-tuning-heading">
+                                    <div>
+                                        <strong>各等级 AI 独立运行频率</strong>
+                                        <small>每个等级单独设置决策间隔；1–250ms，数值越小反应越快且CPU占用越高</small>
+                                    </div>
+                                    <span id="bot-frequency-summary" class="bot-frequency-readout">独立频率</span>
+                                </div>
+                                <div class="bot-ratio-grid bot-think-interval-grid">
+                                    <label for="bot-frequency-normal"><span>普通</span><span class="number-suffix"><input id="bot-frequency-normal" type="number" min="1" max="250" step="1" inputmode="numeric" /><span>ms</span></span></label>
+                                    <label for="bot-frequency-hard"><span>困难</span><span class="number-suffix"><input id="bot-frequency-hard" type="number" min="1" max="250" step="1" inputmode="numeric" /><span>ms</span></span></label>
+                                    <label for="bot-frequency-pro"><span>Pro</span><span class="number-suffix"><input id="bot-frequency-pro" type="number" min="1" max="250" step="1" inputmode="numeric" /><span>ms</span></span></label>
+                                    <label for="bot-frequency-legit"><span>LEGIT</span><span class="number-suffix"><input id="bot-frequency-legit" type="number" min="1" max="250" step="1" inputmode="numeric" /><span>ms</span></span></label>
+                                    <label for="bot-frequency-forbidden"><span>HACKER</span><span class="number-suffix"><input id="bot-frequency-forbidden" type="number" min="1" max="250" step="1" inputmode="numeric" /><span>ms</span></span></label>
+                                </div>
+                                <div class="bot-frequency-presets">
+                                    <button class="ghost-button compact" type="button" data-bot-frequency-preset="balanced">平衡预设</button>
+                                    <button class="ghost-button compact" type="button" data-bot-frequency-preset="fast">高频预设</button>
+                                    <button class="ghost-button compact" type="button" data-bot-frequency-preset="low-cpu">低占用预设</button>
+                                </div>
+                                <p>保存后影响之后生成的 AI。还可通过 BOT_THINK_INTERVALS_MS 为同一工作进程中的每个 AI 单独覆盖。</p>
+                            </section>
+                        </div>
+                        <p class="bot-config-note">真人+AI 补齐目标请到“房间管理”的人数设置中按 单人/双人/四人/50v50 分别调整；AI 加入间隔为全局统一值。</p>
+                    </form>
+                    <div class="room-config-block">
+                        <div class="room-config-heading">
+                            <strong>搜打撤 AI 默认配装</strong>
+                            <small>多套配装方案，AI 进局时按“概率权重”随机选用一套。权重为相对比例（如 40 / 25 / 20 / 15）。</small>
+                        </div>
+                        <div id="extraction-loadouts-editor" class="extraction-loadouts-editor"></div>
+                        <div class="room-config-row">
+                            <button id="add-extraction-loadout" class="ghost-button compact" type="button">添加配装</button>
+                            <button id="save-extraction-ai-loadouts" class="primary-button compact" type="button">保存AI配装</button>
+                            <span id="extraction-ai-loadouts-status" class="config-status"></span>
+                        </div>
+                    </div>
+                    <div class="room-config-block">
+                        <div class="room-config-heading">
+                            <strong>搜打撤·绝密模式</strong>
+                            <small>开启后新增独立的<b>绝密搜打撤</b>播放列表，与普通搜打撤<b>同时运行</b>：AI 套用最终幸存者（last_man）+ 无限子弹 + 不互相攻击；
+                                击杀 AI 有 2/3 概率武器降级为 DP-28、1/5 概率随机掉一个能力；高级物资掉率提高。<br />                                关闭后绝密入口隐藏，已开局房间不受影响。</small>
+                        </div>
+                        <div class="secret-config-row">
+                            <label class="secret-config-toggle">
+                                <input type="checkbox" id="extraction-secret-enabled" />
+                                <span>启用绝密模式</span>
+                            </label>
+                            <label class="secret-config-toggle">
+                                <input type="checkbox" id="extraction-secret-immortal-boost" />
+                                <span>绝密 AI 满激素不掉</span>
+                            </label>
+                            <label class="secret-config-field">
+                                <span>绝密 AI 难度</span>
+                                <select id="extraction-secret-difficulty">
+                                    <option value="normal">普通</option>
+                                    <option value="hard">困难</option>
+                                    <option value="pro">Pro</option>
+                                    <option value="legit">LEGIT</option>
+                                    <option value="forbidden">HACKER</option>
+                                </select>
+                            </label>
+                            <button id="save-extraction-secret" class="primary-button compact" type="button">保存绝密配置</button>
+                            <span id="extraction-secret-status" class="config-status"></span>
+                        </div>
+                        <div class="room-config-block secret-loadouts-block">
+                            <div class="room-config-heading">
+                                <strong>绝密 AI 配装</strong>
+                                <small>绝密模式 AI 使用<b>独立配装</b>（与普通搜打撤 AI 不同），
+                                    进局时按“概率权重”随机选用；并额外套用最终幸存者能力。</small>
+                            </div>
+                            <div id="secret-extraction-loadouts-editor" class="extraction-loadouts-editor"></div>
+                            <div class="room-config-row">
+                                <button id="add-secret-extraction-loadout" class="ghost-button compact" type="button">添加配装</button>
+                                <button id="save-secret-extraction-ai-loadouts" class="primary-button compact" type="button">保存绝密AI配装</button>
+                                <span id="secret-extraction-ai-loadouts-status" class="config-status"></span>
+                            </div>
+                        </div>
+                        <div class="room-config-block">
+                            <div class="room-config-heading">
+                                <strong>搜打撤 Boss（高级资源点守卫）</strong>
+                                <small>目前<b>仅绝密搜打撤</b>生效：Boss 是<b>强化的 AI 守卫</b>（50v50 队长模型），
+                                    站桩开火、会还击；按地标动态定位（标准地图 = 豪宅 + 俱乐部泳池）。
+                                    自带 3 个默认天赋（始终生效、不掉落），额外从「天赋池」随机佩戴 1 个（死亡必掉）；
+                                    死亡还会掉 Boss 武器 + 掉落表物品。保存后对新建房间生效。</small>
+                            </div>
+                            <div class="secret-config-row">
+                                <label class="secret-config-toggle">
+                                    <input type="checkbox" id="extraction-boss-enabled" />
+                                    <span>启用 Boss</span>
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>Boss 血量</span>
+                                    <input id="extraction-boss-health" type="number" min="50" max="5000" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>Boss 数量</span>
+                                    <input id="extraction-boss-count" type="number" min="1" max="6" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field boss-perks-field" title="Boss 基础能力：始终生效、不掉落（如减伤/护甲）；点击按钮选择带图标的能力。留空 = 默认 3 个（steelskin/flak_jacket/gotw）">
+                                    <span>Boss 基础能力</span>
+                                    <div class="boss-perk-picker-row">
+                                        <div id="extraction-boss-default-perks" class="boss-perk-picker boss-perk-picker-selected"></div>
+                                        <button id="pick-extraction-boss-default-perk" class="ghost-button compact" type="button">+ 选择能力</button>
+                                    </div>
+                                </label>
+                                <label class="secret-config-field boss-perks-field" title="Boss 掉落能力池：点击按钮选择带图标的能力；死亡时从池中随机佩戴 1 个并必定掉落。留空 = 从全部能力自动随机（与正常 AI 一致）">
+                                    <span>Boss 掉落能力池</span>
+                                    <div class="boss-perk-picker-row">
+                                        <div id="extraction-boss-perks" class="boss-perk-picker boss-perk-picker-selected"></div>
+                                        <button id="pick-extraction-boss-perk" class="ghost-button compact" type="button">+ 选择能力</button>
+                                    </div>
+                                </label>
+                                <label class="secret-config-field" title="Boss 头盔；留空用默认（50v50 队长头盔）">
+                                    <span>Boss 头盔</span>
+                                    <select id="extraction-boss-armor-helmet" class="admin-input boss-armor-select"><option value="">默认（留空）</option></select>
+                                </label>
+                                <label class="secret-config-field" title="Boss 胸甲；留空表示不穿胸甲">
+                                    <span>Boss 胸甲</span>
+                                    <select id="extraction-boss-armor-chest" class="admin-input boss-armor-select"><option value="">留空（不穿）</option></select>
+                                </label>
+                                <label class="secret-config-field" title="Boss 背包；留空表示默认背包">
+                                    <span>Boss 背包</span>
+                                    <select id="extraction-boss-armor-backpack" class="admin-input boss-armor-select"><option value="">留空（默认）</option></select>
+                                </label>
+                                <label class="secret-config-field" title="Boss 倍镜；留空表示默认倍镜">
+                                    <span>Boss 倍镜</span>
+                                    <select id="extraction-boss-armor-scope" class="admin-input boss-armor-select"><option value="">留空（默认）</option></select>
+                                </label>
+                            </div>
+                            <div class="room-config-heading">
+                                <strong>Boss 武器（独立于掉落表）</strong>
+                                <small>Boss 死亡后<b>必定掉落</b>这些武器；用 1v1 式武器选择面板配置（含图片/类型筛选）。</small>
+                            </div>
+                            <div id="extraction-boss-weapons-editor" class="extraction-boss-weapons-editor"></div>
+                            <div class="room-config-row">
+                                <button id="add-extraction-boss-weapon" class="ghost-button compact" type="button">添加武器</button>
+                            </div>
+                            <div class="room-config-heading">
+                                <strong>Boss 掉落表</strong>
+                                <small>类型可为枪械/护甲/倍镜/药品/投掷物/<b>能力</b>（如 awc、chest03、8xscope、bandage、frag、ap_rounds）；
+                                    数量为该次掉落份数，权重为该条目掉率（0-100%）。</small>
+                            </div>
+                            <div id="extraction-boss-drops-editor" class="extraction-loadouts-editor"></div>
+                            <div class="room-config-row">
+                                <button id="add-extraction-boss-drop" class="ghost-button compact" type="button">添加掉落</button>
+                                <button id="save-extraction-boss" class="primary-button compact" type="button">保存Boss配置</button>
+                                <span id="extraction-boss-status" class="config-status"></span>
+                            </div>
+                        </div>
+                        <div class="room-config-block">
+                            <div class="room-config-heading">
+                                <strong>AI 追杀玩家数量</strong>
+                                <small>同时主动追杀真人玩家的 AI 上限，普通 / 绝密 × 单人 / 双人 / 四人分别设置；
+                                    追杀的 AI 死亡后名额空出，补给下一个 AI。0 = 全部 AI 都不主动追杀。</small>
+                            <div class="room-config-heading">
+                                <strong>搜打撤 AI 额外掉落物</strong>
+                                <small>搜打撤（普通/绝密）AI 死亡时按概率额外掉落的物品/能力；类型可填武器/护甲/倍镜/药品/能力（如 awc、chest02、8xscope、bandage、ap_rounds）；数量、概率（0-100%）。基础装备仍正常掉落。</small>
+                            </div>
+                            <div id="extraction-ai-drop-items-editor" class="extraction-loadouts-editor"></div>
+                            <div class="room-config-row">
+                                <button id="add-extraction-ai-drop-item" class="ghost-button compact" type="button">添加掉落物</button>
+                                <button id="save-extraction-ai-drop-items" class="primary-button compact" type="button">保存AI掉落物</button>
+                                <span id="extraction-ai-drop-items-status" class="config-status"></span>
+                            </div>
+                            </div>
+                            <div class="secret-config-row">
+                                <label class="secret-config-field">
+                                    <span>普通·单人</span>
+                                    <input id="extraction-hunters-normal-solo" type="number" min="0" max="50" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>普通·双人</span>
+                                    <input id="extraction-hunters-normal-duo" type="number" min="0" max="50" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>普通·四人</span>
+                                    <input id="extraction-hunters-normal-squad" type="number" min="0" max="50" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>绝密·单人</span>
+                                    <input id="extraction-hunters-secret-solo" type="number" min="0" max="50" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>绝密·双人</span>
+                                    <input id="extraction-hunters-secret-duo" type="number" min="0" max="50" step="1" inputmode="numeric" />
+                                </label>
+                                <label class="secret-config-field">
+                                    <span>绝密·四人</span>
+                                    <input id="extraction-hunters-secret-squad" type="number" min="0" max="50" step="1" inputmode="numeric" />
+                                </label>
+                                <button id="save-extraction-hunters" class="primary-button compact" type="button">保存追杀数量</button>
+                                <span id="extraction-hunters-status" class="config-status"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="change-password-form" class="password-change-panel">
+                        <div>
+                            <strong>修改后台密码</strong>
+                            <small>密码会以明文保存在服务器根目录的 survivio-admin-auth.json；修改后所有后台会话会失效。</small>
+                        </div>
+                        <input id="current-password" type="password" autocomplete="current-password" placeholder="当前密码" required minlength="8" maxlength="128" />
+                        <input id="new-password" type="password" autocomplete="new-password" placeholder="新密码（至少8位）" required minlength="8" maxlength="128" />
+                        <input id="confirm-password" type="password" autocomplete="new-password" placeholder="再次输入新密码" required minlength="8" maxlength="128" />
+                        <button class="ghost-button compact" type="submit">修改密码</button>
+                    </form>
+                </section>
+
+                <section id="modes" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">PLAYLISTS</p><h2>模式配置</h2></div>
+                    </div>
+                    <form id="duel-weapon-form" class="duel-config-panel">
+                        <div class="duel-config-heading">
+                            <div>
+                                <span class="duel-config-icon" aria-hidden="true">1v1</span>
+                                <div>
+                                    <h3>1v1 初始装备配置</h3>
+                                    <p>配置武器、激素、头盔、防弹衣和投掷物。保存后仅影响新创建的1v1房间。</p>
+                                </div>
+                            </div>
+                            <span id="duel-weapon-count" class="catalog-count">— 种武器</span>
+                        </div>
+                        <div class="duel-weapon-slots">
+                            <button class="duel-weapon-card" type="button" data-duel-slot="0">
+                                <span class="weapon-slot-label">1号武器</span>
+                                <span class="selected-weapon-image"><img id="duel-weapon-image-0" alt="" /></span>
+                                <span id="duel-weapon-name-0" class="selected-weapon-name">等待同步</span>
+                                <span id="duel-weapon-meta-0" class="selected-weapon-meta">—</span>
+                                <span class="change-weapon">更换武器</span>
+                            </button>
+                            <button class="duel-weapon-card" type="button" data-duel-slot="1">
+                                <span class="weapon-slot-label">2号武器</span>
+                                <span class="selected-weapon-image"><img id="duel-weapon-image-1" alt="" /></span>
+                                <span id="duel-weapon-name-1" class="selected-weapon-name">等待同步</span>
+                                <span id="duel-weapon-meta-1" class="selected-weapon-meta">—</span>
+                                <span class="change-weapon">更换武器</span>
+                            </button>
+                            <div class="duel-config-actions">
+                                <strong>对战规则</strong>
+                                <span>两名玩家获得相同武器</span>
+                                <span>每小局重新发放满弹匣</span>
+                                <span>弹药仍为无限供应</span>
+                                <button id="save-duel-weapons" class="primary-button compact" type="submit" disabled>保存1v1配置</button>
+                            </div>
+                        </div>
+                        <div class="duel-loadout-settings">
+                            <div class="duel-basic-settings">
+                                <label class="duel-setting-card toggle-setting" for="duel-adrenaline-enabled">
+                                    <span class="duel-setting-icon boost-icon" aria-hidden="true">⚡</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>启用激素</strong>
+                                        <small>关闭后开局激素为0，并禁用汽水和止痛药</small>
+                                    </span>
+                                    <input id="duel-adrenaline-enabled" class="duel-toggle" type="checkbox" />
+                                </label>
+                                <label class="duel-setting-card toggle-setting" for="duel-ai-enabled">
+                                    <span class="duel-setting-icon" aria-hidden="true">AI</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>默认 AI 对手</strong>
+                                        <small>私人1v1大厅可由一名玩家直接开始</small>
+                                    </span>
+                                    <input id="duel-ai-enabled" class="duel-toggle" type="checkbox" />
+                                </label>
+                                <label class="duel-setting-card" for="duel-ai-difficulty">
+                                    <span class="duel-setting-icon" aria-hidden="true">◆</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>AI 难度</strong>
+                                        <small>HACKER 仅允许用于1v1</small>
+                                    </span>
+                                    <select id="duel-ai-difficulty" class="duel-setting-control">
+                                        <option value="normal">普通</option>
+                                        <option value="hard">困难</option>
+                                        <option value="pro">Pro</option>
+                                        <option value="legit">LEGIT</option>
+                                        <option value="forbidden">HACKER（仅1v1）</option>
+                                    </select>
+                                </label>
+                                <label class="duel-setting-card" for="duel-boost">
+                                    <span class="duel-setting-icon boost-icon" aria-hidden="true">⚡</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>初始肾上腺素</strong>
+                                        <small>每小局出生时的激素值（0–100）</small>
+                                    </span>
+                                    <span class="duel-setting-control number-suffix">
+                                        <input id="duel-boost" type="number" min="0" max="100" step="1" inputmode="numeric" />
+                                        <span>%</span>
+                                    </span>
+                                </label>
+                                <label class="duel-setting-card" for="duel-helmet-level">
+                                    <span class="duel-setting-icon helmet-icon" aria-hidden="true">●</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>头盔等级</strong>
+                                        <small>设置每小局出生时装备的头盔</small>
+                                    </span>
+                                    <select id="duel-helmet-level" class="duel-setting-control">
+                                        <option value="0">0级 · 无头盔</option>
+                                        <option value="1">1级头盔</option>
+                                        <option value="2">2级头盔</option>
+                                        <option value="3">3级头盔</option>
+                                    </select>
+                                </label>
+                                <label class="duel-setting-card" for="duel-chest-level">
+                                    <span class="duel-setting-icon armor-icon" aria-hidden="true">◆</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>防弹衣等级</strong>
+                                        <small>设置每小局出生时装备的防弹衣</small>
+                                    </span>
+                                    <select id="duel-chest-level" class="duel-setting-control">
+                                        <option value="0">0级 · 无防弹衣</option>
+                                        <option value="1">1级防弹衣</option>
+                                        <option value="2">2级防弹衣</option>
+                                        <option value="3">3级防弹衣</option>
+                                    </select>
+                                </label>
+                                <label class="duel-setting-card" for="duel-scope">
+                                    <span class="duel-setting-icon scope-icon" aria-hidden="true">⌖</span>
+                                    <span class="duel-setting-copy">
+                                        <strong>初始倍镜</strong>
+                                        <small>双方和 AI 使用相同视野范围</small>
+                                    </span>
+                                    <select id="duel-scope" class="duel-setting-control">
+                                        <option value="1xscope">1倍镜</option>
+                                        <option value="2xscope">2倍镜</option>
+                                        <option value="4xscope">4倍镜</option>
+                                        <option value="8xscope">8倍镜</option>
+                                        <option value="15xscope">15倍镜</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="duel-throwable-heading">
+                                <div>
+                                    <strong>投掷物类别与数量</strong>
+                                    <small>设为 0 表示不发放；每小局开始时恢复到设定数量。</small>
+                                </div>
+                                <span>每类最多 99 个</span>
+                            </div>
+                            <div id="duel-throwables" class="duel-throwable-grid"></div>
+                        </div>
+                    </form>
+                    <div class="mode-toolbar">
+                        <label class="mode-search">
+                            <span class="sr-only">搜索模式</span>
+                            <input id="mode-search" type="search" placeholder="搜索地图或模式…" autocomplete="off" />
+                        </label>
+                        <label class="mode-filter-open">
+                            <input id="mode-filter-open" type="checkbox" />
+                            <span>仅显示已开放</span>
+                        </label>
+                        <span id="mode-group-count" class="toolbar-count">—</span>
+                        <button id="mode-expand-all" class="ghost-button compact" type="button">全部展开</button>
+                        <button id="mode-collapse-all" class="ghost-button compact" type="button">全部收起</button>
+                    </div>
+                    <div id="mode-grid" class="mode-grid"></div>
+                </section>
+
+                <section id="stash" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">PLAYER STASH</p><h2>玩家仓库</h2></div>
+                        <span class="toolbar-count" id="stash-player-count">—</span>
+                    </div>
+                    <div class="stash-admin-toolbar">
+                        <label>
+                            <span>玩家</span>
+                            <select id="stash-player-select" class="admin-input"></select>
+                        </label>
+                        <label>
+                            <span>搜索玩家</span>
+                            <input id="stash-player-search" class="admin-input" type="search"
+                                placeholder="输入玩家名过滤" autocomplete="off" />
+                        </label>
+                        <span id="stash-refresh-time" class="toolbar-count stash-refresh-time"></span>
+                        <button id="stash-admin-refresh" class="ghost-button compact" type="button">刷新</button>
+                    </div>
+                    <div id="stash-admin-body" class="stash-admin-body"></div>
+                </section>
+
+                <section id="equipment-returns" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">EQUIPMENT RETURNS</p><h2>带入装备返还审批</h2></div>
+                        <span class="toolbar-count" id="equipment-return-count">—</span>
+                    </div>
+                    <div class="equipment-return-toolbar">
+                        <label>
+                            <span>显示状态</span>
+                            <select id="equipment-return-filter" class="admin-input">
+                                <option value="pending">待审批</option>
+                                <option value="all">全部记录</option>
+                                <option value="approved">已批准</option>
+                                <option value="rejected">已拒绝</option>
+                                <option value="auto-refunded">卡顿自动返还</option>
+                                <option value="eligible">尚未提交</option>
+                            </select>
+                        </label>
+                        <p>批准后仅返还该局实际扣除的带入装备，不包含局内拾取物；审批时可选填写给玩家的留言，重复审批不会重复发放。</p>
+                        <button id="equipment-return-refresh" class="ghost-button compact" type="button">刷新</button>
+                    </div>
+                    <div id="equipment-return-body" class="equipment-return-body"></div>
+                </section>
+
+                <section id="player-accounts" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">PLAYER ACCOUNTS</p><h2>玩家账号</h2></div>
+                        <span class="toolbar-count" id="account-count">—</span>
+                    </div>
+                    <div class="stash-admin-toolbar">
+                        <label>
+                            <span>搜索账号</span>
+                            <input id="account-search" class="admin-input" type="search"
+                                placeholder="输入用户名/显示名过滤" autocomplete="off" />
+                        </label>
+                        <button id="account-refresh" class="ghost-button compact" type="button">刷新</button>
+                    </div>
+                    <div id="account-body" class="stash-admin-body account-admin-body"></div>
+                </section>
+
+                <section id="shop" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">SHOP</p><h2>商店设置</h2></div>
+                        <span class="toolbar-count" id="shop-status">—</span>
+                    </div>
+                    <form id="shop-config-form" class="shop-config-panel">
+                        <div class="shop-config-row">
+                            <span class="shop-config-hint">商店常开，无需开关。</span>
+                            <button id="save-shop-config" class="primary-button compact" type="submit">保存商店设置</button>
+                        </div>
+                        <p class="shop-config-hint">
+                            勾选“购买/出售”控制商品是否开放对应交易；价格留空表示使用建议价。
+                            S/S+ 级武器和部分特殊物品默认关闭购买，但可在此手动开启；
+                            新玩家初始金币固定为 0（先出售物资赚金币再购买）。
+                        </p>
+                        <label class="shop-filter-label">
+                            <span>筛选商品</span>
+                            <input id="shop-item-filter" class="admin-input" type="search" placeholder="输入名称或物品 ID" autocomplete="off" />
+                        </label>
+                        <div id="shop-price-table" class="shop-price-table"></div>
+                    </form>
+                </section>
+
+                <section id="announcement" class="content-section panel-section">
+                    <div class="section-heading">
+                        <div><p class="eyebrow">HOMEPAGE NEWS</p><h2>主页公告</h2></div>
+                        <span class="announcement-help">保存后刷新游戏主页即可看到</span>
+                    </div>
+                    <form id="announcement-form" class="announcement-panel">
+                        <div class="announcement-editor">
+                            <label for="announcement-heading">
+                                <span>公告栏名称</span>
+                                <input id="announcement-heading" maxlength="60" placeholder="例如：服务器公告" required />
+                            </label>
+                            <div class="announcement-short-fields">
+                                <label for="announcement-date">
+                                    <span>显示日期</span>
+                                    <input id="announcement-date" maxlength="60" placeholder="例如：2026年7月23日" />
+                                </label>
+                                <label for="announcement-title">
+                                    <span>公告标题</span>
+                                    <input id="announcement-title" maxlength="100" placeholder="例如：1v1大厅现已开放" required />
+                                </label>
+                            </div>
+                            <label for="announcement-body">
+                                <span>公告正文</span>
+                                <textarea id="announcement-body" maxlength="5000" rows="11" placeholder="输入主页公告内容。空一行可以分段。" required></textarea>
+                            </label>
+                            <div class="announcement-actions">
+                                <span id="announcement-character-count">0 / 5000</span>
+                                <button id="save-announcement" class="primary-button compact" type="submit" disabled>保存主页公告</button>
+                            </div>
+                        </div>
+                        <aside class="announcement-preview" aria-label="公告预览">
+                            <span class="preview-label">主页效果预览</span>
+                            <div class="preview-window">
+                                <h3 id="announcement-preview-heading">服务器公告</h3>
+                                <small id="announcement-preview-date"></small>
+                                <strong id="announcement-preview-title">公告标题</strong>
+                                <div id="announcement-preview-body"></div>
+                            </div>
+                        </aside>
+                    </form>
+                    <form id="live-announcement-form" class="live-announcement-panel">
+                        <div class="live-announcement-heading">
+                            <div>
+                                <span class="preview-label">LIVE MATCH NOTICE</span>
+                                <h3>对局内限时公告</h3>
+                                <p>发布后，所有正在游戏中的玩家都会看到；到期后自动消失。</p>
+                            </div>
+                            <span id="live-announcement-status" class="live-announcement-status">当前未发布</span>
+                        </div>
+                        <label for="live-announcement-message">
+                            <span>公告内容</span>
+                            <textarea id="live-announcement-message" maxlength="300" rows="3" placeholder="例如：服务器将在10分钟后维护，请尽快结束本局。" required></textarea>
+                        </label>
+                        <div class="live-announcement-controls">
+                            <label for="live-announcement-duration">
+                                <span>持续时间（秒）</span>
+                                <input id="live-announcement-duration" type="number" min="5" max="86400" step="1" value="60" required />
+                            </label>
+                            <span id="live-announcement-character-count">0 / 300</span>
+                            <button id="clear-live-announcement" class="danger-button compact" type="button">立即撤下</button>
+                            <button id="publish-live-announcement" class="primary-button compact" type="submit">发布到全部对局</button>
+                        </div>
+                    </form>
+                </section>
+            </main>
+        </div>
+
+        <div id="weapon-picker" class="weapon-picker" hidden>
+            <section class="weapon-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="weapon-picker-title">
+                <header class="weapon-picker-header">
+                    <div><p class="eyebrow">DUEL LOADOUT</p><h2 id="weapon-picker-title">选择武器</h2></div>
+                    <button id="close-weapon-picker" class="picker-close" type="button" aria-label="关闭武器选择">×</button>
+                </header>
+                <div class="weapon-picker-filters">
+                    <label>
+                        <span>搜索</span>
+                        <input id="weapon-search" type="search" autocomplete="off" placeholder="输入枪械名称，例如 M4A1" />
+                    </label>
+                    <label>
+                        <span>武器类型</span>
+                        <select id="weapon-category"><option value="">全部类型</option></select>
+                    </label>
+                    <div class="weapon-tier-legend" aria-label="武器等级图例">
+                        <span>等级</span>
+                        <b class="weapon-tier-label" data-tier="S+">S+</b>
+                        <b class="weapon-tier-label" data-tier="S">S</b>
+                        <b class="weapon-tier-label" data-tier="A">A</b>
+                        <b class="weapon-tier-label" data-tier="B">B</b>
+                        <b class="weapon-tier-label" data-tier="C">C</b>
+                        <b class="weapon-tier-label" data-tier="D">D</b>
+                        <b class="weapon-tier-label" data-tier="unranked">未评级</b>
+                    </div>
+                </div>
+                <div id="weapon-catalog" class="weapon-catalog"></div>
+            </section>
+        </div>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <script src="/admin/adminInputHelpers.js" defer></script>
+        <script src="/admin/admin.js?v=59-console-refresh" defer></script>
+    </body>
+</html>

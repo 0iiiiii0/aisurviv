@@ -1,0 +1,42 @@
+Resource Search AI V6 validation
+================================
+
+Build:
+  cd server && npm run build
+  PASS
+
+Tests:
+  npm run test:loot-ai
+  PASS - Loot/resource search strategy smoke test
+
+  npm run test:bot-brain
+  PASS - smart bot brain smoke test
+
+  npm run test:bot-input
+  PASS - input safety and world-space movement mapping
+
+  npm run test:faction-autofill
+  PASS - 2 AI/second, forced 1:1 teams, pending reservations, 30+30 cap
+
+  npm run test:spectator-autofill
+  PASS - spectator target metadata, switching, disconnect fallback, room counts
+
+  npm run test:all-modes
+  PASS - 47 playlists / 17 maps / solo-duo-squad-faction-duel
+
+Resource definition coverage:
+  authoritative destructible loot obstacles: 129
+  profiled by V6:                            129
+  safe non-explosive targets:                128
+  fists-feasible within 16 hits:             119
+  missed definitions:                        0
+
+Specific assertions:
+  deposit_box_01 recognized
+  deposit_box_02 recognized and scored above deposit_box_01
+  deposit_box_02 requires one fist hit at full health
+  gun_mount_01 recognized
+  tree_03 recognized and under 16 fist hits
+  silo_01po rejected as over 16 hits
+  barrel_01b rejected as explosive hazard
+  crate_04 rejected for fists because it is armor plated

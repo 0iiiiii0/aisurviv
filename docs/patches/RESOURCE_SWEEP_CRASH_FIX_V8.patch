@@ -1,0 +1,900 @@
+diff --git a/RESOURCE_SWEEP_CRASH_FIX_V8.md b/RESOURCE_SWEEP_CRASH_FIX_V8.md
+new file mode 100644
+index 0000000..39d5a40
+--- /dev/null
++++ b/RESOURCE_SWEEP_CRASH_FIX_V8.md
+@@ -0,0 +1,32 @@
++# Resource Sweep and Loot Crash Fix V8
++
++## Opening resource-point clearing
++
++During the early map phase, ordinary-mode bots now commit to a local resource sweep after selecting loose loot or a breakable resource object.
++
++- Sweep radius is 20-30 world units, scaled by the value of the detected resource source.
++- Useful loose loot inside the active point is collected before another point is selected.
++- When no useful loose loot remains, the bot searches the same point for reachable resource-dropping obstacles.
++- Loot produced by a destroyed obstacle extends the existing sweep instead of pulling the bot toward an unrelated distant target.
++- The sweep ends when no useful loose loot or reachable resource obstacle remains, the map leaves the early phase, or the 26-second hard limit expires.
++- Combat, gas, airstrikes, rescue and cover-healing retain their higher priorities.
++- Full inventory stacks and worthless/redundant items do not keep a point active indefinitely.
++
++## Crash repair
++
++The reported crash occurred while an obstacle was creating loot:
++
++`TypeError: Cannot use 'in' operator to search for 'lootImg' in undefined`
++
++The faction loot table referenced the undefined item `outfitDarkGhillie`; the spring woods table also referenced `outfitSpringGhillie`, which was not present in `GameObjectDefs`.
++
++Repairs:
++
++- Both invalid outfit entries now use the valid `outfitGhillie` definition.
++- The missing `tier_faction_outfits` table is now defined.
++- `LootBarn.addLoot()` and `addLootWithoutAmmo()` validate item definitions before constructing loot.
++- Invalid or undefined loot entries are skipped and logged once instead of terminating the process.
++- Loot-tier selection rejects empty/malformed weighted tables and circular tier references safely.
++- The `Loot` constructor assertion now short-circuits safely when a definition is missing.
++
++The Vite `/admin-api/status` `ECONNREFUSED` messages in the supplied log were secondary: the proxy could no longer reach port 8001 after the server process exited.
+diff --git a/RESOURCE_SWEEP_CRASH_FIX_V8_README.txt b/RESOURCE_SWEEP_CRASH_FIX_V8_README.txt
+new file mode 100644
+index 0000000..ceba8e6
+--- /dev/null
++++ b/RESOURCE_SWEEP_CRASH_FIX_V8_README.txt
+@@ -0,0 +1,14 @@
++V8 installation
++===============
++
++1. Stop the launcher, game server and all related node.exe processes.
++2. Extract the update-only archive into the project directory containing server, client and shared.
++3. Allow all matching files to be replaced.
++4. Restart the server and create a new room.
++
++This package is cumulative and is based on Integrated AI V7. It retains:
++- 50v50 one AI per second, 20+20 AI cap
++- deterministic 1v1 firing and repositioning
++- cover-gated combat healing
++- spectator repair and all-mode auto-fill
++- resource-dropping obstacle search and destruction
+diff --git a/RESOURCE_SWEEP_CRASH_FIX_V8_VALIDATION.txt b/RESOURCE_SWEEP_CRASH_FIX_V8_VALIDATION.txt
+new file mode 100644
+index 0000000..f702479
+--- /dev/null
++++ b/RESOURCE_SWEEP_CRASH_FIX_V8_VALIDATION.txt
+@@ -0,0 +1,28 @@
++Resource Sweep and Loot Crash Fix V8 validation
++================================================
++
++Build
++- server TypeScript compilation: PASS
++
++New focused tests
++- opening resource sweep activation and local-area containment: PASS
++- nearby resource targets extend one sweep instead of starting a new point: PASS
++- sweep ends outside early phase or at the 26-second hard limit: PASS
++- all obstacle explicit loot definitions resolve to valid loot objects: PASS
++- all non-empty map loot-table leaves resolve to valid loot objects: PASS
++- all referenced nested loot tiers exist: PASS
++- undefined and invalid runtime loot types are skipped without object registration: PASS
++- invalid runtime loot types are logged once rather than crashing: PASS
++
++Regression tests
++- smart bot input safety: PASS
++- duel lobby: PASS
++- admin API: PASS
++- potato weapon rotation: PASS
++- loot/resource strategy: PASS
++- tactical decision brain: PASS
++- 1v1 combat and cover-healing: PASS
++- 50v50 auto-fill, one AI/second and 20+20 cap: PASS
++- spectator and ordinary-mode auto-fill: PASS
++- duel game and duel vision/search: PASS
++- all modes: PASS (47 playlists / 17 maps)
+diff --git a/server/package.json b/server/package.json
+index fa016a8..8586c83 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -21,7 +21,9 @@
+         "test:loot-ai": "node -r ts-node/register src/lootStrategySmokeTest.ts",
+         "test:bot-brain": "node -r ts-node/register src/smartBotBrainSmokeTest.ts",
+         "test:faction-autofill": "node -r ts-node/register src/factionAutoFillSmokeTest.ts",
+-        "test:bot-combat-heal": "node -r ts-node/register src/botCombatHealSmokeTest.ts"
++        "test:bot-combat-heal": "node -r ts-node/register src/botCombatHealSmokeTest.ts",
++        "test:resource-sweep": "node -r ts-node/register src/resourceSweepSmokeTest.ts",
++        "test:loot-safety": "node -r ts-node/register src/lootSafetySmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+diff --git a/server/src/bot/resourceSweep.ts b/server/src/bot/resourceSweep.ts
+new file mode 100644
+index 0000000..652d496
+--- /dev/null
++++ b/server/src/bot/resourceSweep.ts
+@@ -0,0 +1,92 @@
++import type { Vec2 } from "../../../shared/utils/v2";
++import type { MapPhase } from "./mapStrategy";
++
++export interface OpeningResourceSweep {
++    center: Vec2 | null;
++    startedAt: number;
++    expiresAt: number;
++    radius: number;
++}
++
++export const OPENING_RESOURCE_SWEEP_MAX_MS = 26000;
++const OPENING_RESOURCE_SWEEP_REFRESH_MS = 7500;
++
++export function emptyOpeningResourceSweep(): OpeningResourceSweep {
++    return {
++        center: null,
++        startedAt: 0,
++        expiresAt: 0,
++        radius: 0,
++    };
++}
++
++export function openingResourceSweepActive(
++    sweep: OpeningResourceSweep,
++    phase: MapPhase,
++    timestamp: number,
++): boolean {
++    return Boolean(
++        phase === "early" &&
++            sweep.center &&
++            sweep.startedAt > 0 &&
++            timestamp < sweep.expiresAt &&
++            timestamp - sweep.startedAt < OPENING_RESOURCE_SWEEP_MAX_MS,
++    );
++}
++
++export function openingResourceSweepContains(
++    sweep: OpeningResourceSweep,
++    pos: Vec2,
++    phase: MapPhase,
++    timestamp: number,
++): boolean {
++    if (!openingResourceSweepActive(sweep, phase, timestamp) || !sweep.center) return false;
++    return Math.hypot(pos.x - sweep.center.x, pos.y - sweep.center.y) <= sweep.radius;
++}
++
++export function openingResourceSweepScoreBonus(
++    sweep: OpeningResourceSweep,
++    pos: Vec2,
++    phase: MapPhase,
++    timestamp: number,
++): number {
++    if (!openingResourceSweepActive(sweep, phase, timestamp) || !sweep.center) return 0;
++    const dist = Math.hypot(pos.x - sweep.center.x, pos.y - sweep.center.y);
++    if (dist <= sweep.radius) return 210 + Math.max(0, sweep.radius - dist) * 3.5;
++    return -180 - Math.max(0, dist - sweep.radius) * 1.5;
++}
++
++export function beginOrExtendOpeningResourceSweep(
++    sweep: OpeningResourceSweep,
++    target: Vec2,
++    sourceValue: number,
++    phase: MapPhase,
++    timestamp: number,
++): OpeningResourceSweep {
++    if (phase !== "early") return emptyOpeningResourceSweep();
++
++    const requestedRadius = Math.max(20, Math.min(30, 20 + sourceValue * 0.075));
++    if (
++        openingResourceSweepActive(sweep, phase, timestamp) &&
++        sweep.center &&
++        Math.hypot(target.x - sweep.center.x, target.y - sweep.center.y) <= sweep.radius + 8
++    ) {
++        const hardExpiry = sweep.startedAt + OPENING_RESOURCE_SWEEP_MAX_MS;
++        return {
++            center: {
++                x: sweep.center.x * 0.82 + target.x * 0.18,
++                y: sweep.center.y * 0.82 + target.y * 0.18,
++            },
++            startedAt: sweep.startedAt,
++            expiresAt: Math.min(hardExpiry, Math.max(sweep.expiresAt, timestamp + OPENING_RESOURCE_SWEEP_REFRESH_MS)),
++            radius: Math.max(sweep.radius, requestedRadius),
++        };
++    }
++
++    return {
++        center: { x: target.x, y: target.y },
++        startedAt: timestamp,
++        expiresAt: timestamp + OPENING_RESOURCE_SWEEP_MAX_MS,
++        radius: requestedRadius,
++    };
++}
+diff --git a/server/src/game/objects/loot.ts b/server/src/game/objects/loot.ts
+index 0a417a2..2d68735 100644
+--- a/server/src/game/objects/loot.ts
++++ b/server/src/game/objects/loot.ts
+@@ -27,7 +27,8 @@ type LootTierItem = MapDef["lootTable"][string][number];
+ export class LootBarn {
+     loots: Loot[] = [];
+ 
+-    private _cachedTiers: Record<string, () => LootTierItem> = {};
++    private _cachedTiers: Record<string, () => LootTierItem | undefined> = {};
++    private readonly _warnedInvalidLoot = new Set<string>();
+ 
+     constructor(public game: Game) {}
+ 
+@@ -72,6 +73,7 @@ export class LootBarn {
+         pushSpeed?: number,
+         dir?: Vec2,
+     ) {
++        if (!this.isValidLootType(type)) return;
+         const loot = new Loot(this.game, type, pos, layer, count, pushSpeed, dir);
+         this._addLoot(loot);
+     }
+@@ -86,6 +88,7 @@ export class LootBarn {
+         dir?: Vec2,
+         preloadGun?: boolean,
+     ) {
++        if (!this.isValidLootType(type)) return;
+         const loot = new Loot(this.game, type, pos, layer, count, pushSpeed, dir);
+         this._addLoot(loot);
+ 
+@@ -94,7 +97,7 @@ export class LootBarn {
+         }
+ 
+         const def = GameObjectDefs[type];
+-        if (def.type === "gun" && GameObjectDefs[def.ammo] && !preloadGun) {
++        if (def.type === "gun" && this.isValidLootType(def.ammo, false) && !preloadGun) {
+             const ammoCount = useCountForAmmo ? count : def.ammoSpawnCount;
+             if (ammoCount <= 0) return;
+             const halfAmmo = Math.ceil(ammoCount / 2);
+@@ -130,41 +133,67 @@ export class LootBarn {
+         this.loots.push(loot);
+     }
+ 
+-    private _getLootTable(tier: string): LootTierItem {
++    private isValidLootType(type: unknown, warn = true): type is string {
++        const def = typeof type === "string" && type.length > 0 ? GameObjectDefs[type] : undefined;
++        const valid = Boolean(def && "lootImg" in def);
++        if (!valid && warn) {
++            const key = String(type ?? "<undefined>");
++            if (!this._warnedInvalidLoot.has(key)) {
++                this._warnedInvalidLoot.add(key);
++                this.game.logger.warn(`Skipping invalid loot type ${key}`);
++            }
++        }
++        return valid;
++    }
++
++    private _getLootTable(tier: string): LootTierItem | undefined {
+         if (this._cachedTiers[tier]) {
+             return this._cachedTiers[tier]();
+         }
+         const lootTable = this.game.map.mapDef.lootTable[tier];
++        if (!Array.isArray(lootTable) || lootTable.length === 0) return undefined;
++
++        const weightedItems = lootTable.filter(
++            (item) => Number.isFinite(item.weight) && item.weight > 0,
++        );
++        if (weightedItems.length === 0) return undefined;
+ 
+         let total = 0.0;
+-        for (let i = 0; i < lootTable.length; i++) {
+-            total += lootTable[i].weight;
++        for (let i = 0; i < weightedItems.length; i++) {
++            total += weightedItems[i].weight;
+         }
+ 
+         function fn() {
+             let rng = util.random(0, total);
+             let idx = 0;
+-            while (rng > lootTable[idx].weight) {
+-                rng -= lootTable[idx].weight;
++            while (idx < weightedItems.length - 1 && rng > weightedItems[idx].weight) {
++                rng -= weightedItems[idx].weight;
+                 idx++;
+             }
+-            return lootTable[idx];
++            return weightedItems[idx];
+         }
+         this._cachedTiers[tier] = fn;
+         return fn();
+     }
+ 
+-    getLootTable(tier: string): Array<LootTierItem> {
++    getLootTable(tier: string, visited = new Set<string>()): Array<LootTierItem> {
+         if (!this.game.map.mapDef.lootTable[tier]) {
+             this.game.logger.warn(`Unknown loot tier with type ${tier}`);
+             return [];
+         }
+-        const items: Array<LootTierItem> = [];
++        if (visited.has(tier)) {
++            this.game.logger.warn(`Circular loot tier reference ${[...visited, tier].join(" -> ")}`);
++            return [];
++        }
++        visited.add(tier);
+ 
++        const items: Array<LootTierItem> = [];
+         const item = this._getLootTable(tier);
++        if (!item || !item.name) return items;
++
+         if (item.name.startsWith("tier_")) {
+-            items.push(...this.getLootTable(item.name));
+-        } else if (item.name) {
++            items.push(...this.getLootTable(item.name, visited));
++        } else if (this.isValidLootType(item.name)) {
+             items.push(item);
+         }
+ 
+@@ -206,7 +235,7 @@ export class Loot extends BaseGameObject {
+         super(game, pos);
+ 
+         const def = GameObjectDefs[type];
+-        assert("lootImg" in def, `Invalid loot type ${type}`);
++        assert(def !== undefined && "lootImg" in def, `Invalid loot type ${type}`);
+ 
+         this.layer = layer;
+         this.type = type;
+diff --git a/server/src/lootSafetySmokeTest.ts b/server/src/lootSafetySmokeTest.ts
+new file mode 100644
+index 0000000..b9ecab8
+--- /dev/null
++++ b/server/src/lootSafetySmokeTest.ts
+@@ -0,0 +1,56 @@
++import assert from "assert";
++import { GameObjectDefs } from "../../shared/defs/gameObjectDefs";
++import { MapDefs } from "../../shared/defs/mapDefs";
++import { MapObjectDefs } from "../../shared/defs/mapObjectDefs";
++import { LootBarn } from "./game/objects/loot";
++
++for (const [objectType, rawDef] of Object.entries(MapObjectDefs as Record<string, any>)) {
++    const def = rawDef as any;
++    if (def.type !== "obstacle" || !Array.isArray(def.loot)) continue;
++    for (const entry of def.loot) {
++        if ("tier" in entry) continue;
++        const itemType = String(entry.type ?? "");
++        const itemDef = GameObjectDefs[itemType];
++        assert.ok(
++            itemDef && "lootImg" in itemDef,
++            `Obstacle ${objectType} references invalid loot type ${itemType || "<empty>"}`,
++        );
++    }
++}
++
++for (const [mapName, mapDef] of Object.entries(MapDefs as Record<string, any>)) {
++    const lootTable = mapDef.lootTable ?? {};
++    for (const [tier, entries] of Object.entries(lootTable) as Array<[string, any[]]>) {
++        for (const entry of entries) {
++            const itemName = String(entry.name ?? "");
++            // Empty weighted entries intentionally represent a no-drop result.
++            if (!itemName) continue;
++            if (itemName.startsWith("tier_")) {
++                assert.ok(
++                    Array.isArray(lootTable[itemName]),
++                    `${mapName}:${tier} references missing loot tier ${itemName}`,
++                );
++                continue;
++            }
++            const itemDef = GameObjectDefs[itemName];
++            assert.ok(
++                itemDef && "lootImg" in itemDef,
++                `${mapName}:${tier} references invalid loot type ${itemName}`,
++            );
++        }
++    }
++}
++
++let registered = 0;
++let warnings = 0;
++const fakeGame = {
++    logger: { warn: () => warnings++ },
++    objectRegister: { register: () => registered++ },
++} as any;
++const barn = new LootBarn(fakeGame);
++barn.addLoot("outfitDarkGhillie", { x: 0, y: 0 }, 0, 1);
++barn.addLoot(undefined as unknown as string, { x: 0, y: 0 }, 0, 1);
++assert.equal(registered, 0, "invalid loot must never reach object registration");
++assert.equal(warnings, 2, "each invalid loot type should be logged once instead of crashing");
++
++console.log("Loot definition/runtime safety smoke test passed");
+diff --git a/server/src/resourceSweepSmokeTest.ts b/server/src/resourceSweepSmokeTest.ts
+new file mode 100644
+index 0000000..9ad22a9
+--- /dev/null
++++ b/server/src/resourceSweepSmokeTest.ts
+@@ -0,0 +1,40 @@
++import assert from "assert";
++import {
++    beginOrExtendOpeningResourceSweep,
++    emptyOpeningResourceSweep,
++    openingResourceSweepActive,
++    openingResourceSweepContains,
++    openingResourceSweepScoreBonus,
++    OPENING_RESOURCE_SWEEP_MAX_MS,
++} from "./bot/resourceSweep";
++
++const start = 10_000;
++let sweep = beginOrExtendOpeningResourceSweep(
++    emptyOpeningResourceSweep(),
++    { x: 100, y: 100 },
++    90,
++    "early",
++    start,
++);
++assert.ok(openingResourceSweepActive(sweep, "early", start + 1));
++assert.ok(openingResourceSweepContains(sweep, { x: 112, y: 100 }, "early", start + 1));
++assert.ok(!openingResourceSweepContains(sweep, { x: 150, y: 100 }, "early", start + 1));
++assert.ok(
++    openingResourceSweepScoreBonus(sweep, { x: 105, y: 100 }, "early", start + 1) >
++        openingResourceSweepScoreBonus(sweep, { x: 150, y: 100 }, "early", start + 1),
++);
++
++const originalStart = sweep.startedAt;
++sweep = beginOrExtendOpeningResourceSweep(
++    sweep,
++    { x: 118, y: 103 },
++    40,
++    "early",
++    start + 5000,
++);
++assert.equal(sweep.startedAt, originalStart, "nearby resources should extend the same sweep");
++assert.ok(sweep.expiresAt <= originalStart + OPENING_RESOURCE_SWEEP_MAX_MS);
++assert.ok(!openingResourceSweepActive(sweep, "mid", start + 5001));
++assert.ok(!openingResourceSweepActive(sweep, "early", originalStart + OPENING_RESOURCE_SWEEP_MAX_MS + 1));
++
++console.log("Opening resource sweep smoke test passed");
+diff --git a/server/src/smartBot.ts b/server/src/smartBot.ts
+index 5e2ed7a..be04462 100644
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -141,6 +141,14 @@ import {
+     meleeBreakDistance,
+     resourceBreakPlan,
+ } from "./bot/lootStrategy";
++import {
++    beginOrExtendOpeningResourceSweep,
++    emptyOpeningResourceSweep,
++    openingResourceSweepActive,
++    openingResourceSweepContains,
++    openingResourceSweepScoreBonus,
++    type OpeningResourceSweep,
++} from "./bot/resourceSweep";
+ import {
+     IntentTier,
+     TacticalDecisionBrain,
+@@ -270,6 +278,7 @@ interface LootChoice {
+     object: GameObject;
+     distance: number;
+     score: number;
++    inOpeningSweep?: boolean;
+ }
+ 
+ interface RecentLootSource {
+@@ -285,6 +294,7 @@ interface CrateChoice {
+     estimatedHits: number;
+     expectedValue: number;
+     searchBand: "near" | "mid" | "far";
++    inOpeningSweep?: boolean;
+ }
+ 
+ interface MovementCommand {
+@@ -1007,6 +1017,7 @@ class TacticalBot {
+     private readonly recentLootSources: RecentLootSource[] = [];
+     private spawnPosition: Vec2 | null = null;
+     private openingResourceTargetChosen = false;
++    private openingResourceSweep: OpeningResourceSweep = emptyOpeningResourceSweep();
+     private lastLootAttemptId = 0;
+     private lastLootAttemptAt = 0;
+     private lootAttemptCount = 0;
+@@ -5315,12 +5326,43 @@ class TacticalBot {
+         }
+     }
+ 
++    private hasActiveOpeningResourceSweep(timestamp: number): boolean {
++        const phase = this.currentMapPhase();
++        const active = openingResourceSweepActive(this.openingResourceSweep, phase, timestamp);
++        if (!active && this.openingResourceSweep.center) {
++            this.openingResourceSweep = emptyOpeningResourceSweep();
++        }
++        return active;
++    }
++
++    private commitOpeningResourceSweep(
++        targetPos: Vec2,
++        sourceValue: number,
++        timestamp: number,
++    ): void {
++        if (this.duelModeActive) return;
++        this.openingResourceSweep = beginOrExtendOpeningResourceSweep(
++            this.openingResourceSweep,
++            targetPos,
++            sourceValue,
++            this.currentMapPhase(),
++            timestamp,
++        );
++    }
++
++    private clearOpeningResourceSweep(): void {
++        this.openingResourceSweep = emptyOpeningResourceSweep();
++    }
++
+     private chooseLoot(myPos: Vec2, timestamp: number): LootChoice | null {
+         if (this.duelModeActive || !this.modeStrategy.profile.lootEnabled) return null;
++        const phase = this.currentMapPhase();
++        const sweepActive = this.hasActiveOpeningResourceSweep(timestamp);
+         if (
+             this.currentFactionOrder &&
+             !this.currentFactionOrder.allowLoot &&
+-            !this.isUnderEquipped()
++            !this.isUnderEquipped() &&
++            !sweepActive
+         ) {
+             return null;
+         }
+@@ -5328,13 +5370,30 @@ class TacticalBot {
+         const locked = this.currentLootId ? this.objectPool.getObjById(this.currentLootId) : undefined;
+         if (locked && timestamp < this.lootLockUntil && this.isValidLoot(locked)) {
+             const lockedPos = locked.data.pos as Vec2;
+-            const dist = distance(myPos, lockedPos);
+-            const score = this.scoreLoot(locked, dist, timestamp);
+-            if (
+-                score > 0 &&
+-                this.squad.reserveLoot(locked.__id, this.id, score + 12, timestamp)
+-            ) {
+-                return { object: locked, distance: dist, score };
++            const lockedInSweep =
++                !sweepActive ||
++                openingResourceSweepContains(
++                    this.openingResourceSweep,
++                    lockedPos,
++                    phase,
++                    timestamp,
++                );
++            if (lockedInSweep) {
++                const dist = distance(myPos, lockedPos);
++                const score =
++                    this.scoreLoot(locked, dist, timestamp) +
++                    openingResourceSweepScoreBonus(
++                        this.openingResourceSweep,
++                        lockedPos,
++                        phase,
++                        timestamp,
++                    );
++                if (
++                    score > 0 &&
++                    this.squad.reserveLoot(locked.__id, this.id, score + 12, timestamp)
++                ) {
++                    return { object: locked, distance: dist, score, inOpeningSweep: sweepActive };
++                }
+             }
+         }
+ 
+@@ -5346,8 +5405,9 @@ class TacticalBot {
+         const far: LootChoice[] = [];
+ 
+         // Stage one is deliberately cheap: inventory/value scoring and distance
+-        // bucketing only. Path checks are reserved for the best few candidates,
+-        // avoiding an O(loot * obstacles) scan in dense late-game drop piles.
++        // bucketing only. During the opening sweep, candidates inside the current
++        // resource point receive a large locality bonus and outside items are held
++        // until the point has no useful loose loot or breakable containers left.
+         for (const object of this.objectPool.values(ObjectType.Loot)) {
+             if (!this.isValidLoot(object)) continue;
+             if ((this.ignoredLootUntil.get(object.__id) ?? 0) > timestamp) continue;
+@@ -5361,7 +5421,20 @@ class TacticalBot {
+             else if (dist <= 32) score += 5;
+             else score -= 8;
+ 
+-            const choice = { object, distance: dist, score };
++            const inOpeningSweep = openingResourceSweepContains(
++                this.openingResourceSweep,
++                pos,
++                phase,
++                timestamp,
++            );
++            score += openingResourceSweepScoreBonus(
++                this.openingResourceSweep,
++                pos,
++                phase,
++                timestamp,
++            );
++
++            const choice: LootChoice = { object, distance: dist, score, inOpeningSweep };
+             if (dist <= 10) near.push(choice);
+             else if (dist <= 32) mid.push(choice);
+             else far.push(choice);
+@@ -5372,13 +5445,25 @@ class TacticalBot {
+         mid.sort(sortScore);
+         far.sort(sortScore);
+ 
+-        // The shortlist keeps immediate pickups responsive while still allowing a
+-        // high-value gun/armour item to win from the medium or exploration band.
+-        const shortlist = [
+-            ...near.slice(0, 10),
+-            ...mid.slice(0, 8),
+-            ...far.slice(0, 5),
+-        ].sort(sortScore);
++        const allCandidates = [...near, ...mid, ...far];
++        const sweepCandidates = allCandidates.filter((candidate) => candidate.inOpeningSweep);
++        // Returning null here deliberately hands control to chooseCrate(). That
++        // method checks the same resource point for remaining containers and only
++        // releases the sweep when both loose loot and containers are exhausted.
++        const shortlist = sweepActive
++            ? sweepCandidates.sort(sortScore).slice(0, 20)
++            : [
++                  ...near.slice(0, 10),
++                  ...mid.slice(0, 8),
++                  ...far.slice(0, 5),
++              ].sort(sortScore);
++
++        if (sweepActive && shortlist.length === 0) {
++            if (this.currentLootId) this.squad.releaseLoot(this.currentLootId, this.id);
++            this.currentLootId = 0;
++            this.lootLockUntil = 0;
++            return null;
++        }
+ 
+         let best: LootChoice | null = null;
+         for (const candidate of shortlist) {
+@@ -5406,8 +5491,22 @@ class TacticalBot {
+             this.squad.releaseLoot(this.currentLootId, this.id);
+         }
+         this.currentLootId = best?.object.__id ?? 0;
++        if (best) {
++            const targetPos = best.object.data.pos as Vec2;
++            const source = this.inferLootSourceContext(best.object, timestamp);
++            this.commitOpeningResourceSweep(
++                source.pos ?? targetPos,
++                source.highValue,
++                timestamp,
++            );
++        }
++        const retainedSweep = best ? this.hasActiveOpeningResourceSweep(timestamp) : false;
+         this.lootLockUntil = best
+-            ? timestamp + clamp(1250 + best.distance * 72, 1400, 5200)
++            ? timestamp + clamp(
++                  1250 + best.distance * 72 + (retainedSweep ? 1200 : 0),
++                  1400,
++                  retainedSweep ? 6800 : 5200,
++              )
+             : 0;
+         return best;
+     }
+@@ -5750,7 +5849,15 @@ class TacticalBot {
+     ): CrateChoice | null {
+         // Duel wooden boxes and rocks are tactical cover, never loot sources.
+         if (this.duelModeActive || !this.modeStrategy.profile.crateLootEnabled) return null;
+-        if (this.currentFactionOrder && !this.currentFactionOrder.allowCrates) return null;
++        const phase = this.currentMapPhase();
++        const sweepActive = this.hasActiveOpeningResourceSweep(timestamp);
++        if (
++            this.currentFactionOrder &&
++            !this.currentFactionOrder.allowCrates &&
++            !sweepActive
++        ) {
++            return null;
++        }
+         if (urgentWeaponSearch) {
+             if (enemyDistance < 3.2 || this.local.health < 24) return null;
+         } else if (enemyDistance < 6.5 || this.local.health < 30) {
+@@ -5759,39 +5866,55 @@ class TacticalBot {
+ 
+         const meleeSlot = GameConfig.WeaponSlot.Melee;
+         const meleeType = this.local.weapons[meleeSlot]?.type || "fists";
+-        const phase = this.currentMapPhase();
+         const locked = this.currentCrateId
+             ? this.objectPool.getObjById(this.currentCrateId)
+             : undefined;
+         if (locked && timestamp < this.crateLockUntil && this.isLootCrate(locked)) {
+             const lockedPos = locked.data.pos as Vec2;
+-            const dist = distance(myPos, lockedPos);
+-            const remainingHealth = clamp(Number(locked.data.healthT ?? 1), 0.01, 1);
+-            const plan = resourceBreakPlan(
+-                meleeType,
+-                String(locked.data.type ?? ""),
+-                remainingHealth,
+-                Number(locked.data.scale ?? 1),
+-            );
+-            if (plan?.feasible) {
+-                const score =
+-                    100 +
+-                    plan.expectedLootValue * 1.25 +
+-                    plan.priorityBias -
+-                    dist * 1.25 -
+-                    plan.estimatedHits * 4.5;
+-                if (
+-                    score > 0 &&
+-                    this.squad.reserveCrate(locked.__id, this.id, score + 12, timestamp)
+-                ) {
+-                    return {
+-                        object: locked,
+-                        distance: dist,
+-                        score,
+-                        estimatedHits: plan.estimatedHits,
+-                        expectedValue: plan.expectedLootValue,
+-                        searchBand: dist <= 12 ? "near" : dist <= 34 ? "mid" : "far",
+-                    };
++            const lockedInSweep =
++                !sweepActive ||
++                openingResourceSweepContains(
++                    this.openingResourceSweep,
++                    lockedPos,
++                    phase,
++                    timestamp,
++                );
++            if (lockedInSweep) {
++                const dist = distance(myPos, lockedPos);
++                const remainingHealth = clamp(Number(locked.data.healthT ?? 1), 0.01, 1);
++                const plan = resourceBreakPlan(
++                    meleeType,
++                    String(locked.data.type ?? ""),
++                    remainingHealth,
++                    Number(locked.data.scale ?? 1),
++                );
++                if (plan?.feasible) {
++                    const score =
++                        100 +
++                        plan.expectedLootValue * 1.25 +
++                        plan.priorityBias -
++                        dist * 1.25 -
++                        plan.estimatedHits * 4.5 +
++                        openingResourceSweepScoreBonus(
++                            this.openingResourceSweep,
++                            lockedPos,
++                            phase,
++                            timestamp,
++                        );
++                    if (
++                        score > 0 &&
++                        this.squad.reserveCrate(locked.__id, this.id, score + 12, timestamp)
++                    ) {
++                        return {
++                            object: locked,
++                            distance: dist,
++                            score,
++                            estimatedHits: plan.estimatedHits,
++                            expectedValue: plan.expectedLootValue,
++                            searchBand: dist <= 12 ? "near" : dist <= 34 ? "mid" : "far",
++                            inOpeningSweep: sweepActive,
++                        };
++                    }
+                 }
+             }
+         }
+@@ -5864,6 +5987,12 @@ class TacticalBot {
+                 dist <= 12 ? "near" : dist <= 34 ? "mid" : "far";
+             const bandBonus = searchBand === "near" ? 20 : searchBand === "mid" ? 6 : -10;
+             const distanceRate = searchBand === "near" ? 1.05 : searchBand === "mid" ? 1.55 : 2.15;
++            const inOpeningSweep = openingResourceSweepContains(
++                this.openingResourceSweep,
++                cratePos,
++                phase,
++                timestamp,
++            );
+             const score =
+                 72 +
+                 plan.expectedLootValue * 1.45 +
+@@ -5877,7 +6006,13 @@ class TacticalBot {
+                 mapBonus +
+                 factionBonus +
+                 modeBonus +
+-                (urgentWeaponSearch ? 190 : 0);
++                (urgentWeaponSearch ? 190 : 0) +
++                openingResourceSweepScoreBonus(
++                    this.openingResourceSweep,
++                    cratePos,
++                    phase,
++                    timestamp,
++                );
+ 
+             const choice: CrateChoice = {
+                 object,
+@@ -5886,6 +6021,7 @@ class TacticalBot {
+                 estimatedHits: plan.estimatedHits,
+                 expectedValue: plan.expectedLootValue,
+                 searchBand,
++                inOpeningSweep,
+             };
+             if (searchBand === "near") near.push(choice);
+             else if (searchBand === "mid") mid.push(choice);
+@@ -5896,11 +6032,15 @@ class TacticalBot {
+         near.sort(sortScore);
+         mid.sort(sortScore);
+         far.sort(sortScore);
+-        const shortlist = [
+-            ...near.slice(0, 10),
+-            ...mid.slice(0, 8),
+-            ...far.slice(0, 4),
+-        ].sort(sortScore);
++        const allCandidates = [...near, ...mid, ...far];
++        const sweepCandidates = allCandidates.filter((candidate) => candidate.inOpeningSweep);
++        const shortlist = sweepActive
++            ? sweepCandidates.sort(sortScore).slice(0, 20)
++            : [
++                  ...near.slice(0, 10),
++                  ...mid.slice(0, 8),
++                  ...far.slice(0, 4),
++              ].sort(sortScore);
+ 
+         let best: CrateChoice | null = null;
+         for (const candidate of shortlist) {
+@@ -5929,16 +6069,41 @@ class TacticalBot {
+             }
+         }
+ 
++        if (sweepActive && !best) {
++            // chooseLoot() already found no useful loose items in this area. No
++            // reachable/reservable container remains either, so the resource point
++            // is considered cleared and normal global search may resume immediately.
++            if (this.currentCrateId) this.squad.releaseCrate(this.currentCrateId, this.id);
++            this.currentCrateId = 0;
++            this.crateLockUntil = 0;
++            this.clearOpeningResourceSweep();
++            return null;
++        }
++
+         if (this.currentCrateId && this.currentCrateId !== best?.object.__id) {
+             this.squad.releaseCrate(this.currentCrateId, this.id);
+         }
+         this.currentCrateId = best?.object.__id ?? 0;
++        if (best) {
++            const cratePos = best.object.data.pos as Vec2;
++            const source = this.mapNavigator.classifyLootSource(
++                String(best.object.data.type ?? ""),
++                cratePos,
++            );
++            this.commitOpeningResourceSweep(
++                source.pos ?? cratePos,
++                source.highValue,
++                timestamp,
++            );
++        }
++        const retainedSweep = best ? this.hasActiveOpeningResourceSweep(timestamp) : false;
+         this.crateLockUntil = best
+             ? timestamp +
+               clamp(
+-                  1400 + best.estimatedHits * 430 + best.distance * 72,
++                  1400 + best.estimatedHits * 430 + best.distance * 72 +
++                      (retainedSweep ? 1200 : 0),
+                   1700,
+-                  urgentWeaponSearch ? 10000 : 7800,
++                  urgentWeaponSearch ? 10000 : retainedSweep ? 9200 : 7800,
+               )
+             : 0;
+         return best;
+diff --git a/shared/defs/maps/factionDefs.ts b/shared/defs/maps/factionDefs.ts
+index e234d74..6e02fd7 100644
+--- a/shared/defs/maps/factionDefs.ts
++++ b/shared/defs/maps/factionDefs.ts
+@@ -313,9 +313,14 @@ const mapDef = {
+             { name: "m9", count: 1, weight: 0.01 },
+             { name: "scout_elite", count: 1, weight: 1.5 },
+         ],
++        tier_faction_outfits: [
++            { name: "outfitCamo", count: 1, weight: 8 },
++            { name: "outfitHeaven", count: 1, weight: 1 },
++            { name: "outfitGhillie", count: 1, weight: 0.5 },
++        ],
+         tier_ghillie: [
+             {
+-                name: "outfitDarkGhillie",
++                name: "outfitGhillie",
+                 count: 1,
+                 weight: 0.5,
+             },
+@@ -324,7 +329,7 @@ const mapDef = {
+             { name: "", count: 1, weight: 25 },
+             { name: "outfitHeaven", count: 1, weight: 1 },
+             {
+-                name: "outfitDarkGhillie",
++                name: "outfitGhillie",
+                 count: 1,
+                 weight: 0.5,
+             },
+diff --git a/shared/defs/maps/woodsSpringDefs.ts b/shared/defs/maps/woodsSpringDefs.ts
+index dbcc1e7..aae697d 100644
+--- a/shared/defs/maps/woodsSpringDefs.ts
++++ b/shared/defs/maps/woodsSpringDefs.ts
+@@ -36,7 +36,7 @@ const mapDef = {
+     lootTable: {
+         tier_ghillie: [
+             {
+-                name: "outfitSpringGhillie",
++                name: "outfitGhillie",
+                 count: 1,
+                 weight: 1,
+             },

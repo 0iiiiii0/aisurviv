@@ -46,6 +46,13 @@ const mapDef: PartialMapDef = {
             { name: "tier_katanas", count: 1, weight: 3 }, // ?
             { name: "naginata", count: 1, weight: 1 }, // ?
         ],
+        tier_ghillie: [
+            {
+                name: "outfitGhillie",
+                count: 1,
+                weight: 1,
+            },
+        ],
     },
     mapGen: {
         customSpawnRules: {
@@ -86,22 +93,22 @@ const mapDef: PartialMapDef = {
         ],
         fixedSpawns: [
             {
+                logging_complex_02sp: 1,
+                logging_complex_03sp: 3,
+                warehouse_01: { small: 3, large: 4 },
+                workshop_complex_01: 1,
+                house_red_01: { small: 3, large: 4 },
                 barn_01: { small: 3, large: 4 },
-                bunker_structure_01b: 1,
-                bunker_structure_03: 1,
-                bunker_structure_07: 1,
                 cache_01w: 1,
                 cache_02sp: 1,
                 cache_07w: 1,
+                bunker_structure_01b: 1,
+                bunker_structure_03: 1,
+                bunker_structure_07: 1,
                 chest_03: { odds: 0.5 },
-                house_red_01: { small: 3, large: 4 },
-                logging_complex_02sp: 1,
-                logging_complex_03sp: 3,
                 stone_04: { small: 6, large: 8 },
-                teahouse_01: { small: 2, large: 3 },
                 tree_02: { small: 6, large: 8 },
-                warehouse_01: { small: 3, large: 4 },
-                workshop_complex_01: 1,
+                teahouse_01: { small: 2, large: 3 },
             },
         ],
         spawnReplacements: [

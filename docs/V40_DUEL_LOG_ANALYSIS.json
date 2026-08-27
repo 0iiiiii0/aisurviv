@@ -1,0 +1,364 @@
+{
+  "sourceArchive": "ai-match-recordings(12).zip",
+  "duelMatches": [
+    {
+      "session": "2026-07-27T14-59-22-975Z_pid-3084",
+      "matchId": "dc1bc5883de038919a5f41f46ba1e9e2fc42e3e5",
+      "difficulty": "legit",
+      "durationSeconds": 160.6,
+      "frames": 315,
+      "firingFrames": 159,
+      "firingFrameRate": 0.5048,
+      "movingWhileFiringFrames": 70,
+      "movingWhileFiringRate": 0.4403,
+      "visibleLoadedFrames": 231,
+      "visibleLoadedNoFireFrames": 78,
+      "visibleLoadedNoFireRate": 0.3377,
+      "meanAimRayMissDistance": 0.5764,
+      "aimRayWithinOnePlayerRadiusRate": 0.8039,
+      "timedGrenadeSolutions": 2,
+      "ricochetSelections": 0,
+      "explosiveCoverSelections": 0,
+      "finalVisibleTriggerRestores": 89,
+      "dualSwitchArmed": 60,
+      "dualSwitchCancelled": 14,
+      "gunLineDodgeStarts": 37,
+      "stateChanges": 147
+    },
+    {
+      "session": "2026-07-27T15-03-19-563Z_pid-7124",
+      "matchId": "b35509fdea9e963299767d69241ce41f75375e49",
+      "difficulty": "legit",
+      "durationSeconds": 119.12,
+      "frames": 233,
+      "firingFrames": 109,
+      "firingFrameRate": 0.4678,
+      "movingWhileFiringFrames": 56,
+      "movingWhileFiringRate": 0.5138,
+      "visibleLoadedFrames": 167,
+      "visibleLoadedNoFireFrames": 66,
+      "visibleLoadedNoFireRate": 0.3952,
+      "meanAimRayMissDistance": 1.0917,
+      "aimRayWithinOnePlayerRadiusRate": 0.8396,
+      "timedGrenadeSolutions": 1,
+      "ricochetSelections": 0,
+      "explosiveCoverSelections": 0,
+      "finalVisibleTriggerRestores": 70,
+      "dualSwitchArmed": 58,
+      "dualSwitchCancelled": 13,
+      "gunLineDodgeStarts": 23,
+      "stateChanges": 122
+    },
+    {
+      "session": "2026-07-27T15-05-53-197Z_pid-6172",
+      "matchId": "fae5988356e9cafb5252474daa050cc85828af49",
+      "difficulty": "legit",
+      "durationSeconds": 171.876,
+      "frames": 337,
+      "firingFrames": 168,
+      "firingFrameRate": 0.4985,
+      "movingWhileFiringFrames": 85,
+      "movingWhileFiringRate": 0.506,
+      "visibleLoadedFrames": 238,
+      "visibleLoadedNoFireFrames": 75,
+      "visibleLoadedNoFireRate": 0.3151,
+      "meanAimRayMissDistance": 0.4734,
+      "aimRayWithinOnePlayerRadiusRate": 0.8503,
+      "timedGrenadeSolutions": 2,
+      "ricochetSelections": 0,
+      "explosiveCoverSelections": 0,
+      "finalVisibleTriggerRestores": 105,
+      "dualSwitchArmed": 77,
+      "dualSwitchCancelled": 19,
+      "gunLineDodgeStarts": 36,
+      "stateChanges": 155
+    }
+  ],
+  "aggregate": {
+    "matches": 3,
+    "totalFrames": 885,
+    "weightedMovingWhileFiringRate": 0.4839,
+    "weightedVisibleLoadedNoFireRate": 0.3443,
+    "ricochetSelections": 0,
+    "explosiveCoverSelections": 0,
+    "timedGrenadeSolutions": 5
+  },
+  "lastMatchSandbagIncident": {
+    "matchId": "fae5988356e9cafb5252474daa050cc85828af49",
+    "sandbag": {
+      "id": 6,
+      "type": "sandbags_01",
+      "center": {
+        "x": 126.72068360418098,
+        "y": 58.48526741435874
+      },
+      "authoritativeAabb": {
+        "min": {
+          "x": 125.32068360418097,
+          "y": 55.38526741435874
+        },
+        "max": {
+          "x": 128.120683604181,
+          "y": 61.58526741435874
+        }
+      }
+    },
+    "frameTimeline": [
+      {
+        "timeSeconds": 158.576,
+        "botPos": {
+          "x": 145.40846875715266,
+          "y": 54.26645304036011
+        },
+        "targetPos": {
+          "x": 124.31439688715953,
+          "y": 60.17279316395819
+        },
+        "slot": 0,
+        "weapons": [
+          {
+            "slot": 0,
+            "type": "mosin",
+            "ammo": 3
+          },
+          {
+            "slot": 1,
+            "type": "mosin",
+            "ammo": 1
+          },
+          {
+            "slot": 2,
+            "type": "fists",
+            "ammo": 0
+          },
+          {
+            "slot": 3,
+            "type": "frag",
+            "ammo": 0
+          }
+        ],
+        "transmittedShootStart": false,
+        "movement": {
+          "left": true,
+          "right": false,
+          "up": false,
+          "down": false
+        },
+        "aimDir": {
+          "x": -0.962953063453855,
+          "y": 0.26966905195968616
+        }
+      },
+      {
+        "timeSeconds": 159.09,
+        "botPos": {
+          "x": 138.73649195086594,
+          "y": 55.5320973525597
+        },
+        "targetPos": {
+          "x": 124.31439688715953,
+          "y": 60.17279316395819
+        },
+        "slot": 0,
+        "weapons": [
+          {
+            "slot": 0,
+            "type": "mosin",
+            "ammo": 3
+          },
+          {
+            "slot": 1,
+            "type": "mosin",
+            "ammo": 1
+          },
+          {
+            "slot": 2,
+            "type": "fists",
+            "ammo": 0
+          },
+          {
+            "slot": 3,
+            "type": "frag",
+            "ammo": 0
+          }
+        ],
+        "transmittedShootStart": false,
+        "movement": {
+          "left": true,
+          "right": false,
+          "up": false,
+          "down": false
+        },
+        "aimDir": {
+          "x": -0.951910442046502,
+          "y": 0.3063764193322218
+        }
+      },
+      {
+        "timeSeconds": 159.599,
+        "botPos": {
+          "x": 132.76765087357902,
+          "y": 56.31335927367056
+        },
+        "targetPos": {
+          "x": 124.31439688715953,
+          "y": 61.56343938353552
+        },
+        "slot": 1,
+        "weapons": [
+          {
+            "slot": 0,
+            "type": "mosin",
+            "ammo": 2
+          },
+          {
+            "slot": 1,
+            "type": "mosin",
+            "ammo": 1
+          },
+          {
+            "slot": 2,
+            "type": "fists",
+            "ammo": 0
+          },
+          {
+            "slot": 3,
+            "type": "frag",
+            "ammo": 0
+          }
+        ],
+        "transmittedShootStart": true,
+        "movement": {
+          "left": true,
+          "right": false,
+          "up": false,
+          "down": false
+        },
+        "aimDir": {
+          "x": -0.8494945674208688,
+          "y": 0.5275973653482655
+        }
+      },
+      {
+        "timeSeconds": 160.105,
+        "botPos": {
+          "x": 133.59578850995652,
+          "y": 54.50083161669337
+        },
+        "targetPos": {
+          "x": 124.31439688715953,
+          "y": 61.56343938353552
+        },
+        "slot": 1,
+        "weapons": [
+          {
+            "slot": 0,
+            "type": "mosin",
+            "ammo": 2
+          },
+          {
+            "slot": 1,
+            "type": "mosin",
+            "ammo": 0
+          },
+          {
+            "slot": 2,
+            "type": "fists",
+            "ammo": 0
+          },
+          {
+            "slot": 3,
+            "type": "frag",
+            "ammo": 0
+          }
+        ],
+        "transmittedShootStart": false,
+        "movement": {
+          "left": false,
+          "right": true,
+          "up": false,
+          "down": true
+        },
+        "aimDir": {
+          "x": -0.8181046470623561,
+          "y": 0.5750693753409043
+        }
+      }
+    ],
+    "eventTimeline": [
+      {
+        "timeSeconds": 159.318,
+        "type": "final_visible_trigger_restored",
+        "distance": 12.538433603677122
+      },
+      {
+        "timeSeconds": 159.391,
+        "type": "dual_switch_armed",
+        "fromSlot": 0,
+        "toSlot": 1,
+        "currentWeapon": "mosin",
+        "otherWeapon": "mosin",
+        "estimatedAdvanceMs": 750,
+        "source": "local-update"
+      },
+      {
+        "timeSeconds": 159.396,
+        "type": "dual_switch_requested",
+        "fromSlot": 0,
+        "toSlot": 1,
+        "source": "forbidden-context"
+      },
+      {
+        "timeSeconds": 159.441,
+        "type": "dual_switch_confirmed",
+        "slot": 1,
+        "source": "local-update"
+      },
+      {
+        "timeSeconds": 159.703,
+        "type": "dual_switch_armed",
+        "fromSlot": 1,
+        "toSlot": 0,
+        "currentWeapon": "mosin",
+        "otherWeapon": "mosin",
+        "estimatedAdvanceMs": 750,
+        "source": "local-update"
+      }
+    ],
+    "diagnosis": [
+      "The first Mosin shot was restored by the final visible-trigger fallback while the exact center ray crossed sandbag id 6.",
+      "The locally confirmed shot then armed a useful dual-Mosin switch; the second Mosin fired into the same invalid center lane.",
+      "Both the close-range override and final trigger fallback trusted a coarse visibility result instead of an authoritative exposed-body ray."
+    ]
+  },
+  "codeAuditFindings": [
+    {
+      "id": "exact-cover",
+      "finding": "Coarse visibility could bypass exact rotated-AABB cover geometry at close range and in the final trigger fallback."
+    },
+    {
+      "id": "accuracy",
+      "finding": "Across the three LEGIT duels, 211 of 436 firing frames occurred while movement input remained active."
+    },
+    {
+      "id": "windows",
+      "finding": "219 of 636 visible-and-loaded frames contained no sampled firing output; many were state/precision/quick-switch gaps."
+    },
+    {
+      "id": "grenades",
+      "finding": "Five timed frag solutions were selected, including throws against visible moving targets while gun pressure remained available."
+    },
+    {
+      "id": "healing",
+      "finding": "No dedicated healing-behind-cover pressure event existed in the uploaded recorder format."
+    },
+    {
+      "id": "ricochet",
+      "finding": "All three duel logs recorded zero ricochet selections. The weapon eligibility check incorrectly excluded ordinary Mosin/AK/M39 bullets even though server bullets reflect from reflective map objects."
+    },
+    {
+      "id": "peek",
+      "finding": "The previous peek helper predicted exposure position but did not schedule fire from projectile travel time, so arrival was late."
+    }
+  ]
+}

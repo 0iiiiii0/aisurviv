@@ -1,14 +1,16 @@
 import $ from "jquery";
-import { GameConfig } from "../../../shared/gameConfig.ts";
+import { GameConfig, TeamMode } from "../../../shared/gameConfig.ts";
 import * as net from "../../../shared/net/net.ts";
 import type { FindGameMatchData } from "../../../shared/types/api.ts";
-import type {
-    RoomData,
-    ServerToClientTeamMsg,
-    TeamErrorMsg,
-    TeamMenuErrorType,
-    TeamPlayGameMsg,
-    TeamStateMsg,
+import {
+    normalizeTeamRoomUrl,
+    type RoomData,
+    type ServerToClientTeamMsg,
+    TEAM_KEEP_ALIVE_INTERVAL_SECONDS,
+    type TeamErrorMsg,
+    type TeamMenuErrorType,
+    type TeamPlayGameMsg,
+    type TeamStateMsg,
 } from "../../../shared/types/team.ts";
 import { api } from "../api.ts";
 import type { AudioManager } from "../audioManager.ts";
@@ -32,6 +34,7 @@ function errorTypeToString(type: TeamMenuErrorType, localization: Localization) 
         find_game_full: localization.translate("index-failed-finding-game"),
         find_game_invalid_protocol: localization.translate("index-invalid-protocol"),
         find_game_invalid_captcha: localization.translate("index-invalid-captcha"),
+        login_required: "搜打撤模式需要登录账号，其他模式可直接游玩",
         kicked: localization.translate("index-team-kicked"),
         banned: localization.translate("index-ip-banned"),
         behind_proxy: "behind_proxy", // this will get passed to the main app to show a modal
@@ -59,6 +62,7 @@ export class TeamMenu {
     joiningGame = false;
     ws: WebSocket | null = null;
     keepAliveTimeout = 0;
+    private lastSentAccountToken = "";
 
     gameError: string | undefined = undefined;
 
@@ -86,6 +90,8 @@ export class TeamMenu {
         public siteInfo: SiteInfo,
         public localization: Localization,
         public audioManager: AudioManager,
+        public getAccountToken: () => string,
+        public requireModeAccess: (gameModeIdx: number) => boolean,
         public joinGameCb: (data: FindGameMatchData) => void,
         public leaveCb: (err?: string) => void,
     ) {
@@ -96,10 +102,12 @@ export class TeamMenu {
             this.setRoomProperty("region", e);
         });
         this.queueMode1.on("click", () => {
-            this.setRoomProperty("gameModeIdx", 1);
+            const duoIdx = this.teamPlaylistIdx(TeamMode.Duo);
+            if (duoIdx >= 0) this.setRoomProperty("gameModeIdx", duoIdx);
         });
         this.queueMode2.on("click", () => {
-            this.setRoomProperty("gameModeIdx", 2);
+            const squadIdx = this.teamPlaylistIdx(TeamMode.Squad);
+            if (squadIdx >= 0) this.setRoomProperty("gameModeIdx", squadIdx);
         });
         this.fillAuto.on("click", () => {
             this.setRoomProperty("autoFill", true);
@@ -180,22 +188,32 @@ export class TeamMenu {
     }
 
     connect(create: boolean, roomUrl: string) {
-        if (!this.active || roomUrl !== this.roomData.roomUrl) {
+        const normalizedRoomUrl = create ? "" : normalizeTeamRoomUrl(roomUrl);
+        if (!create && !normalizedRoomUrl) {
+            this.leaveCb(errorTypeToString("join_failed", this.localization));
+            return;
+        }
+        const requestedRoomUrl = normalizedRoomUrl ?? "";
+        if (!this.active || requestedRoomUrl !== this.roomData.roomUrl) {
             const roomHost = api.resolveRoomHost();
             const url = `w${window.location.protocol === "https:" ? "ss" : "s"}://${roomHost}/team_v2`;
             this.active = true;
             this.joined = false;
+            this.keepAliveTimeout = TEAM_KEEP_ALIVE_INTERVAL_SECONDS;
             this.create = create;
             this.joiningGame = false;
             this.editingName = false;
             this.gameError = undefined;
 
             // Load properties from config
+            const accountToken = this.getAccountToken();
             this.playerData = {
                 name: this.config.get("playerName"),
+                accountToken,
             };
+            this.lastSentAccountToken = accountToken;
             this.roomData = {
-                roomUrl,
+                roomUrl: requestedRoomUrl,
                 region: this.config.get("region")!,
                 gameModeIdx: this.config.get("gameModeIdx")!,
                 autoFill: this.config.get("teamAutoFill")!,
@@ -298,8 +316,16 @@ export class TeamMenu {
                 const ourRoomData = this.roomData;
                 this.roomData = stateData.room;
                 this.players = stateData.players;
+                this.keepAliveTimeout = TEAM_KEEP_ALIVE_INTERVAL_SECONDS;
                 this.localPlayerId = stateData.localPlayerId;
                 this.isLeader = this.getPlayerById(this.localPlayerId)!.isLeader;
+
+                // 邀请链接在连接前不知道房间模式。收到权威房间状态后，
+                // 立即把未登录游客挡在搜打撤之外；普通队伍不受影响。
+                if (!this.requireModeAccess(this.roomData.gameModeIdx)) {
+                    this.leave("login_required");
+                    break;
+                }
 
                 // Override room properties with local values if we're
                 // the leader; otherwise, the server may override a
@@ -326,8 +352,23 @@ export class TeamMenu {
             case "kicked":
                 this.leave("kicked");
                 break;
-            case "error":
-                this.leave((data as TeamErrorMsg["data"]).type);
+            case "error": {
+                const errorType = (data as TeamErrorMsg["data"]).type;
+                // A transient matchmaker failure should not destroy a valid
+                // party. Reset the spinner and let the leader retry.
+                if (
+                    errorType === "find_game_error"
+                    || errorType === "find_game_full"
+                    || errorType === "find_game_invalid_protocol"
+                ) {
+                    this.roomData.findingGame = false;
+                    this.roomData.lastError = errorType;
+                    this.refreshUi();
+                    break;
+                }
+                this.leave(errorType);
+                break;
+            }
         }
     }
 
@@ -345,6 +386,19 @@ export class TeamMenu {
         }
     }
 
+    /**
+     * A team socket may outlive a login, logout, or session rotation. Keep the
+     * server-side room member synchronized instead of retaining the token that
+     * happened to exist when the room first opened.
+     */
+    syncAccountToken(): void {
+        const accountToken = this.getAccountToken();
+        this.playerData = { ...this.playerData, accountToken };
+        if (!this.joined || accountToken === this.lastSentAccountToken) return;
+        this.lastSentAccountToken = accountToken;
+        this.sendMessage("updateAccount", { accountToken });
+    }
+
     setRoomProperty<T extends keyof RoomData>(prop: T, val: RoomData[T]) {
         if (this.isLeader && this.roomData[prop] != val) {
             this.roomData[prop] = val;
@@ -353,7 +407,11 @@ export class TeamMenu {
     }
 
     tryStartGame() {
-        if (this.isLeader && !this.roomData.findingGame) {
+        if (
+            this.isLeader
+            && !this.roomData.findingGame
+            && this.requireModeAccess(this.roomData.gameModeIdx)
+        ) {
             const version = GameConfig.protocolVersion;
             let region = this.roomData.region;
             const paramRegion = helpers.getParameterByName("region");
@@ -369,6 +427,15 @@ export class TeamMenu {
                 version,
                 region,
                 zones,
+                // WebSocket message ordering guarantees this latest session is
+                // applied before the server performs the extraction auth gate.
+                accountToken: this.getAccountToken(),
+                zombieDifficulty: (() => {
+                    const value = (window as unknown as {
+                        survivZombieDifficulty?: string;
+                    }).survivZombieDifficulty;
+                    return value === "simple" || value === "hard" ? value : "normal";
+                })(),
             };
 
             helpers.verifyTurnstile(this.roomData.captchaEnabled, (token) => {
@@ -377,8 +444,34 @@ export class TeamMenu {
             });
             this.roomData.findingGame = true;
             this.gameError = undefined;
+            this.roomData.lastError = undefined;
             this.refreshUi();
         }
+    }
+
+    /**
+     * Playlist index of the first regular duo/squad playlist for the requested
+     * team mode, or -1 when none is available. "Unlisted" playlists (public
+     * queues turned off in the admin panel) remain playable via invite-code
+     * team rooms; faction/extraction/sandevistan/aim-training have dedicated
+     * entry points and are excluded here.
+     */
+    private teamPlaylistIdx(teamMode: TeamMode): number {
+        const styles = this.siteInfo.getGameModeStyles();
+        const label = teamMode === TeamMode.Duo ? "duo" : "squad";
+        return styles.findIndex((style) => {
+            if (style.teamButtonText !== label) return false;
+            if (
+                style.mapName === "extraction"
+                || style.mapName === "extraction_secret"
+                || style.mapName === "sandevistan"
+                || style.mapName === "aim_training"
+                || style.mapName === "faction"
+            ) {
+                return false;
+            }
+            return true;
+        });
     }
 
     refreshUi() {
@@ -454,16 +547,37 @@ export class TeamMenu {
             });
 
             // Modes btns
+            const duoIdx = this.teamPlaylistIdx(TeamMode.Duo);
+            const squadIdx = this.teamPlaylistIdx(TeamMode.Squad);
+            const currentStyle = this.siteInfo.getGameModeStyles()[this.roomData.gameModeIdx];
+            const currentIsDuo = !!currentStyle
+                && currentStyle.teamButtonText === "duo"
+                && currentStyle.mapName !== "faction"
+                && currentStyle.mapName !== "extraction"
+                && currentStyle.mapName !== "extraction_secret"
+                && currentStyle.mapName !== "sandevistan";
+            const currentIsSquad = !!currentStyle
+                && currentStyle.teamButtonText === "squad"
+                && currentStyle.mapName !== "faction"
+                && currentStyle.mapName !== "extraction"
+                && currentStyle.mapName !== "extraction_secret"
+                && currentStyle.mapName !== "sandevistan";
             setButtonState(
                 this.queueMode1,
-                this.roomData.gameModeIdx == 1,
-                this.isLeader && this.roomData.enabledGameModeIdxs.includes(1),
+                duoIdx >= 0 && currentIsDuo,
+                this.isLeader
+                    && duoIdx >= 0
+                    && this.roomData.enabledGameModeIdxs.includes(duoIdx),
             );
             setButtonState(
                 this.queueMode2,
-                this.roomData.gameModeIdx == 2,
-                this.isLeader && this.roomData.enabledGameModeIdxs.includes(2),
+                squadIdx >= 0 && currentIsSquad,
+                this.isLeader
+                    && squadIdx >= 0
+                    && this.roomData.enabledGameModeIdxs.includes(squadIdx),
             );
+            this.queueMode1.css("display", duoIdx >= 0 ? "" : "none");
+            this.queueMode2.css("display", squadIdx >= 0 ? "" : "none");
 
             // Fill mode
             setButtonState(this.fillAuto, this.roomData.autoFill, this.isLeader);

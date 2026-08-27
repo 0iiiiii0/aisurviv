@@ -1,0 +1,27 @@
+{
+  "version": "V41",
+  "buildMarker": "V41_COMPETITIVE_DUEL_SPECTATOR",
+  "features": {
+    "aimTrainingReadyGate": true,
+    "randomDuelMatchmaking": false,
+    "privateDuelWeaponModes": ["individual", "mirrored", "exclusive"],
+    "competitiveMap": "Duel Arena: Tri-Lane",
+    "roomPlayerLimits": ["solo", "duo", "squad"],
+    "multiViewerMatchShare": true,
+    "independentFreeCamera": true,
+    "manualSpectatorLayers": [0, 1, 2, 3],
+    "spectatorPlayerHealthWeaponOverlay": true,
+    "spectatorGlobalMapState": true,
+    "spectatorPrivateMessage": true,
+    "adminPureAiDuel": true
+  },
+  "liveProductionEvidence": {
+    "processMode": "multi",
+    "aimTrainingReady": true,
+    "targetName": "Moving Target",
+    "independentHumanWeapons": true,
+    "multipleSpectators": true,
+    "shareExpiresWithMatch": true,
+    "pureAiParticipants": 2
+  }
+}

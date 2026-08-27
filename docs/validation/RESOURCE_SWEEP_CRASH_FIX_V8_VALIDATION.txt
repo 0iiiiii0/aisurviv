@@ -1,0 +1,28 @@
+Resource Sweep and Loot Crash Fix V8 validation
+================================================
+
+Build
+- server TypeScript compilation: PASS
+
+New focused tests
+- opening resource sweep activation and local-area containment: PASS
+- nearby resource targets extend one sweep instead of starting a new point: PASS
+- sweep ends outside early phase or at the 26-second hard limit: PASS
+- all obstacle explicit loot definitions resolve to valid loot objects: PASS
+- all non-empty map loot-table leaves resolve to valid loot objects: PASS
+- all referenced nested loot tiers exist: PASS
+- undefined and invalid runtime loot types are skipped without object registration: PASS
+- invalid runtime loot types are logged once rather than crashing: PASS
+
+Regression tests
+- smart bot input safety: PASS
+- duel lobby: PASS
+- admin API: PASS
+- potato weapon rotation: PASS
+- loot/resource strategy: PASS
+- tactical decision brain: PASS
+- 1v1 combat and cover-healing: PASS
+- 50v50 auto-fill, one AI/second and 20+20 cap: PASS
+- spectator and ordinary-mode auto-fill: PASS
+- duel game and duel vision/search: PASS
+- all modes: PASS (47 playlists / 17 maps)

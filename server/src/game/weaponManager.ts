@@ -3,6 +3,7 @@ import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
 import { PerkProperties } from "../../../shared/defs/gameObjects/perkDefs.ts";
 import { type ThrowableDef, ThrowableDefs } from "../../../shared/defs/gameObjects/throwableDefs.ts";
 import { GameObjectDefs } from "../../../shared/defs/register.ts";
+import { ZOMBIE_TRICK_DRAIN_MAX } from "../../../shared/defs/zombieDefs.ts";
 import { GameConfig, type InventoryItem, WeaponSlot } from "../../../shared/gameConfig.ts";
 import * as net from "../../../shared/net/net.ts";
 import { ObjectType } from "../../../shared/net/objectSerializeFns.ts";
@@ -12,6 +13,7 @@ import { collisionHelpers } from "../../../shared/utils/collisionHelpers.ts";
 import { math } from "../../../shared/utils/math.ts";
 import { assert, util } from "../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import { useInfiniteTrainingMagazine } from "../aimTraining.ts";
 import type { BulletParams } from "../game/objects/bullet.ts";
 import type { GameObject } from "../game/objects/gameObject.ts";
 import type { Player } from "../game/objects/player.ts";
@@ -33,6 +35,12 @@ throwableList.sort((a, b) => {
     const bDef = ThrowableDefs[b];
     return aDef.inventoryOrder - bDef.inventoryOrder;
 });
+
+export function throwableThrowAnimationDuration(_throwableType: string): number {
+    // Perks alter the strike after the beacon lands, not the player's normal
+    // throw animation or recovery time.
+    return GameConfig.player.throwTime;
+}
 
 export class WeaponManager {
     player: Player;
@@ -80,6 +88,15 @@ export class WeaponManager {
                 recoilTime: Infinity,
             });
         }
+    }
+
+    resetForArenaRound(): void {
+        this.bursts.length = 0;
+        this.meleeAttacks.length = 0;
+        this.scheduledReload = false;
+        this.cookTicker = 0;
+        this.offHand = false;
+        this.setWeapon(WeaponSlot.Throwable, "", 0);
     }
 
     /**
@@ -369,13 +386,14 @@ export class WeaponManager {
                 break;
             case "burst":
                 if (player.shootHold && weapon.cooldown < 0) {
+                    const burstScale = this.fireIntervalScale();
                     weapon.cooldown = 0;
                     for (let i = 0; i < itemDef.burstCount!; i++) {
                         this.bursts.push(weapon.cooldown);
-                        weapon.cooldown += itemDef.burstDelay!;
+                        weapon.cooldown += itemDef.burstDelay! * burstScale;
                     }
                     this.offHand = !this.offHand;
-                    weapon.cooldown += itemDef.fireDelay;
+                    weapon.cooldown += itemDef.fireDelay * burstScale;
                 }
                 for (let i = 0; i < this.bursts.length; i++) {
                     this.bursts[i] -= dt;
@@ -438,6 +456,14 @@ export class WeaponManager {
     }
 
     isInfinite(weaponDef: GunDef): boolean {
+        // 搜打撤（普通 / 绝密）双模式：信号弹（flare）不享受无限子弹，必须消耗
+        // 真实弹药；.338（308sub，AWM-S/AWC）已恢复由无限子弹供给。其它模式保持原行为。
+        const extractionMode = Boolean(
+            this.player.game.map?.mapDef?.gameMode?.extractionMode,
+        );
+        if (extractionMode && weaponDef.ammo === "flare") {
+            return false;
+        }
         return (
             !weaponDef.ignoreEndlessAmmo
             && (weaponDef.ammoInfinite || this.player.hasPerk("endless_ammo"))
@@ -679,17 +705,45 @@ export class WeaponManager {
         return totalDamageMult;
     }
 
+    /**
+     * Sandevistan fire cadence: while the caster's implant dilates the world,
+     * the weapon cooldown advances on the player clock, so the cooldown value
+     * is lengthened by playerTimeScale / worldTimeScale. The gun's cadence
+     * then stays on the slowed world clock (real-time interval =
+     * fireDelay / worldTimeScale), i.e. the weapon slows down together with
+     * the rest of the match. Scales only upward (worldTimeScale >= 1 leaves
+     * the cadence untouched).
+     */
+    private fireIntervalScale(): number {
+        if (!this.player.sandevistanActive) return 1;
+        const playerScale = this.player.game.sandevistanPlayerTimeScale();
+        const worldScale = this.player.game.sandevistanTimeScale();
+        if (
+            !Number.isFinite(playerScale)
+            || !Number.isFinite(worldScale)
+            || worldScale <= 0
+        ) {
+            return 1;
+        }
+        return Math.max(1, Math.min(10, playerScale / worldScale));
+    }
+
     fireWeapon(offHand: boolean, forceFire?: boolean) {
         const itemDef = GameObjectDefs.typeToDef(this.activeWeapon, "gun");
 
         const weapon = this.weapons[this.curWeapIdx];
-        this.scheduledReload = weapon.ammo <= 1;
+        const infiniteMagazine = useInfiniteTrainingMagazine(
+            this.player.game.mapName,
+            this.player.serverBot,
+            this.player.game.aimTrainingSettings.infiniteMagazine,
+        );
 
-        if (weapon.ammo <= 0) return;
+        this.scheduledReload = !infiniteMagazine && weapon.ammo <= 1;
+        if (!infiniteMagazine && weapon.ammo <= 0) return;
 
         const firstShotAccuracy = weapon.recoilTime <= 0;
 
-        weapon.cooldown = itemDef.fireDelay;
+        weapon.cooldown = itemDef.fireDelay * this.fireIntervalScale();
         weapon.recoilTime = itemDef.recoilTime;
 
         // Check firing location
@@ -707,8 +761,10 @@ export class WeaponManager {
 
         this.player.cancelAction();
 
-        weapon.ammo--;
-        this.player.weapsDirty = true;
+        if (!infiniteMagazine) {
+            weapon.ammo--;
+            this.player.weapsDirty = true;
+        }
 
         const collisionLayer = util.toGroundLayer(this.player.layer);
         const bulletLayer = this.player.aimLayer;
@@ -808,6 +864,14 @@ export class WeaponManager {
         if (v2.length(travel) > 0.01) {
             spread += itemDef.moveSpread ?? 0;
         }
+        // Sandevistan: the caster shoots with half the normal spread.
+        if (this.player.sandevistanActive) {
+            spread *= GameConfig.player.sandevistan.spreadMult;
+        }
+        const hasOverpressure = itemDef.ammo === "9mm" && this.player.hasPerk("bonus_9mm");
+        if (hasOverpressure) {
+            spread *= 1.1;
+        }
 
         // Recoil currently just cancels spread if you shoot slow enough.
         if (this.player.recoilTicker >= itemDef.recoilTime) {
@@ -828,10 +892,6 @@ export class WeaponManager {
         if (this.player.hasPerk("high_velocity")) {
             speedMult *= PerkProperties.high_velocity.speedMult;
             distanceMult *= PerkProperties.high_velocity.distanceMult;
-        }
-
-        if (this.player.hasPerk("bonus_assault")) {
-            speedMult *= PerkProperties.bonus_assault.speedMult;
         }
 
         const bulletCount = itemDef.bulletCount;
@@ -875,9 +935,14 @@ export class WeaponManager {
                 distance = math.max(toMouseLen - gunLen, 0.0);
             }
 
+            const trainingShot = this.player.recordTrainingShot(this.activeWeapon);
+            const bonusBulletType = (itemDef as GunDef & { bulletTypeBonus?: string })
+                .bulletTypeBonus;
             const params: BulletParams = {
                 playerId: this.player.__id,
-                bulletType: bulletType,
+                bulletType: hasOverpressure && bonusBulletType
+                    ? bonusBulletType
+                    : itemDef.bulletType,
                 gameSourceType: this.activeWeapon,
                 damageType: GameConfig.DamageType.Player,
                 pos: shotPos,
@@ -898,9 +963,10 @@ export class WeaponManager {
                 apRounds: hasApRounds,
                 highVelocity: hasHighVelocity,
                 combatStims: hasCombatStims,
-                lastShot: weapon.ammo <= 0,
+                lastShot: !infiniteMagazine && weapon.ammo <= 0,
                 reflectObjId: this.player.obstacleOutfit?.__id,
                 onHitFx: hasExplosive ? "explosion_rounds" : undefined,
+                trainingShot,
             };
 
             this.player.game.bulletBarn.fireBullet(params);
@@ -921,6 +987,8 @@ export class WeaponManager {
                     projDef.fuseTime,
                     GameConfig.DamageType.Player,
                     shotDir,
+                    this.activeWeapon,
+                    trainingShot,
                 );
             }
 
@@ -953,6 +1021,8 @@ export class WeaponManager {
                             projectile.fuseTime,
                             GameConfig.DamageType.Player,
                             sParams.dir,
+                            this.activeWeapon,
+                            trainingShot,
                         );
                     }
                 }
@@ -1145,6 +1215,19 @@ export class WeaponManager {
                     source: this.player,
                     dir: hit.dir,
                 });
+                // 僵尸模式：僵尸近战命中玩家 → trick_drain 叠加（上限 4）。
+                if (
+                    this.player.serverBot
+                    && this.player.game.map.mapDef.gameMode.zombieMode
+                    && !obj.serverBot
+                ) {
+                    const drains = obj.perks.filter(
+                        (p) => p.type === "trick_drain",
+                    ).length;
+                    if (drains < ZOMBIE_TRICK_DRAIN_MAX) {
+                        obj.addPerk("trick_drain", false);
+                    }
+                }
             }
         }
     }
@@ -1277,6 +1360,7 @@ export class WeaponManager {
             0.0,
             throwableDef.fuseTime - (throwableDef.cookable ? this.cookTicker : 0),
         );
+        const trainingShot = this.player.recordTrainingShot(throwableType);
         const projectile = this.player.game.projectileBarn.addProjectile(
             this.player.__id,
             throwableType,
@@ -1288,6 +1372,7 @@ export class WeaponManager {
             GameConfig.DamageType.Player,
             dir,
             oldThrowableType,
+            trainingShot,
         );
 
         if (oldThrowableType == "strobe" && throwableDef.strikeDelay) {

@@ -94,6 +94,14 @@ export class SmokeBarn {
         this.emitters.push(emitter);
     }
 
+    clearForArenaRound(): void {
+        for (const smoke of this.smokes) {
+            if (!smoke.destroyed) smoke.destroy();
+        }
+        this.smokes.length = 0;
+        this.emitters.length = 0;
+    }
+
     addSmoke(
         pos: Vec2,
         layer: number,

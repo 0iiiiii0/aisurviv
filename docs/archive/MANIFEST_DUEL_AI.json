@@ -1,0 +1,253 @@
+{
+  "name": "surviv.io custom Duel AI + admin spectator",
+  "version": "duel-ai-spectator-inputfix-1.1",
+  "generatedAt": "2026-07-24",
+  "validation": [
+    "server TypeScript build",
+    "smartBot InputMsg serialization smoke test",
+    "duel smoke test",
+    "duel lobby smoke test",
+    "admin smoke test",
+    "real process two-bot Duel run",
+    "no writeFloat/out-of-range/assertion errors in process logs",
+    "real WebSocket spectator join (previous feature regression)"
+  ],
+  "notes": [
+    "InputMsg.toMouseLen is clamped to the protocol range [0, 64] at all tactical assignments and again at the packet boundary.",
+    "Admin spectator tokens are one-time and expire after 60 seconds.",
+    "Adrenaline disabled rooms start at boost 0 and remove soda/painkiller.",
+    "Main client production bundle should be rebuilt on the target OS; source TypeScript is validated."
+  ],
+  "keyFiles": [
+    {
+      "path": "README.md",
+      "size": 1034,
+      "sha256": "9d52a1a72ff95fca12f42c9f855adbd24ab637ec3f699c0810079094df869fbd"
+    },
+    {
+      "path": "ADMIN.md",
+      "size": 4555,
+      "sha256": "e9c17fb65a372aa9686e76b80d411f2efa1816a7ac65eac069734c4aae50c67f"
+    },
+    {
+      "path": "DUEL_AI_SPECTATOR_GUIDE.md",
+      "size": 3546,
+      "sha256": "724a3bbc9dcefed75804bbdcd6eebf449869a762728ffc5a347fcc6edb561e6b"
+    },
+    {
+      "path": "VALIDATION_DUEL_AI.md",
+      "size": 2361,
+      "sha256": "1b678097556400e527df71061f05d71d1c1031dfff202cbb87cfd952308c6664"
+    },
+    {
+      "path": "CHANGELOG_DUEL_AI.md",
+      "size": 1858,
+      "sha256": "a32082766427b9d670a143e9f7061fb4c51cf61b6bbddbfce509f99bdb7b3680"
+    },
+    {
+      "path": "BUILD_CLIENT.md",
+      "size": 792,
+      "sha256": "8a0c46fdd49f2ae0d5a383a66b3e3eb35620bbb10de60b6e736225b4387201c9"
+    },
+    {
+      "path": "build-complete.ps1",
+      "size": 492,
+      "sha256": "ca7db2ab1ba8b1517dc62fa50f972946263a23c6662cdc24b2fa6bc018b62752"
+    },
+    {
+      "path": "build-complete.sh",
+      "size": 422,
+      "sha256": "8eaa9fd550685af83417a3da09476d1cfb76a909c90077a264ca2d12dded31b8"
+    },
+    {
+      "path": "survivio-config.json",
+      "size": 7988,
+      "sha256": "d2d6f915e27b8ca26ff3a93b1879b5fb121be79ee067427f1969a5ccf50d6335"
+    },
+    {
+      "path": "survivio-config-old.json",
+      "size": 1712,
+      "sha256": "9df3668812a12ffe0a2736e80e371d27aa68f228bf5047b4697331c72409c812"
+    },
+    {
+      "path": "server/package.json",
+      "size": 1577,
+      "sha256": "58ff3195a879cea8ab9fd1b449c738450e74e44a59254d5ef2f08a763162728e"
+    },
+    {
+      "path": "server/src/config.ts",
+      "size": 14454,
+      "sha256": "6de3d18a85b877a07feedd3daec3bdd9cd110a107b976f8bf9fe0c8a27d7016f"
+    },
+    {
+      "path": "server/src/duelLoadout.ts",
+      "size": 3844,
+      "sha256": "eed043b6de03ab73a00410bb89de7e51ae948ad40bc49999554aa6a21e932d7b"
+    },
+    {
+      "path": "server/src/duelLobby.ts",
+      "size": 14789,
+      "sha256": "ef40289525daa578462ba001fd04cc92fe134eba87e2256b1d57df2edc1a9fbb"
+    },
+    {
+      "path": "server/src/duelLobbySmokeTest.ts",
+      "size": 5929,
+      "sha256": "7a58e4becba93fa2cdb67d710267ffbd6b0accbb62a607fbfeebd5cb3738ad1a"
+    },
+    {
+      "path": "server/src/adminServer.ts",
+      "size": 18803,
+      "sha256": "e53a65880e870b6fc94677d61bf561b5176f4a657f89e0722a4fa408917e985b"
+    },
+    {
+      "path": "server/src/adminSmokeTest.ts",
+      "size": 10089,
+      "sha256": "b523446d2b1119817e371cb9c671ea658ef89d9b531e496dff7211e5f8bee825"
+    },
+    {
+      "path": "server/src/gameServer.ts",
+      "size": 20275,
+      "sha256": "e9dd2232e15672d6c8b48c70e0b51b86e96c26d5b29604dd0093ab778ca7e38a"
+    },
+    {
+      "path": "server/src/game/gameManager.ts",
+      "size": 8251,
+      "sha256": "cf07d456c6b35b0c41863527784fe5167eaa8cffafda4666a13f626128bda162"
+    },
+    {
+      "path": "server/src/game/gameProcessManager.ts",
+      "size": 13710,
+      "sha256": "3e04f15c8a32c504008f5d7e63d94986e2d14def7b0adaf982a0ebed92a06488"
+    },
+    {
+      "path": "server/src/game/gameProcess.ts",
+      "size": 3051,
+      "sha256": "0186da97f60896b3530c3193d538920b53252eebcbe4d0a57e575da65df05d8d"
+    },
+    {
+      "path": "server/src/game/game.ts",
+      "size": 18424,
+      "sha256": "699f126d180b416348f9da5e0528587fbfe54087542b699087025810e53fb071"
+    },
+    {
+      "path": "server/src/game/map.ts",
+      "size": 61620,
+      "sha256": "36102d51140eba3537a48958b7446478b3e79b288af0e6d655ce0f4878e1088f"
+    },
+    {
+      "path": "server/src/game/objects/player.ts",
+      "size": 138221,
+      "sha256": "ba3c0de128b7c89ece4e2975621bd13cade4047f7230cd56d0bbb2e631d0180b"
+    },
+    {
+      "path": "server/src/smartBot.ts",
+      "size": 243597,
+      "sha256": "648d51fdda5c0122a2a71e3b24764a4769d5efef98a9eac73437c0ca7c3d225c"
+    },
+    {
+      "path": "server/src/bot/SpatialGrid.ts",
+      "size": 2916,
+      "sha256": "f9edf0c0fd2bdaa1394f3176cb1dddd0a2c37eb546680448261b17b4c94f639a"
+    },
+    {
+      "path": "server/src/bot/adrenalineStrategy.ts",
+      "size": 5758,
+      "sha256": "e4028ed2d1cf81b270d19920306e73f17ae0b0a9eb32e311d64e76d41ee505e0"
+    },
+    {
+      "path": "server/src/bot/combatIntelligence.ts",
+      "size": 18422,
+      "sha256": "68c911ac9d21090070ee6958cc7a3bbc27b6c0e6535faf4002d4aa983dd255d7"
+    },
+    {
+      "path": "server/src/bot/concealmentIntelligence.ts",
+      "size": 17315,
+      "sha256": "d642c3dce5298b5ba444c77c766eab2f544a3ba3e9dbbb97f10e335f71f44e3c"
+    },
+    {
+      "path": "server/src/bot/duelStrategy.ts",
+      "size": 9167,
+      "sha256": "427f619c616f50959450f63414877469c6168f2b7570e0d99f34728332a6bd33"
+    },
+    {
+      "path": "server/src/bot/factionStrategy.ts",
+      "size": 40695,
+      "sha256": "4655116b5b0c476dbc40f1fd3261c6baac746d67a584e80ca7e3ec38a609cd8a"
+    },
+    {
+      "path": "server/src/bot/mapStrategy.ts",
+      "size": 68482,
+      "sha256": "bd36894befae8f26fcc05ac0db7064d20729dfcaefdb1d7929710523b48ff587"
+    },
+    {
+      "path": "server/src/bot/specialRoleStrategy.ts",
+      "size": 17016,
+      "sha256": "86fa8c02894a625615bef3fa2ebe3411920702de4fbdef21dde593d064e87e97"
+    },
+    {
+      "path": "client/index.html",
+      "size": 74124,
+      "sha256": "6a177d384760a1684d26527f356251c1c033c7b645af33585912737868ca2924"
+    },
+    {
+      "path": "client/src/main.ts",
+      "size": 32257,
+      "sha256": "6a9e31ca1fe54a542effb71d75b47a3a07050626159066e70e60a711a06a395f"
+    },
+    {
+      "path": "client/src/ui/duelLobby.ts",
+      "size": 21964,
+      "sha256": "9ed68f8778c2d7928dac86bd32f7366d149cbe95bf1e03d8379b3601006b7d97"
+    },
+    {
+      "path": "client/public/admin/index.html",
+      "size": 20668,
+      "sha256": "97cee2f43f55a6548fcb815b718fd3fc6159320a857500db7e9bd9f1123dc386"
+    },
+    {
+      "path": "client/public/admin/admin.js",
+      "size": 35081,
+      "sha256": "e36fb696ee31deb5e8e71b7c90b0bd7a3ff296dcda0707ba154e912f77a50749"
+    },
+    {
+      "path": "client/public/admin/admin.css",
+      "size": 28364,
+      "sha256": "2d8dfd2f34057a521fc451d3041b3b74d637ea29293e9f251fce24feeaa1c56f"
+    },
+    {
+      "path": "client/dist/admin/index.html",
+      "size": 20668,
+      "sha256": "97cee2f43f55a6548fcb815b718fd3fc6159320a857500db7e9bd9f1123dc386"
+    },
+    {
+      "path": "client/dist/admin/admin.js",
+      "size": 35081,
+      "sha256": "e36fb696ee31deb5e8e71b7c90b0bd7a3ff296dcda0707ba154e912f77a50749"
+    },
+    {
+      "path": "client/dist/admin/admin.css",
+      "size": 28364,
+      "sha256": "2d8dfd2f34057a521fc451d3041b3b74d637ea29293e9f251fce24feeaa1c56f"
+    },
+    {
+      "path": "INPUT_SERIALIZATION_FIX.md",
+      "size": 1143,
+      "sha256": "de55bfee3bd56583093cc1c62fa4d50dc9dd55100624ef68654f1f01d0ca14ac"
+    },
+    {
+      "path": "server/src/bot/inputSafety.ts",
+      "size": 417,
+      "sha256": "ac91202204d2f6b91e4c382dfa201d5d127dd9833a4738e3fb7f21c67a180f71"
+    },
+    {
+      "path": "server/src/smartBotInputSmokeTest.ts",
+      "size": 791,
+      "sha256": "a45a9752dd85abd4eada362e8c9a4ed64624bce71fc57682f77a2c64fa692510"
+    },
+    {
+      "path": "SMARTBOT_INPUT_FIX.patch",
+      "size": 7614,
+      "sha256": "63ad6c991b5bba40514092c9db37082a7ba7592f09125d159fc20ffeb08d799e"
+    }
+  ]
+}

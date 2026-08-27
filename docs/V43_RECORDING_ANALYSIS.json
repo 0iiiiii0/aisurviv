@@ -1,0 +1,554 @@
+{
+  "source": "ai-match-recordings(13).zip",
+  "recordingStreams": 7,
+  "uniqueMatches": 6,
+  "duelFrames": 2220,
+  "eventCounts": {
+    "match_recording_started": 12,
+    "bot_registered": 38,
+    "map_recorded": 12,
+    "mode_system_loaded": 38,
+    "state_changed": 3668,
+    "intent_changed": 5886,
+    "path_recovery_triggered": 1676,
+    "resource_target_abandoned": 240,
+    "intent_progress_abandoned": 212,
+    "final_visible_trigger_restored": 314,
+    "visible_threat_interrupt": 303,
+    "damage_taken": 450,
+    "hidden_contact_selected": 65,
+    "hidden_contact_cleared": 58,
+    "concealment_fire_burst": 11,
+    "hard_cover_flank_started": 5,
+    "gas_escape_started": 131,
+    "gas_escape_ended": 109,
+    "airdrop_target_selected": 4,
+    "airdrop_open_attempt": 4,
+    "airdrop_weapon_selected": 92,
+    "game_over": 35,
+    "bot_finished": 36,
+    "gunfire_viewport_blocked": 2,
+    "weapon_search_abandoned": 5,
+    "dual_switch_armed": 372,
+    "dual_switch_cancelled": 123,
+    "dual_switch_requested": 282,
+    "dual_switch_confirmed": 285,
+    "recovery_interrupted_for_visible_threat": 1,
+    "indirect_ricochet_selected": 3124,
+    "gun_line_dodge_started": 211,
+    "grenade_opportunity_selected": 12,
+    "special_action_queued": 13,
+    "timed_grenade_solution": 12,
+    "grenade_plan_cancelled_for_gun_window": 3,
+    "explosive_cover_selected": 49,
+    "throw_released": 2,
+    "airstrike_warning_observed": 111,
+    "airstrike_escape_started": 92,
+    "airstrike_escape_route": 67,
+    "airstrike_escape_ended": 91
+  },
+  "directShotClosestApproach": {
+    "count": 613,
+    "median": 1.689058542805422,
+    "p75": 2.6546840822385858,
+    "p90": 3.7335288771690003,
+    "max": 53.095285992808286
+  },
+  "signedMovementAxisError": {
+    "count": 613,
+    "median": -1.3243022142553946,
+    "p75": -0.2983216776826356,
+    "p90": -0.0013255685018583477,
+    "max": 52.2860831202455
+  },
+  "underLeadRate": 0.768352365415987,
+  "outsidePlayerRadiusRate": 0.6623164763458401,
+  "byWeapon": {
+    "awc": {
+      "shots": 61,
+      "miss": {
+        "count": 61,
+        "median": 1.0700459460597846,
+        "p75": 1.9524580779611747,
+        "p90": 2.5044770453408827,
+        "max": 3.525218013445861
+      },
+      "signedMovementError": {
+        "count": 61,
+        "median": -0.9598182528054242,
+        "p75": -0.2969741554773197,
+        "p90": -0.02520412493337786,
+        "max": 0.26503981967634904
+      },
+      "underLeadRate": 0.7704918032786885
+    },
+    "grozas": {
+      "shots": 79,
+      "miss": {
+        "count": 79,
+        "median": 2.0347478363031253,
+        "p75": 4.669061794942938,
+        "p90": 6.026120493712668,
+        "max": 6.780550533562519
+      },
+      "signedMovementError": {
+        "count": 79,
+        "median": -1.4273979325883395,
+        "p75": -0.07047832910663324,
+        "p90": 0.0,
+        "max": 1.408901020910669
+      },
+      "underLeadRate": 0.6962025316455697
+    },
+    "mosin": {
+      "shots": 473,
+      "miss": {
+        "count": 473,
+        "median": 1.7692286670833584,
+        "p75": 2.642396577082104,
+        "p90": 3.5067078086019947,
+        "max": 53.095285992808286
+      },
+      "signedMovementError": {
+        "count": 473,
+        "median": -1.3948810148957898,
+        "p75": -0.32753805525909124,
+        "p90": -0.003569666322419428,
+        "max": 52.2860831202455
+      },
+      "underLeadRate": 0.7801268498942917
+    }
+  },
+  "streams": [
+    {
+      "session": "2026-07-28T03-46-32-634Z_pid-7700",
+      "matchIds": [
+        "99dda72b7dc80f607562f021b35f2537b2617497"
+      ],
+      "frames": 321,
+      "shots": 107,
+      "ricochetShotFrames": 13,
+      "directShotFramesEvaluated": 90,
+      "difficultyFrames": {
+        "legit": 321
+      },
+      "shotIntentFrames": {
+        "none": 206,
+        "ricochet": 25,
+        "exposed": 13,
+        "direct": 70,
+        "destroy": 3,
+        "peek-prefire": 4
+      },
+      "activeWeaponFrames": {
+        "mosin": 321
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 116,
+        "intent_changed": 1,
+        "indirect_ricochet_selected": 397,
+        "dual_switch_armed": 80,
+        "dual_switch_requested": 63,
+        "dual_switch_confirmed": 64,
+        "final_visible_trigger_restored": 58,
+        "gun_line_dodge_started": 37,
+        "dual_switch_cancelled": 23,
+        "damage_taken": 16,
+        "path_recovery_triggered": 1,
+        "grenade_opportunity_selected": 1,
+        "special_action_queued": 1,
+        "timed_grenade_solution": 1,
+        "grenade_plan_cancelled_for_gun_window": 1,
+        "explosive_cover_selected": 5,
+        "gas_escape_started": 5,
+        "gas_escape_ended": 5,
+        "game_over": 1,
+        "bot_finished": 1
+      },
+      "directMiss": {
+        "count": 90,
+        "median": 2.0212498750228716,
+        "p75": 3.163968658550811,
+        "p90": 4.003963646407018,
+        "max": 53.095285992808286
+      },
+      "signedMovementError": {
+        "count": 90,
+        "median": -1.25086996324989,
+        "p75": -0.2372078090067905,
+        "p90": 0.0010420680127626722,
+        "max": 52.2860831202455
+      }
+    },
+    {
+      "session": "2026-07-28T03-50-56-319Z_pid-1860",
+      "matchIds": [
+        "497ee4d81457049c77c9be88e3273611640179be"
+      ],
+      "frames": 256,
+      "shots": 93,
+      "ricochetShotFrames": 23,
+      "directShotFramesEvaluated": 66,
+      "difficultyFrames": {
+        "legit": 256
+      },
+      "shotIntentFrames": {
+        "none": 160,
+        "ricochet": 30,
+        "direct": 59,
+        "destroy": 2,
+        "exposed": 5
+      },
+      "activeWeaponFrames": {
+        "mosin": 256
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 131,
+        "intent_changed": 1,
+        "indirect_ricochet_selected": 520,
+        "dual_switch_armed": 71,
+        "dual_switch_requested": 56,
+        "dual_switch_confirmed": 56,
+        "gun_line_dodge_started": 27,
+        "damage_taken": 13,
+        "final_visible_trigger_restored": 44,
+        "dual_switch_cancelled": 18,
+        "gas_escape_started": 4,
+        "gas_escape_ended": 4,
+        "path_recovery_triggered": 1,
+        "explosive_cover_selected": 5,
+        "game_over": 1,
+        "bot_finished": 1
+      },
+      "directMiss": {
+        "count": 66,
+        "median": 1.8392702872202022,
+        "p75": 2.592052013053472,
+        "p90": 3.1278013776715614,
+        "max": 38.65660855894483
+      },
+      "signedMovementError": {
+        "count": 66,
+        "median": -1.5707562710760956,
+        "p75": -0.8201113021723155,
+        "p90": -0.012517974830654104,
+        "max": 0.6724379671048012
+      }
+    },
+    {
+      "session": "2026-07-28T03-54-40-909Z_pid-9136",
+      "matchIds": [
+        "c422fb5a9b34c53b90d4552488e6df6b3de4ca11"
+      ],
+      "frames": 139,
+      "shots": 46,
+      "ricochetShotFrames": 1,
+      "directShotFramesEvaluated": 29,
+      "difficultyFrames": {
+        "legit": 139
+      },
+      "shotIntentFrames": {
+        "none": 110,
+        "ricochet": 2,
+        "direct": 25,
+        "exposed": 2
+      },
+      "activeWeaponFrames": {
+        "awc": 139
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 68,
+        "intent_changed": 1,
+        "indirect_ricochet_selected": 44,
+        "dual_switch_armed": 37,
+        "dual_switch_requested": 26,
+        "dual_switch_confirmed": 27,
+        "gun_line_dodge_started": 25,
+        "final_visible_trigger_restored": 13,
+        "damage_taken": 6,
+        "dual_switch_cancelled": 17,
+        "path_recovery_triggered": 2,
+        "game_over": 1,
+        "bot_finished": 1
+      },
+      "directMiss": {
+        "count": 29,
+        "median": 0.8247722118712094,
+        "p75": 1.6419235041668812,
+        "p90": 2.499899437783791,
+        "max": 3.525218013445861
+      },
+      "signedMovementError": {
+        "count": 29,
+        "median": -0.5559676891189209,
+        "p75": -0.07407729882424703,
+        "p90": -0.004676452129841386,
+        "max": 0.0
+      }
+    },
+    {
+      "session": "2026-07-28T03-54-41-009Z_pid-6704",
+      "matchIds": [
+        "c422fb5a9b34c53b90d4552488e6df6b3de4ca11"
+      ],
+      "frames": 139,
+      "shots": 45,
+      "ricochetShotFrames": 0,
+      "directShotFramesEvaluated": 32,
+      "difficultyFrames": {
+        "legit": 139
+      },
+      "shotIntentFrames": {
+        "none": 101,
+        "ricochet": 5,
+        "direct": 30,
+        "exposed": 2,
+        "peek-prefire": 1
+      },
+      "activeWeaponFrames": {
+        "awc": 139
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 55,
+        "intent_changed": 1,
+        "indirect_ricochet_selected": 62,
+        "dual_switch_armed": 37,
+        "final_visible_trigger_restored": 8,
+        "dual_switch_requested": 25,
+        "dual_switch_confirmed": 26,
+        "gun_line_dodge_started": 25,
+        "damage_taken": 7,
+        "dual_switch_cancelled": 15,
+        "path_recovery_triggered": 2,
+        "game_over": 1,
+        "bot_finished": 1
+      },
+      "directMiss": {
+        "count": 32,
+        "median": 1.2978648463677729,
+        "p75": 1.9998605393010496,
+        "p90": 2.502005842255268,
+        "max": 3.188820692541553
+      },
+      "signedMovementError": {
+        "count": 32,
+        "median": -1.068565237142368,
+        "p75": -0.7555886713052129,
+        "p90": -0.10400073280261554,
+        "max": 0.26503981967634904
+      }
+    },
+    {
+      "session": "2026-07-28T03-57-11-237Z_pid-3256",
+      "matchIds": [
+        "9569a79ea427ed39332986380ae6805ceb6b6fdb"
+      ],
+      "frames": 454,
+      "shots": 155,
+      "ricochetShotFrames": 21,
+      "directShotFramesEvaluated": 121,
+      "difficultyFrames": {
+        "legit": 454
+      },
+      "shotIntentFrames": {
+        "none": 294,
+        "ricochet": 41,
+        "destroy": 3,
+        "direct": 102,
+        "exposed": 13,
+        "peek-prefire": 1
+      },
+      "activeWeaponFrames": {
+        "mosin": 444,
+        "mirv": 8,
+        "strobe": 1,
+        "frag": 1
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 196,
+        "intent_changed": 1,
+        "indirect_ricochet_selected": 614,
+        "dual_switch_armed": 98,
+        "dual_switch_requested": 74,
+        "dual_switch_confirmed": 73,
+        "final_visible_trigger_restored": 79,
+        "gun_line_dodge_started": 47,
+        "dual_switch_cancelled": 33,
+        "damage_taken": 17,
+        "grenade_opportunity_selected": 7,
+        "special_action_queued": 7,
+        "timed_grenade_solution": 7,
+        "throw_released": 1,
+        "path_recovery_triggered": 2,
+        "game_over": 1,
+        "bot_finished": 1
+      },
+      "directMiss": {
+        "count": 121,
+        "median": 1.7523940770188977,
+        "p75": 2.9190588588264967,
+        "p90": 3.5633382677327523,
+        "max": 46.16917003571471
+      },
+      "signedMovementError": {
+        "count": 121,
+        "median": -1.3497500109414873,
+        "p75": -0.26454584029637107,
+        "p90": -0.002296964968960348,
+        "max": 46.133560217072066
+      }
+    },
+    {
+      "session": "2026-07-28T04-01-33-424Z_pid-4284",
+      "matchIds": [
+        "45a1e35c286da5ec19817a5d91f228d891c0e151"
+      ],
+      "frames": 307,
+      "shots": 108,
+      "ricochetShotFrames": 21,
+      "directShotFramesEvaluated": 79,
+      "difficultyFrames": {
+        "legit": 307
+      },
+      "shotIntentFrames": {
+        "none": 208,
+        "exposed": 10,
+        "ricochet": 28,
+        "direct": 60,
+        "peek-prefire": 1
+      },
+      "activeWeaponFrames": {
+        "mosin": 249,
+        "frag": 5,
+        "mirv": 2,
+        "strobe": 1,
+        "fists": 50
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 332,
+        "intent_changed": 1,
+        "dual_switch_armed": 44,
+        "dual_switch_requested": 35,
+        "dual_switch_confirmed": 36,
+        "indirect_ricochet_selected": 410,
+        "gun_line_dodge_started": 39,
+        "final_visible_trigger_restored": 36,
+        "grenade_opportunity_selected": 4,
+        "special_action_queued": 5,
+        "timed_grenade_solution": 4,
+        "dual_switch_cancelled": 15,
+        "grenade_plan_cancelled_for_gun_window": 2,
+        "damage_taken": 20,
+        "gas_escape_started": 13,
+        "gas_escape_ended": 13,
+        "throw_released": 1,
+        "airstrike_warning_observed": 111,
+        "airstrike_escape_started": 92,
+        "airstrike_escape_route": 67,
+        "airstrike_escape_ended": 91,
+        "path_recovery_triggered": 1
+      },
+      "directMiss": {
+        "count": 79,
+        "median": 1.726955590729027,
+        "p75": 2.4745327876558454,
+        "p90": 3.1833949453102504,
+        "max": 4.454999682332841
+      },
+      "signedMovementError": {
+        "count": 79,
+        "median": -1.4867637519969104,
+        "p75": -0.40861416101846454,
+        "p90": -0.00592117457391831,
+        "max": 0.4286166058203749
+      }
+    },
+    {
+      "session": "2026-07-28T04-04-20-343Z_pid-4708",
+      "matchIds": [
+        "a57281a045d16d249b37bd17e30f12d23feaa448"
+      ],
+      "frames": 604,
+      "shots": 273,
+      "ricochetShotFrames": 58,
+      "directShotFramesEvaluated": 196,
+      "difficultyFrames": {
+        "legit": 604
+      },
+      "shotIntentFrames": {
+        "none": 332,
+        "direct": 172,
+        "exposed": 34,
+        "ricochet": 64,
+        "peek-prefire": 1,
+        "explode": 1
+      },
+      "activeWeaponFrames": {
+        "mosin": 358,
+        "grozas": 238,
+        "fists": 8
+      },
+      "eventCounts": {
+        "match_recording_started": 1,
+        "bot_registered": 1,
+        "map_recorded": 1,
+        "mode_system_loaded": 1,
+        "state_changed": 117,
+        "intent_changed": 1,
+        "path_recovery_triggered": 6,
+        "indirect_ricochet_selected": 1077,
+        "final_visible_trigger_restored": 59,
+        "gun_line_dodge_started": 11,
+        "damage_taken": 18,
+        "explosive_cover_selected": 39,
+        "gas_escape_started": 47,
+        "gas_escape_ended": 47
+      },
+      "directMiss": {
+        "count": 196,
+        "median": 1.7083282087306348,
+        "p75": 2.645261790566046,
+        "p90": 4.669061794942938,
+        "max": 6.780550533562519
+      },
+      "signedMovementError": {
+        "count": 196,
+        "median": -1.2648562078289214,
+        "p75": -0.26832043084968227,
+        "p90": -0.0013045821070871702,
+        "max": 1.408901020910669
+      }
+    }
+  ],
+  "diagnosis": [
+    "The exposed-body sampler was centred on the age-compensated current position and overwrote the projectile intercept.",
+    "The final visible-trigger fallback rebuilt aim at the current body centre and discarded lead.",
+    "4-6 ms duplicate authoritative snapshots were interpreted as zero measured displacement and collapsed lateral velocity.",
+    "Ricochet selection used angular alignment without validating closest approach, reflected range decay, or barrel origin.",
+    "Common 1v1 rules and weapon changes used two concurrent write lanes, allowing a later stale full-form response to repaint controls."
+  ]
+}

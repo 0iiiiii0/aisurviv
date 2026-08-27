@@ -1,0 +1,39 @@
+{
+  "version": "V52",
+  "baseline": "V51 65c1bbd",
+  "commit": "62d1d90",
+  "recording": "ai-match-recordings(3).7z (V50 format 12)",
+  "build": {
+    "server_typescript": "PASS",
+    "client_typescript_no_emit": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "tests": {
+    "unique_server_tests": 71,
+    "passed": 71,
+    "failed": 0,
+    "v52_building_walls": "PASS",
+    "v49_regression": "PASS",
+    "v50_regression": "PASS",
+    "v51_regression": "PASS"
+  },
+  "replay_metrics": {
+    "frames": 23012,
+    "indoor_frames": 11251,
+    "v50_indoor_missing_building_id": 8311,
+    "v50_indoor_missing_building_id_percent": 73.86898942316239,
+    "exact_building_region_matches": 11213,
+    "exact_building_region_match_percent": 99.66225224424495,
+    "path_recovery_events": 3047,
+    "indoor_path_recovery_events": 2188,
+    "indoor_path_recovery_percent": 71.80833606826387,
+    "weapon_search_abandoned": 112,
+    "indoor_weapon_search_abandoned": 55,
+    "player_target_shot_frames": 28,
+    "zero_legal_shot_packets": 6
+  },
+  "clean_patch_replay": "PASS",
+  "limitations": [
+    "No long-running graphical-client 50v50 live match was available in the container"
+  ]
+}

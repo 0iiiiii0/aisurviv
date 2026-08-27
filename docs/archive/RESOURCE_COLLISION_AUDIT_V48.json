@@ -1,0 +1,5742 @@
+{
+  "generatedAt": "2026-07-31T09:28:44.629Z",
+  "summary": {
+    "resourceDefinitions": 170,
+    "circleDefinitions": 83,
+    "aabbDefinitions": 87,
+    "testedGeometryCases": 3360,
+    "issues": 0
+  },
+  "issues": [],
+  "resources": [
+    {
+      "type": "barrel_01b",
+      "obstacleType": "barrel",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.75,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.6
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": true,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "barrel_02",
+      "obstacleType": "barrel",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.75,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 60,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "barrel_03",
+      "obstacleType": "barrel",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.75,
+        "height": 0,
+        "min": {
+          "x": -1.25,
+          "y": -0.5
+        },
+        "max": {
+          "x": 1.25,
+          "y": 0.5
+        }
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "barrel_04",
+      "obstacleType": "barrel",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.75,
+        "height": 0,
+        "min": {
+          "x": -1.25,
+          "y": -0.5
+        },
+        "max": {
+          "x": 1.25,
+          "y": 0.5
+        }
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "bookshelf_01",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -3.5,
+          "y": -1
+        },
+        "max": {
+          "x": 3.5,
+          "y": 1
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "bookshelf_02",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -3.5,
+          "y": -1
+        },
+        "max": {
+          "x": 3.5,
+          "y": 1
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_01",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_02",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_03",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_04",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_05",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 5,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_06",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "case_07",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_01",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_01cb",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_02",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_03",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": 0
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_03cb",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": 0
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_03d",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": 0
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_03f",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": 0
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_03x",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": 0
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_04",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "chest_04d",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.6
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.6
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 5,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "class_crate_common_assault",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_common_demo",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 10,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_common_healer",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_common_scout",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_common_sniper",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 5,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_common_tank",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 5,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_mythic",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_rare_assault",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_rare_demo",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_rare_healer",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_rare_scout",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_rare_sniper",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "class_crate_rare_tank",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 7,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "club_window_01",
+      "obstacleType": "",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -0.4,
+          "y": -2
+        },
+        "max": {
+          "x": 0.4,
+          "y": 2
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 1,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "club_window_broken_01",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_01",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_01x",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_02",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_02d",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_02f",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_02sv",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_02sv_lake",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_02x",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_03",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.575,
+          "y": -1.575
+        },
+        "max": {
+          "x": 1.575,
+          "y": 1.575
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.886579864025407e-15
+    },
+    {
+      "type": "crate_03x",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.575,
+          "y": -1.575
+        },
+        "max": {
+          "x": 1.575,
+          "y": 1.575
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.886579864025407e-15
+    },
+    {
+      "type": "crate_04",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 225,
+      "material": "",
+      "armorPlated": true,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_06",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -1.1
+        },
+        "max": {
+          "x": 2.25,
+          "y": 1.1
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": true,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_07",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_07b",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_07sv",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_08",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_09",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_10",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 8,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_10sv",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_11",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 8,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_11de",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_11h",
+      "obstacleType": "crate",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.25
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 10,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_11sv",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_11tr",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 9,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_12",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -3.5,
+          "y": -3.5
+        },
+        "max": {
+          "x": 3.5,
+          "y": 3.5
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 10,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_13",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -3.5,
+          "y": -3.5
+        },
+        "max": {
+          "x": 3.5,
+          "y": 3.5
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 13,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_14",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_14a",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_15",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_16",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_18",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_19",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_20",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.7,
+          "y": -1.7
+        },
+        "max": {
+          "x": 1.7,
+          "y": 1.7
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.886579864025407e-15
+    },
+    {
+      "type": "crate_21",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_21b",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_22",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "crate_22d",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -2.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 2.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "deposit_box_01",
+      "obstacleType": "locker",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.5,
+          "y": -0.85
+        },
+        "max": {
+          "x": 2.5,
+          "y": 1.15
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "deposit_box_02",
+      "obstacleType": "locker",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.5,
+          "y": -0.85
+        },
+        "max": {
+          "x": 2.5,
+          "y": 1.15
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "drawers_01",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.5,
+          "y": -1.1
+        },
+        "max": {
+          "x": 2.5,
+          "y": 1.4
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "drawers_02",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.5,
+          "y": -1.1
+        },
+        "max": {
+          "x": 2.5,
+          "y": 1.4
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "gun_mount_01",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -0.49999999999999994
+        },
+        "max": {
+          "x": 2.25,
+          "y": 0.8999999999999999
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "gun_mount_02",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -0.49999999999999994
+        },
+        "max": {
+          "x": 2.25,
+          "y": 0.8999999999999999
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "gun_mount_03",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -0.49999999999999994
+        },
+        "max": {
+          "x": 2.25,
+          "y": 0.8999999999999999
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "gun_mount_04",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -0.49999999999999994
+        },
+        "max": {
+          "x": 2.25,
+          "y": 0.8999999999999999
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "gun_mount_05",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -0.49999999999999994
+        },
+        "max": {
+          "x": 2.25,
+          "y": 0.8999999999999999
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "house_window_01",
+      "obstacleType": "",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -0.4,
+          "y": -2
+        },
+        "max": {
+          "x": 0.4,
+          "y": 2
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 1,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "house_window_broken_01",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "lab_window_01",
+      "obstacleType": "",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -0.4,
+          "y": -2
+        },
+        "max": {
+          "x": 0.4,
+          "y": 2
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 1,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "lab_window_broken_01",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "locker_01",
+      "obstacleType": "locker",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.5,
+          "y": -0.44999999999999996
+        },
+        "max": {
+          "x": 1.5,
+          "y": 0.75
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "locker_02",
+      "obstacleType": "locker",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.5,
+          "y": -0.44999999999999996
+        },
+        "max": {
+          "x": 1.5,
+          "y": 0.75
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "locker_03",
+      "obstacleType": "locker",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.5,
+          "y": -0.44999999999999996
+        },
+        "max": {
+          "x": 1.5,
+          "y": 0.75
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 1
+      },
+      "health": 20,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "mil_crate_01",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "mil_crate_02",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 4,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "mil_crate_03",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "mil_crate_04",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "mil_crate_05",
+      "obstacleType": "crate",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.7,
+          "y": -1.25
+        },
+        "max": {
+          "x": 2.7,
+          "y": 1.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "planter_01",
+      "obstacleType": "pot",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -4.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 4.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "planter_02",
+      "obstacleType": "pot",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -4.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 4.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "planter_03",
+      "obstacleType": "pot",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -4.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 4.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "planter_06",
+      "obstacleType": "pot",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -2.25,
+          "y": -4.25
+        },
+        "max": {
+          "x": 2.25,
+          "y": 4.25
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "planter_07",
+      "obstacleType": "pot",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.5,
+          "y": -1.5
+        },
+        "max": {
+          "x": 1.5,
+          "y": 1.5
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_01",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_02",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_03",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_03b",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_03c",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_04",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "pot_05",
+      "obstacleType": "pot",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.5,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 50,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "potato_01",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": true,
+      "airdropCrate": false,
+      "regrow": true,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "potato_02",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": true,
+      "airdropCrate": false,
+      "regrow": true,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "potato_03",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.1,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": true,
+      "airdropCrate": false,
+      "regrow": true,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "pumpkin_01",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 0
+    },
+    {
+      "type": "pumpkin_02",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 140,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 0
+    },
+    {
+      "type": "pumpkin_03",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.25,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "silo_01po",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 7.75,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 2500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "squash_01",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.25,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "stand_01",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.25,
+          "y": -1.1
+        },
+        "max": {
+          "x": 1.25,
+          "y": 1.4
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "stone_01",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_01b",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_01cb",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_01f",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_01sv",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.5,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_01x",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_02",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_02sv",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.9968028886505635e-15
+    },
+    {
+      "type": "stone_03",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 1.7763568394002505e-15
+    },
+    {
+      "type": "stone_03b",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 1.7763568394002505e-15
+    },
+    {
+      "type": "stone_03cb",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 1.7763568394002505e-15
+    },
+    {
+      "type": "stone_03f",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 1.7763568394002505e-15
+    },
+    {
+      "type": "stone_03x",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.9,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 1.7763568394002505e-15
+    },
+    {
+      "type": "stone_04",
+      "obstacleType": "",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0,
+        "min": {
+          "x": -1.8,
+          "y": -1.8
+        },
+        "max": {
+          "x": 1.8,
+          "y": 1.8
+        }
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 0.8,
+        "destroy": 0.75
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": true,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 4.6629367034256575e-15
+    },
+    {
+      "type": "stone_05",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.7,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": true,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 2.886579864025407e-15
+    },
+    {
+      "type": "stone_06",
+      "obstacleType": "",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0,
+        "min": {
+          "x": -4.5,
+          "y": -2
+        },
+        "max": {
+          "x": 4.5,
+          "y": 2
+        }
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 250,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": true,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "stone_07",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 7.75,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "toilet_01",
+      "obstacleType": "toilet",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0.25
+        },
+        "rad": 1.18,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 4.218847493575595e-15
+    },
+    {
+      "type": "toilet_02",
+      "obstacleType": "toilet",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0.25
+        },
+        "rad": 1.18,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 4.218847493575595e-15
+    },
+    {
+      "type": "toilet_02b",
+      "obstacleType": "toilet",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0.25
+        },
+        "rad": 1.18,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 4.218847493575595e-15
+    },
+    {
+      "type": "toilet_03",
+      "obstacleType": "toilet",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0.25
+        },
+        "rad": 1.18,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 4.218847493575595e-15
+    },
+    {
+      "type": "toilet_04",
+      "obstacleType": "toilet",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0.25
+        },
+        "rad": 1.18,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.8
+      },
+      "health": 100,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 4.218847493575595e-15
+    },
+    {
+      "type": "towelrack_01",
+      "obstacleType": "furniture",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -3,
+          "y": -1
+        },
+        "max": {
+          "x": 3,
+          "y": 1
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 75,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "tree_01",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_01cb",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.2,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.1,
+        "createMax": 1.3,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.774758283725532e-15
+    },
+    {
+      "type": "tree_01sv",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_01x",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_02",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 120,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_02h",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.9
+      },
+      "health": 120,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 1,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_03",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_03sv",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_05",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.3,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.3,
+        "destroy": 0.5
+      },
+      "health": 400,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 3.552713678800501e-15
+    },
+    {
+      "type": "tree_05b",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 2.3,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "tree_05c",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.05,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.6,
+        "createMax": 1.6,
+        "destroy": 0.5
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 1.1102230246251565e-15
+    },
+    {
+      "type": "tree_06",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_07",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_07sp",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_07spr",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_07su",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1.2,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_08",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.4,
+        "destroy": 0.5
+      },
+      "health": 225,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_08b",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.75,
+        "createMax": 2,
+        "destroy": 0.5
+      },
+      "health": 300,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_08c",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.75,
+        "createMax": 2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_08f",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.6,
+        "destroy": 0.5
+      },
+      "health": 200,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_08sp",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.4,
+        "destroy": 0.5
+      },
+      "health": 225,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_08spb",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.75,
+        "createMax": 2,
+        "destroy": 0.5
+      },
+      "health": 300,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_08spc",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.75,
+        "createMax": 2,
+        "destroy": 0.5
+      },
+      "health": 500,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 3,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_08spr",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.4,
+        "destroy": 0.5
+      },
+      "health": 225,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_08su",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.2,
+        "createMax": 1.4,
+        "destroy": 0.5
+      },
+      "health": 225,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 6.439293542825908e-15
+    },
+    {
+      "type": "tree_08sub",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1.75,
+        "createMax": 2,
+        "destroy": 0.5
+      },
+      "health": 300,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_09",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.6,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 120,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.6645352591003757e-15
+    },
+    {
+      "type": "tree_10",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.25,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.9,
+        "createMax": 1.1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.995204332975845e-15
+    },
+    {
+      "type": "tree_11",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.25,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 5.773159728050814e-15
+    },
+    {
+      "type": "tree_12",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_13",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "tree_interior_01",
+      "obstacleType": "",
+      "collisionType": "circle",
+      "collision": {
+        "type": 0,
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "rad": 1.55,
+        "height": 0
+      },
+      "scale": {
+        "createMin": 0.8,
+        "createMax": 1,
+        "destroy": 0.5
+      },
+      "health": 175,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 0,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 32,
+      "maximumSurfaceError": 5.551115123125783e-15
+    },
+    {
+      "type": "vending_01",
+      "obstacleType": "vending",
+      "collisionType": "aabb",
+      "collision": {
+        "type": 1,
+        "min": {
+          "x": -1.7,
+          "y": -1.1
+        },
+        "max": {
+          "x": 1.7,
+          "y": 1.4
+        },
+        "height": 0
+      },
+      "scale": {
+        "createMin": 1,
+        "createMax": 1,
+        "destroy": 0.75
+      },
+      "health": 150,
+      "material": "",
+      "armorPlated": false,
+      "stonePlated": false,
+      "explosive": false,
+      "directLootEntries": 2,
+      "destroyType": "",
+      "smartLoot": false,
+      "swapWeaponOnDestroy": false,
+      "airdropCrate": false,
+      "regrow": false,
+      "testedCases": 16,
+      "maximumSurfaceError": 2.886579864025407e-15
+    }
+  ]
+}

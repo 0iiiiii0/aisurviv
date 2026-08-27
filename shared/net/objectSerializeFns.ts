@@ -127,6 +127,8 @@ export interface ObjectsFullData {
         };
         isPuzzlePiece: boolean;
         parentBuildingId?: number;
+        /** Puzzle-piece label (for example "egg" in the Eye bunker) used to solve door sequences. */
+        puzzlePiece?: string;
         isSkin: boolean;
         skinPlayerId?: number;
     };
@@ -363,7 +365,10 @@ export const ObjectSerializeFns: {
             }
 
             s.writeBoolean(data.isPuzzlePiece);
-            if (data.isPuzzlePiece) s.writeUint16(data.parentBuildingId!);
+            if (data.isPuzzlePiece) {
+                s.writeUint16(data.parentBuildingId!);
+                s.writeString(data.puzzlePiece ?? "");
+            }
 
             s.writeBoolean(data.isSkin);
             if (data.isSkin) s.writeUint16(data.skinPlayerId!);
@@ -402,6 +407,7 @@ export const ObjectSerializeFns: {
             data.isPuzzlePiece = s.readBoolean();
             if (data.isPuzzlePiece) {
                 data.parentBuildingId = s.readUint16();
+                data.puzzlePiece = s.readString();
             }
             data.isSkin = s.readBoolean();
             if (data.isSkin) {

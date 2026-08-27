@@ -11,6 +11,7 @@ const mapDef: PartialMapDef = {
         name: "Potato",
         icon: "img/loot/loot-throwable-potato.svg",
         buttonCss: "btn-mode-potato",
+        buttonText: "potato",
     },
     assets: {
         audio: [

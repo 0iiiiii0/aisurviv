@@ -1,0 +1,25 @@
+V21 validation summary
+======================
+
+Build checks
+- Server TypeScript build: PASS
+- Client TypeScript --noEmit: PASS
+
+New combat tests
+- Projectile intercept lead: PASS
+- Close-range orbit / retreat blend: PASS
+- Full-player-collider cover anchor: PASS
+- Left/right peek geometry: PASS
+- Pro hide -> peek -> return cycle: PASS
+
+Regression tests
+- 28 server smoke-test scripts: PASS
+- Duel and duel vision: PASS
+- Deterministic gunfire and healing safety: PASS
+- Aim smoothing and reload tracking: PASS
+- All 47 playlists / 17 maps: PASS
+- CPU load control and gas escape: PASS
+- Spectator, auto-fill, faction, admin, loot, potato and room lifecycle tests: PASS
+
+Important limitation
+- Automated geometry tests model obstacles with the same circularized radius used by SmartBot. Very irregular custom obstacle shapes may still need map-specific tuning after real server observation.

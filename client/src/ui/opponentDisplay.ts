@@ -58,6 +58,28 @@ export class LoadoutDisplay {
     activeId = 98;
     activePlayer!: Player;
 
+    /**
+     * 仓库预览：覆盖示例人物的装备（含主武器/近战），
+     * 使用与游戏内完全相同的 Player 渲染。
+     */
+    previewLook: {
+        outfit: string;
+        helmet: string;
+        chest: string;
+        backpack: string;
+        activeWeapon: string;
+    } | null = null;
+    /**
+     * 仓库预览：玩家应显示在哪个屏幕位置（画布中心）。
+     * 设置后 update 不再按主界面弹窗布局计算相机偏移。
+     */
+    previewCameraCenter: { x: number; y: number } | null = null;
+    /**
+     * Render only the player model for isolated previews such as /storage.
+     * The regular menu preview keeps the map backdrop and viewport-sized camera.
+     */
+    playerOnlyPreview = false;
+
     constructor(
         public pixi: PIXI.Application,
         public audioManager: AudioManager,
@@ -100,9 +122,9 @@ export class LoadoutDisplay {
         this.debugDisplay = new PIXI.Graphics();
 
         const pixiContainers = [
-            this.map.display.ground,
+            this.playerOnlyPreview ? null : this.map.display.ground,
             this.renderer.layers[0],
-            this.renderer.ground,
+            this.playerOnlyPreview ? null : this.renderer.ground,
             this.renderer.layers[1],
             this.renderer.layers[2],
             this.renderer.layers[3],
@@ -160,8 +182,12 @@ export class LoadoutDisplay {
             spectatorCount: 0,
             zoomDirty: false,
             zoom: 0,
+            indoors: false,
             scope: "1xscope",
             inventory: {},
+            sandevistanActive: false,
+            sandevistanRemaining: 0,
+            sandevistanCooldown: 0,
             weapsDirty: true,
             curWeapIdx: 2,
             weapons: [
@@ -186,6 +212,7 @@ export class LoadoutDisplay {
 
         this.activePlayer.layer = this.activePlayer.m_netData.m_layer;
         this.activePlayer.isLoadoutAvatar = true;
+        this.activePlayer.suppressEquipSfx = this.playerOnlyPreview;
         this.renderer.setActiveLayer(this.activePlayer.layer);
         this.audioManager.activeLayer = this.activePlayer.layer;
 
@@ -230,7 +257,7 @@ export class LoadoutDisplay {
             this.outfitOld = this.loadout.outfit;
         }
         if (this.activePlayer) {
-            this.activePlayer.playActionStartSfx = true;
+            this.activePlayer.playActionStartSfx = !this.playerOnlyPreview;
         }
         this.animIdleTicker = 0;
     }
@@ -266,15 +293,17 @@ export class LoadoutDisplay {
         }
 
         const obj: ObjectData<ObjectType.Player> = {
-            outfit: this.loadout.outfit,
-            backpack: "backpack02",
-            helmet: "helmet01",
-            chest: "chest03",
-            activeWeapon: this.loadout.melee,
+            outfit: this.previewLook?.outfit ?? this.loadout.outfit,
+            backpack: this.previewLook?.backpack ?? "backpack02",
+            helmet: this.previewLook?.helmet ?? "helmet01",
+            chest: this.previewLook?.chest ?? "chest03",
+            activeWeapon: this.previewLook?.activeWeapon
+                || this.loadout.melee
+                || "fists",
             layer: 0,
             dead: false,
             downed: false,
-            animType: options.animType || 0,
+            animType: this.previewLook ? 0 : options.animType || 0,
             animSeq: options.animSeq || 0,
             actionSeq: options.actionSeq || 0,
             actionType: options.actionType || 0,
@@ -301,11 +330,25 @@ export class LoadoutDisplay {
             teamId: 0,
             groupId: 0,
             name: "",
+            isBot: false,
             loadout: {
                 heal: this.loadout.heal,
                 boost: this.loadout.boost,
             },
         });
+    }
+
+    /** 仓库预览：设置示例人物外观与装备并刷新渲染。 */
+    setPreviewLook(look: {
+        outfit: string;
+        helmet: string;
+        chest: string;
+        backpack: string;
+        activeWeapon: string;
+    }): void {
+        this.previewLook = look;
+        this.animIdleTicker = Number.MAX_VALUE;
+        this.updateCharDisplay();
     }
 
     getCameraTargetZoom() {
@@ -376,7 +419,15 @@ export class LoadoutDisplay {
         const debug = {} as DebugRenderOpts;
 
         // Camera
-        this.camera.m_pos = v2.sub(this.activePlayer.m_pos, this.cameraOffset);
+        if (this.previewCameraCenter) {
+            const z = this.camera.m_z();
+            this.camera.m_pos.x = this.activePlayer.m_pos.x
+                - (this.previewCameraCenter.x - this.camera.m_screenWidth * 0.5) / z;
+            this.camera.m_pos.y = this.activePlayer.m_pos.y
+                - (this.camera.m_screenHeight * 0.5 - this.previewCameraCenter.y) / z;
+        } else {
+            this.camera.m_pos = v2.sub(this.activePlayer.m_pos, this.cameraOffset);
+        }
         this.camera.m_zoom = math.lerp(
             dt * 5,
             this.camera.m_zoom,
@@ -468,15 +519,17 @@ export class LoadoutDisplay {
     }
 
     render(_dt: number, debug: DebugRenderOpts) {
-        const grassColor = this.map.mapLoaded
-            ? this.map.getMapDef().biome.colors.grass
-            : 0x80af49;
+        if (!this.playerOnlyPreview) {
+            const grassColor = this.map.mapLoaded
+                ? this.map.getMapDef().biome.colors.grass
+                : 0x80af49;
 
-        this.pixi.renderer.background.color = grassColor;
+            this.pixi.renderer.background.color = grassColor;
+        }
 
         // Module rendering
         this.playerBarn.m_render(this.camera, debug);
-        this.map.m_render(this.camera);
+        if (!this.playerOnlyPreview) this.map.m_render(this.camera);
 
         debugLines.m_render(this.camera, this.debugDisplay);
         debugLines.flush();
@@ -484,6 +537,14 @@ export class LoadoutDisplay {
 
     resize() {
         if (this.initialized) {
+            if (this.playerOnlyPreview) {
+                // Pixi world objects use canvas-local coordinates. Using the
+                // browser viewport here pushes the storage avatar off-canvas.
+                this.camera.m_screenWidth = this.pixi.screen.width;
+                this.camera.m_screenHeight = this.pixi.screen.height;
+                this.renderer.resize(this.map, this.camera);
+                return;
+            }
             this.camera.m_screenWidth = device.screenWidth;
             this.camera.m_screenHeight = device.screenHeight;
             this.map.resize(this.pixi.renderer, this.canvasMode);

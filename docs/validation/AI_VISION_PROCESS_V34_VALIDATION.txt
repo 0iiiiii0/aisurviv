@@ -1,0 +1,851 @@
+V34 AI vision and isolated-room process resiliency validation
+
+Server build: PASS
+Client TypeScript noEmit: PASS
+
+## 01/49 test:duel: PASS (2.89s)
+
+> test:duel
+> node -r ts-node/register src/duelSmokeTest.ts
+
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Created in 18 ms
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Player Red joined game ID duel-smoke-test
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Player Blue joined game ID duel-smoke-test
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Spectator Admin Spectator joined game ID duel-smoke-test
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Created in 2 ms
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Player No Boost joined game ID duel-no-adrenaline-smoke-test
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Game Ended
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Created in 2 ms
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Player Flare Red joined game ID duel-flare-smoke-test
+[36m[2026-07-27 8:40:24 AM][0m [32mGame #duel[0m | Player Flare Blue joined game ID duel-flare-smoke-test
+Duel smoke test passed: 176x136, 3 players, five rounds, final score 3:2; round-bound airstrikes are cleared; single and dual flare guns are safe.
+[36m[2026-07-27 8:40:25 AM][0m [32mGame #duel[0m | Game Ended
+
+## 02/49 test:duel-lobby: PASS (0.80s)
+
+> test:duel-lobby
+> node -r ts-node/register src/duelLobbySmokeTest.ts
+
+Duel lobby smoke test passed: human invite, AI opponent, customization, start and return flow.
+
+## 03/49 test:admin: PASS (2.03s)
+
+> test:admin
+> node -r ts-node/register src/adminSmokeTest.ts
+
+Admin smoke test passed: password-protected dashboard data, bot auto-fill settings, modes, announcement, duel weapons, rooms and actions.
+
+## 04/49 test:ipv6: PASS (0.31s)
+
+> test:ipv6
+> node -r ts-node/register src/ipv6SmokeTest.ts
+
+IPv6 smoke test passed: dual-stack hosts and URL authorities.
+
+## 05/49 test:potato: PASS (1.91s)
+
+> test:potato
+> node -r ts-node/register src/potatoSmokeTest.ts
+
+Potato weapon rotation smoke test passed.
+
+## 06/49 test:bot-input: PASS (1.26s)
+
+> test:bot-input
+> node -r ts-node/register src/smartBotInputSmokeTest.ts
+
+SmartBot input safety smoke test passed: mouse distance, movement and hold-before-release throwable input are valid.
+
+## 07/49 test:duel-vision: PASS (0.43s)
+
+> test:duel-vision
+> node -r ts-node/register src/duelVisionSmokeTest.ts
+
+Duel vision/search smoke test passed.
+
+## 08/49 test:all-modes: PASS (0.82s)
+
+> test:all-modes
+> node -r ts-node/register src/allModesSmokeTest.ts
+
+All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.
+
+## 09/49 test:spectator-autofill: PASS (3.48s)
+
+> test:spectator-autofill
+> node -r ts-node/register src/spectatorAutoFillSmokeTest.ts
+
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Created in 423 ms
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Player First joined game ID spectator-autofill-smoke
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Player Second joined game ID spectator-autofill-smoke
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Player Server Bot joined game ID spectator-autofill-smoke
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Spectator Observer joined game ID spectator-autofill-smoke
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | "Second" left
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | "First" left
+[36m[2026-07-27 8:40:35 AM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-27 8:40:36 AM][0m [32mGame #spec[0m | Created in 78 ms
+[36m[2026-07-27 8:40:36 AM][0m [32mGame #spec[0m | Spectator Early Observer joined game ID spectator-first-packet
+[36m[2026-07-27 8:40:36 AM][0m [32mGame #spec[0m | Player First Contestant joined game ID spectator-first-packet
+[36m[2026-07-27 8:40:36 AM][0m [32mGame #spec[0m | Spectator Late Observer joined game ID spectator-first-packet
+Spectator/auto-fill smoke test passed: target metadata, observer-before-bots binding, switching, disconnect fallback, and room counts.
+[36m[2026-07-27 8:40:36 AM][0m [32mGame #spec[0m | Game Ended
+
+## 10/49 test:loot-ai: PASS (1.27s)
+
+> test:loot-ai
+> node -r ts-node/register src/lootStrategySmokeTest.ts
+
+Loot/resource search strategy smoke test passed
+
+## 11/49 test:bot-brain: PASS (0.45s)
+
+> test:bot-brain
+> node -r ts-node/register src/smartBotBrainSmokeTest.ts
+
+smart bot brain smoke test passed
+
+## 12/49 test:faction-autofill: PASS (2.44s)
+
+> test:faction-autofill
+> node -r ts-node/register src/factionAutoFillSmokeTest.ts
+
+[36m[2026-07-27 8:40:51 AM][0m [32mGame #fact[0m | Creating
+[36m[2026-07-27 8:40:51 AM][0m [32mGame #fact[0m | Created in 218 ms
+[36m[2026-07-27 8:40:51 AM][0m [32mGame #fact[0m | Player Blue Bot joined game ID faction-autofill-forced-team
+[36m[2026-07-27 8:40:51 AM][0m [32mGame #fact[0m | Player Red Bot joined game ID faction-autofill-forced-team
+Faction auto-fill smoke test passed: one bot every two seconds, eight-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.
+
+## 13/49 test:bot-combat-heal: PASS (0.38s)
+
+> test:bot-combat-heal
+> node -r ts-node/register src/botCombatHealSmokeTest.ts
+
+Bot combat/heal smoke test passed: deterministic firing, fixed-point last-seen blind fire, current-scope freshness, no out-of-range rooting, and cover-gated healing.
+
+## 14/49 test:resource-sweep: PASS (0.31s)
+
+> test:resource-sweep
+> node -r ts-node/register src/resourceSweepSmokeTest.ts
+
+Opening resource sweep smoke test passed
+
+## 15/49 test:loot-safety: PASS (1.54s)
+
+> test:loot-safety
+> node -r ts-node/register src/lootSafetySmokeTest.ts
+
+Loot definition/runtime and anti-tunnelling safety smoke test passed
+
+## 16/49 test:aim-control: PASS (0.32s)
+
+> test:aim-control
+> node -r ts-node/register src/aimControlSmokeTest.ts
+
+Aim control smoke test passed: reload tracking can turn smoothly without one-frame snapping.
+
+## 17/49 test:special-roles: PASS (0.37s)
+
+> test:special-roles
+> node -r ts-node/register src/specialRoleSmokeTest.ts
+
+special role smoke test passed
+
+## 18/49 test:gameplay-roles: PASS (3.28s)
+
+> test:gameplay-roles
+> node -r ts-node/register src/gameplayRoleSmokeTest.ts
+
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #game[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #game[0m | Created in 181 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #game[0m | Player Leader joined game ID gameplay-role-smoke
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #game[0m | Player Scout joined game ID gameplay-role-smoke
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #game[0m | Player Demo joined game ID gameplay-role-smoke
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #game[0m | Player Woods King joined game ID gameplay-role-smoke
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 51 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 54 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 42 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 37 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 47 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 52 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 37 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 40 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 38 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Creating
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Created in 40 ms
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Player Hunter joined game ID savannah-role-smoke-0
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Player Victim 1 joined game ID savannah-role-smoke-0
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Player Victim 2 joined game ID savannah-role-smoke-0
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Player Victim 3 joined game ID savannah-role-smoke-0
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Player Challenger joined game ID savannah-role-smoke-0
+[36m[2026-07-27 8:40:56 AM][0m [32mGame #sava[0m | Player Victim 4 joined game ID savannah-role-smoke-0
+Gameplay role smoke test passed: faction, Woods, Cobalt, and Savannah role mechanics.
+[36m[2026-07-27 8:40:57 AM][0m [32mGame #sava[0m | Game Ended
+
+## 19/49 test:integrated-spec: PASS (0.57s)
+
+> test:integrated-spec
+> node -r ts-node/register src/integratedLogicSpecSmokeTest.ts
+
+Full integrated logic specification smoke test passed
+
+## 20/49 test:faction-airdrop-container: PASS (1.39s)
+
+> test:faction-airdrop-container
+> node -r ts-node/register src/factionAirdropContainerSmokeTest.ts
+
+faction airdrop/container smoke test passed
+
+## 21/49 test:admin-auth: PASS (0.75s)
+
+> test:admin-auth
+> node -r ts-node/register src/adminAuthSmokeTest.ts
+
+Admin auth smoke test passed: plain-text password storage, login sessions, logout, password rotation and session invalidation.
+
+## 22/49 test:bot-autofill-config: PASS (0.83s)
+
+> test:bot-autofill-config
+> node -r ts-node/register src/botAutoFillConfigSmokeTest.ts
+
+Bot auto-fill config smoke test passed: live per-mode cadence, one shared Solo/Duo/Squad AI cap, per-mode targets, and balanced faction total limits.
+
+## 23/49 test:navigation-recovery: PASS (0.35s)
+
+> test:navigation-recovery
+> node -r ts-node/register src/navigationRecoverySmokeTest.ts
+
+Navigation recovery smoke test passed
+
+## 24/49 test:room-lifecycle: PASS (0.29s)
+
+> test:room-lifecycle
+> node -r ts-node/register src/roomLifecycleSmokeTest.ts
+
+Room lifecycle smoke test passed
+
+## 25/49 test:revive-coordination: PASS (0.29s)
+
+> test:revive-coordination
+> node -r ts-node/register src/reviveCoordinationSmokeTest.ts
+
+revive coordination smoke test passed
+
+## 26/49 test:spectator-difficulty: PASS (1.32s)
+
+> test:spectator-difficulty
+> node -r ts-node/register src/spectatorDifficultySmokeTest.ts
+
+Spectator/free-camera and mixed difficulty smoke test passed.
+
+## 27/49 test:cpu-load: PASS (0.32s)
+
+> test:cpu-load
+> node -r ts-node/register src/cpuLoadControlSmokeTest.ts
+
+CPU load control smoke test passed: soft throttle, hard spawn pause, and bounded limits.
+
+## 28/49 test:gas-escape: PASS (0.34s)
+
+> test:gas-escape
+> node -r ts-node/register src/gasEscapeSmokeTest.ts
+
+Gas escape smoke test passed: current/future-circle targeting, obstacle alternatives, urgent shortest-route selection and boundary hysteresis, and per-bot rotation lanes.
+
+## 29/49 test:combat-tactics: PASS (0.43s)
+
+> test:combat-tactics
+> node -r ts-node/register src/combatTacticsSmokeTest.ts
+
+Combat tactics smoke test passed: intercept tracking, cover, smoke memory, and controlled blind fire.
+
+## 30/49 test:v22-resource-combat: PASS (1.31s)
+
+> test:v22-resource-combat
+> node -r ts-node/register src/v22ResourceCombatSmokeTest.ts
+
+V22 resource/combat smoke test passed
+
+## 31/49 test:forbidden-ai: PASS (0.74s)
+
+> test:forbidden-ai
+> node -r ts-node/register src/forbiddenCombatSmokeTest.ts
+
+Forbidden AI smoke test passed: exact intercept, delayed-context compensation, blocked-motion filtering, automatic-rifle precision stance, speed-recovery lead, cover/explosive planning, aim-ray danger, fake-peek and cadence-evasion detection, world-bullet threat analysis, sampled dodge, legal quickswitch, firearm recovery and difficulty validation.
+
+## 32/49 test:forbidden-context: PASS (2.31s)
+
+> test:forbidden-context
+> node -r ts-node/register src/forbiddenContextSmokeTest.ts
+
+[36m[2026-07-27 8:41:30 AM][0m [32mGame #forb[0m | Creating
+[36m[2026-07-27 8:41:30 AM][0m [32mGame #forb[0m | Created in 19 ms
+[36m[2026-07-27 8:41:30 AM][0m [32mGame #forb[0m | Player Forbidden joined game ID forbidden-context-smoke
+[36m[2026-07-27 8:41:30 AM][0m [32mGame #forb[0m | Player Human joined game ID forbidden-context-smoke
+Forbidden/LEGIT context smoke test passed: HACKER keeps omniscient state while LEGIT receives only normal-client-visible players, visible bullets/projectiles and map cover.
+
+## 33/49 test:airstrike-safety: PASS (1.56s)
+
+> test:airstrike-safety
+> node -r ts-node/register src/airstrikeSafetySmokeTest.ts
+
+Airstrike safety smoke test passed: finite plane paths and immediate predicted strobe evacuation zones.
+
+## 34/49 test:spud-gun: PASS (0.79s)
+
+> test:spud-gun
+> node -r ts-node/register src/spudGunSmokeTest.ts
+
+spud gun smoke test passed
+
+## 35/49 test:ai-recorder: PASS (0.43s)
+
+> test:ai-recorder
+> node -r ts-node/register src/aiMatchRecorderSmokeTest.ts
+
+AI match recorder smoke test passed
+
+## 36/49 test:collective-sim: PASS (0.37s)
+
+> test:collective-sim
+> node -r ts-node/register src/collectiveLogicSimulation.ts
+
+{
+  "simulation": "40-bot deterministic faction logic",
+  "durationMs": 180000,
+  "stepMs": 500,
+  "bots": 40,
+  "armedByThirtySeconds": 40,
+  "maxSimultaneousDefenders": 4,
+  "maxSupportDuration": 12000,
+  "specialStateShare": 1.11,
+  "gasRecoveryChecks": 6040,
+  "staleResourceRecoveries": 0,
+  "occupiedResourceCount": 40,
+  "assignedResources": 40,
+  "maxResourceCrowd": 1,
+  "stateTotals": {
+    "loot": 1120,
+    "combat": 7120,
+    "special": 160,
+    "gas": 6040
+  },
+  "result": "PASS"
+}
+
+## 37/49 test:mode-isolation: PASS (0.75s)
+
+> test:mode-isolation
+> node -r ts-node/register src/modeIsolationSmokeTest.ts
+
+mode isolation smoke test passed
+
+## 38/49 test:v26-sim: PASS (0.93s)
+
+> test:v26-sim
+> node -r ts-node/register src/v26MultiModeSimulation.ts
+
+{
+  "version": 26,
+  "simulatedStepMs": 500,
+  "scenarios": {
+    "solo": {
+      "system": "solo:normal",
+      "bots": 15,
+      "acquired": 15,
+      "longestAcquireMs": 8000,
+      "unreachableTargetsAbandoned": 2,
+      "totalAbandons": 2,
+      "peakInitialTargetConcentration": 2,
+      "commitmentMs": 12150,
+      "noProgressTimeoutMs": 3250,
+      "passed": true
+    },
+    "duo": {
+      "system": "duo:normal",
+      "bots": 20,
+      "acquired": 20,
+      "longestAcquireMs": 8500,
+      "unreachableTargetsAbandoned": 3,
+      "totalAbandons": 3,
+      "peakInitialTargetConcentration": 3,
+      "commitmentMs": 13500,
+      "noProgressTimeoutMs": 3500,
+      "passed": true
+    },
+    "squad": {
+      "system": "squad:normal",
+      "bots": 20,
+      "acquired": 20,
+      "longestAcquireMs": 8000,
+      "unreachableTargetsAbandoned": 3,
+      "totalAbandons": 3,
+      "peakInitialTargetConcentration": 4,
+      "commitmentMs": 11475,
+      "noProgressTimeoutMs": 3125,
+      "passed": true
+    },
+    "duel": {
+      "system": "duel",
+      "bots": 1,
+      "fixedLoadout": true,
+      "lootAttempts": 0,
+      "passed": true
+    },
+    "faction": {
+      "system": "faction:faction",
+      "bots": 40,
+      "acquired": 40,
+      "longestAcquireMs": 8500,
+      "unreachableTargetsAbandoned": 6,
+      "totalAbandons": 6,
+      "peakInitialTargetConcentration": 3,
+      "commitmentMs": 8775,
+      "noProgressTimeoutMs": 2625,
+      "passed": true
+    },
+    "potato": {
+      "system": "solo:event:potato",
+      "bots": 15,
+      "acquired": 15,
+      "longestAcquireMs": 8000,
+      "unreachableTargetsAbandoned": 2,
+      "totalAbandons": 2,
+      "peakInitialTargetConcentration": 2,
+      "commitmentMs": 15188,
+      "noProgressTimeoutMs": 3737,
+      "passed": true
+    }
+  },
+  "ammoSharing": {
+    "humanRequestClaimedAfterMs": 6500,
+    "recipientPlayerId": 9001,
+    "crossGroupGiftWorldRoute": "faction",
+    "passed": true
+  }
+}
+simulation written to /mnt/data/v34_work/server/V26_MULTI_MODE_SIMULATION.json
+
+## 39/49 test:v27-sim: PASS (1.56s)
+
+> test:v27-sim
+> node -r ts-node/register src/v27AirstrikeResourceNavigationSimulation.ts
+
+{
+  "version": 27,
+  "simulation": "airstrike-resource-navigation deterministic validation",
+  "buildingShell": {
+    "warehouseWallRadius": 3.2557641192199416,
+    "brickWallRadius": 2.0615528128088303,
+    "historicalFalseGapDetected": true,
+    "correctedShellBlocked": true
+  },
+  "airstrike": {
+    "criticalThreat": {
+      "highestPriority": true,
+      "impactInMs": 650,
+      "insideHighDamage": true
+    },
+    "alternateRouteClear": true,
+    "alternateTarget": {
+      "x": 42.28616793536588,
+      "y": 15.390906449655093
+    },
+    "singleStrikeBotsWarned": 40,
+    "singleStrikeBotsRoutedOutside": 40,
+    "strobePrediction": {
+      "pos": {
+        "x": 40.33261440515366,
+        "y": 31.45232960036812
+      },
+      "rad": 17,
+      "duration": 5.4,
+      "impactIn": 2.15,
+      "highDamageRad": 11.5
+    }
+  },
+  "resources": {
+    "throwableCrate": {
+      "type": "crate_14",
+      "obstacleType": "crate",
+      "resourceClass": "container",
+      "health": 75,
+      "lootEntries": 1,
+      "expectedLootUnits": 1,
+      "expectedLootValue": 11.5,
+      "priorityBias": 34,
+      "contactRadius": 2.25,
+      "dangerous": false,
+      "armorPlated": false,
+      "stonePlated": false,
+      "swapWeaponOnDestroy": false
+    },
+    "platedAmmoCrate": {
+      "type": "crate_04",
+      "obstacleType": "crate",
+      "resourceClass": "container",
+      "health": 225,
+      "lootEntries": 1,
+      "expectedLootUnits": 1,
+      "expectedLootValue": 11.5,
+      "priorityBias": 30,
+      "contactRadius": 2.25,
+      "dangerous": false,
+      "armorPlated": true,
+      "stonePlated": false,
+      "swapWeaponOnDestroy": false
+    },
+    "airdropPayload": {
+      "type": "crate_12",
+      "obstacleType": "crate",
+      "resourceClass": "container",
+      "health": 500,
+      "lootEntries": 10,
+      "expectedLootUnits": 30,
+      "expectedLootValue": 240,
+      "priorityBias": 18,
+      "contactRadius": 3.5,
+      "dangerous": false,
+      "armorPlated": false,
+      "stonePlated": false,
+      "swapWeaponOnDestroy": false
+    },
+    "falseResourceTypesExcluded": [
+      "oven_01",
+      "barrel_01",
+      "refrigerator_01"
+    ]
+  },
+  "airdrop": {
+    "standardShellsSupported": [
+      "airdrop_crate_01",
+      "airdrop_crate_02",
+      "airdrop_crate_03",
+      "airdrop_crate_04"
+    ],
+    "payloadsSupported": [
+      "crate_10",
+      "crate_11",
+      "crate_12",
+      "crate_13"
+    ]
+  },
+  "result": "PASS"
+}
+simulation written to /mnt/data/v34_work/server/V27_AIRSTRIKE_RESOURCE_NAV_SIMULATION.json
+
+## 40/49 test:spectator-supervisor: PASS (0.34s)
+
+> test:spectator-supervisor
+> node -r ts-node/register src/spectatorSupervisorSmokeTest.ts
+
+spectator supervisor smoke test passed
+
+## 41/49 test:v28-spectator-sim: PASS (0.36s)
+
+> test:v28-spectator-sim
+> node -r ts-node/register src/v28SpectatorSimulation.ts
+
+{
+  "simulatedBots": 60,
+  "visibleThreatResponsesPassed": 60,
+  "combatResponses": 24,
+  "counterfireResponses": 12,
+  "unarmedEvadeResponses": 12,
+  "survivalPriorityProtected": true,
+  "strategicTargetsSuppressed": 60,
+  "combatCandidatesPreserved": 60,
+  "minimumBackoffMs": 13900,
+  "maximumBackoffMs": 24000
+}
+
+## 42/49 test:aim-training: PASS (2.88s)
+
+> test:aim-training
+> node -r ts-node/register src/aimTrainingSmokeTest.ts
+
+[36m[2026-07-27 8:41:50 AM][0m [32mGame #aim-[0m | Creating
+[36m[2026-07-27 8:41:50 AM][0m [32mGame #aim-[0m | Created in 13 ms
+[36m[2026-07-27 8:41:50 AM][0m [32mGame #aim-[0m | Player Trainer joined game ID aim-training-smoke
+[36m[2026-07-27 8:41:50 AM][0m [32mGame #aim-[0m | Player 移动标靶 joined game ID aim-training-smoke
+[36m[2026-07-27 8:41:50 AM][0m [32mGame #aim-[0m | Game Ended
+aim training smoke test passed
+
+## 43/49 test:v29-aim-sim: PASS (0.49s)
+
+> test:v29-aim-sim
+> node -r ts-node/register src/v29AimTrainingSimulation.ts
+
+{
+  "targets": 1,
+  "simulatedShots": 1000,
+  "simulatedHits": 800,
+  "accuracy": 80,
+  "damage": 11400,
+  "targetFinalHealth": 100,
+  "boostLevels": [
+    {
+      "boost": 0,
+      "speedBonusPercent": 0
+    },
+    {
+      "boost": 25,
+      "speedBonusPercent": 0
+    },
+    {
+      "boost": 50,
+      "speedBonusPercent": 15.416666666666668
+    },
+    {
+      "boost": 75,
+      "speedBonusPercent": 15.416666666666668
+    },
+    {
+      "boost": 100,
+      "speedBonusPercent": 15.416666666666668
+    }
+  ],
+  "selectableDistances": [
+    12,
+    20,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100,
+    120,
+    140,
+    160
+  ],
+  "infiniteHealthAssertions": 800
+}
+v29 aim training simulation passed
+
+## 44/49 test:dual-switch: PASS (0.31s)
+
+> test:dual-switch
+> node -r ts-node/register src/dualSwitchSmokeTest.ts
+
+Dual-switch smoke test passed: confirmed-shot gating, pair eligibility, readiness and utility exclusions.
+
+## 45/49 test:v30-dual-switch-sim: PASS (0.33s)
+
+> test:v30-dual-switch-sim
+> node -r ts-node/register src/v30DualSwitchSimulation.ts
+
+{
+  "durationSeconds": 20,
+  "shots": 32,
+  "switches": 32,
+  "averageShotIntervalMs": 613,
+  "firstTenShots": [
+    {
+      "at": 0,
+      "slot": 0,
+      "type": "mosin"
+    },
+    {
+      "at": 0.2500000000000001,
+      "slot": 1,
+      "type": "sv98"
+    },
+    {
+      "at": 1.2499999999999953,
+      "slot": 0,
+      "type": "mosin"
+    },
+    {
+      "at": 1.49999999999999,
+      "slot": 1,
+      "type": "sv98"
+    },
+    {
+      "at": 2.499999999999969,
+      "slot": 0,
+      "type": "mosin"
+    },
+    {
+      "at": 2.7499999999999636,
+      "slot": 1,
+      "type": "sv98"
+    },
+    {
+      "at": 3.7499999999999423,
+      "slot": 0,
+      "type": "mosin"
+    },
+    {
+      "at": 3.999999999999937,
+      "slot": 1,
+      "type": "sv98"
+    },
+    {
+      "at": 4.999999999999916,
+      "slot": 0,
+      "type": "mosin"
+    },
+    {
+      "at": 5.24999999999991,
+      "slot": 1,
+      "type": "sv98"
+    }
+  ],
+  "firstTenSwitches": [
+    {
+      "at": 0,
+      "from": 0,
+      "to": 1,
+      "delay": 0.25
+    },
+    {
+      "at": 0.2500000000000001,
+      "from": 1,
+      "to": 0,
+      "delay": 1
+    },
+    {
+      "at": 1.2499999999999953,
+      "from": 0,
+      "to": 1,
+      "delay": 0.25
+    },
+    {
+      "at": 1.49999999999999,
+      "from": 1,
+      "to": 0,
+      "delay": 1
+    },
+    {
+      "at": 2.499999999999969,
+      "from": 0,
+      "to": 1,
+      "delay": 0.25
+    },
+    {
+      "at": 2.7499999999999636,
+      "from": 1,
+      "to": 0,
+      "delay": 1
+    },
+    {
+      "at": 3.7499999999999423,
+      "from": 0,
+      "to": 1,
+      "delay": 0.25
+    },
+    {
+      "at": 3.999999999999937,
+      "from": 1,
+      "to": 0,
+      "delay": 1
+    },
+    {
+      "at": 4.999999999999916,
+      "from": 0,
+      "to": 1,
+      "delay": 0.25
+    },
+    {
+      "at": 5.24999999999991,
+      "from": 1,
+      "to": 0,
+      "delay": 1
+    }
+  ]
+}
+
+## 46/49 test:v31-ui-cover: PASS (0.75s)
+
+> test:v31-ui-cover
+> node -r ts-node/register src/v31AimTrainingCoverSmokeTest.ts
+
+v31 aim training and cover preservation smoke test passed
+
+## 47/49 test:v32-combat-nav-airdrop: PASS (1.15s)
+
+> test:v32-combat-nav-airdrop
+> node -r ts-node/register src/v32CombatNavigationAirdropSimulation.ts
+
+{
+  "windowBlocked": true,
+  "hardCoverTypes": 3,
+  "forcedTriggerDeadlineMs": 1010,
+  "longRangeVoluntaryInterrupt": true,
+  "closeDirection": {
+    "x": 0.9331233176164143,
+    "y": 0.3595564964237697
+  },
+  "flank": {
+    "point": {
+      "x": 10.32,
+      "y": 4.3
+    },
+    "sign": 1,
+    "score": 0.02736731114670654,
+    "lineClear": true
+  },
+  "mainShellSearchRange": 154,
+  "eventShellSearchRange": 120,
+  "airdropMemoryMs": 45000,
+  "airdropAssociationRadius": 32,
+  "prolongedRecoveryDirectionChanged": true
+}
+v32 combat, navigation and airdrop simulation passed
+
+## 48/49 test:v33-aim-brokenarrow: PASS (2.49s)
+
+> test:v33-aim-brokenarrow
+> node -r ts-node/register src/v33AimTrainingBrokenArrowSimulation.ts
+
+{
+  "aimTraining": {
+    "humanFirst": true,
+    "targetReadySignal": true,
+    "readinessPolls": 3,
+    "orchestrationSpawnCalls": 1
+  },
+  "brokenArrow": {
+    "lanes": 7,
+    "laneIntervalMs": 380,
+    "throwAnimationSeconds": 0.11,
+    "warningRadius": 34,
+    "highDamageRadius": 25,
+    "openingBarrage": 4
+  },
+  "evasion": {
+    "warningRetainedAcrossGap": true,
+    "retainedImpactMs": 1700,
+    "overlapRiskAtEscape": 0,
+    "escapeTarget": {
+      "x": 1,
+      "y": 52.6607826292855
+    }
+  }
+}
+
+## 49/49 test:v34-vision-process: PASS (0.46s)
+
+> test:v34-vision-process
+> node -r ts-node/register src/v34VisionProcessResilienceSmokeTest.ts
+
+V34 vision and isolated game-process resilience smoke test passed.
+
+
+SUMMARY
+Server tests: 49/49 PASS, 0 FAIL, 0 TIMEOUT
+Final server build after all patches: PASS
+Final V34 smoke rerun after assertion expansion: PASS
+Client TypeScript --noEmit: PASS

@@ -59,15 +59,17 @@ Then install git and nginx with the following command.
 sudo apt -y install git nginx
 ```
 
-To install Node.js, install the appropriate package from your distro, or for Ubuntu:
+To install Node.js, install the appropriate package from your distro. Survev requires
+Node.js 22.18.0 or newer. For Ubuntu:
 ```sh
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - &&\
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - &&\
 sudo apt-get install -y nodejs
 ```
 
-And finally, install pnpm:
+And finally, enable the repository-pinned pnpm version through Corepack:
 ```sh
-npm i -g pnpm
+sudo corepack enable
+corepack install --global pnpm@11.18.0
 ```
 
 ### Database support (optional)
@@ -97,9 +99,10 @@ If you want to view the config documentation look at configType.ts file
 pnpm survev-setup
 ```
 
-Build the client & server:
+Install from the frozen lockfile and build the client and all four server entries
+(API, game server, room worker, and smart bot):
 ```sh
-pnpm build
+./build-complete.sh
 ```
 
 ### Setting up NGINX
@@ -150,7 +153,37 @@ server {
         root /opt/survev/client/dist;
     }
 
-    # API server
+    # Custom game/admin HTTP endpoints must reach the uWS game process.
+    # Keep these locations above the general /api block for readability;
+    # NGINX selects the longer prefix regardless of declaration order.
+    location /admin-api {
+        proxy_http_version 1.1;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $http_host;
+
+        proxy_pass "http://127.0.0.1:8001";
+    }
+
+    location /api/live-announcement {
+        proxy_pass "http://127.0.0.1:8001";
+    }
+
+    location /api/duel-lobby {
+        proxy_pass "http://127.0.0.1:8001";
+    }
+
+    location /api/aim-training {
+        proxy_pass "http://127.0.0.1:8001";
+    }
+
+    location /api/spectate {
+        proxy_pass "http://127.0.0.1:8001";
+    }
+
+    # Account, stash, shop and standard API endpoints use the Hono process.
     location /api {
         proxy_http_version 1.1;
 
@@ -221,6 +254,8 @@ Description=survev dedicated game server.
 Type=simple
 WorkingDirectory=/opt/survev/server
 ExecStart=/usr/bin/pnpm start:game
+Environment=NODE_ENV=production
+EnvironmentFile=-/opt/survev/.env
 Restart=on-failure
 
 [Install]
@@ -249,6 +284,8 @@ Description=survev dedicated API server.
 Type=simple
 WorkingDirectory=/opt/survev/server
 ExecStart=/usr/bin/pnpm start:api
+Environment=NODE_ENV=production
+EnvironmentFile=-/opt/survev/.env
 Restart=on-failure
 
 [Install]

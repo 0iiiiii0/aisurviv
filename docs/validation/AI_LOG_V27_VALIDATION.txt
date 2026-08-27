@@ -1,0 +1,59 @@
+Surviv.io AI V27 validation
+===============================
+
+Source logs
+-----------
+Archive: ai-match-recordings(4).zip
+Extracted files: 45
+JSONL files: 18
+Sessions: 9
+Matches: 3
+JSONL lines parsed: 47751
+Parse failures: 0
+Frames: 26857
+Events: 20894
+Bots: 60
+
+Log-derived findings
+--------------------
+Path recoveries: 2308
+Recoveries near exterior building shells: 1730 (74.96%)
+Stationary windows: 4385
+Bots never armed: 17
+Bots unarmed over 30 seconds: 25
+Longest unarmed duration: 319313 ms
+Longest recorded weapon-search segment: 170442 ms
+Repeated abandonment of crate:7141: 72
+Recorded airstrike warning frames: 0
+
+Policy replay
+-------------
+Weapon-search long segments: 38
+Old total: 605743 ms
+V27 capped total: 335519 ms
+Reduction: 44.61%
+Old longest: 170442 ms
+V27 longest: 12000 ms
+Note: policy replay, not full physics simulation.
+
+Deterministic simulation
+------------------------
+Result: PASS
+Historical building-shell false gap detected: True
+Corrected shell blocked: True
+Critical airstrike highest priority: True
+Single-strike bots warned: 40
+Single-strike bots routed outside: 40
+Alternate blocked-route escape clear: True
+
+Build and tests
+---------------
+Server TypeScript build: PASS
+Client TypeScript typecheck: PASS
+Server test scripts: 39/39 PASS
+Failed test scripts: 0
+
+Protocol compatibility
+----------------------
+Airstrike public client packet remains the existing pos/rad/duration format.
+Timing and high-damage radius are inferred by the server bot, avoiding a production-client stream change.

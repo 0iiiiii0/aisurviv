@@ -1,0 +1,1075 @@
+--- a/server/package.json
++++ b/server/package.json
+@@ -24,7 +24,8 @@
+         "test:bot-combat-heal": "node -r ts-node/register src/botCombatHealSmokeTest.ts",
+         "test:resource-sweep": "node -r ts-node/register src/resourceSweepSmokeTest.ts",
+         "test:loot-safety": "node -r ts-node/register src/lootSafetySmokeTest.ts",
+-        "test:aim-control": "node -r ts-node/register src/aimControlSmokeTest.ts"
++        "test:aim-control": "node -r ts-node/register src/aimControlSmokeTest.ts",
++        "test:special-roles": "node -r ts-node/register src/specialRoleSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+--- a/server/src/bot/specialRoleStrategy.ts
++++ b/server/src/bot/specialRoleStrategy.ts
+@@ -47,6 +47,8 @@
+     homeAnchor: Vec2 | null;
+     timestamp: number;
+     lastFlareAt: number;
++    /** First deployment window after the leader role is assigned. */
++    openingDeployment?: boolean;
+ }
+ 
+ export interface LeaderFlareDecision {
+@@ -396,16 +398,23 @@
+     if (!context.hasFlareGun || context.flareAmmo <= 0) {
+         return { use: false, stagingPoint: fallback, reason: "no flare gun or flare" };
+     }
+-    if (context.timestamp - context.lastFlareAt < 120000) {
++    const openingDeployment = Boolean(context.openingDeployment);
++    if (!openingDeployment && context.timestamp - context.lastFlareAt < 120000) {
+         return { use: false, stagingPoint: fallback, reason: "flare cooldown" };
+     }
+     if (context.outsideGas || context.underAirstrike) {
+         return { use: false, stagingPoint: fallback, reason: "unsafe zone" };
+     }
+-    if (context.health < 62 || context.enemyDistance < 42 || context.nearbyEnemies > 0) {
++    const minimumHealth = openingDeployment ? 52 : 62;
++    const minimumEnemyDistance = openingDeployment ? 24 : 42;
++    if (
++        context.health < minimumHealth ||
++        context.enemyDistance < minimumEnemyDistance ||
++        context.nearbyEnemies > 0
++    ) {
+         return { use: false, stagingPoint: fallback, reason: "combat too close" };
+     }
+-    if (context.nearbyAllies < 3) {
++    if (!openingDeployment && context.nearbyAllies < 3) {
+         return { use: false, stagingPoint: fallback, reason: "insufficient escort" };
+     }
+     if (context.nearestAirdropDistance < 42) {
+@@ -420,7 +429,13 @@
+     const objective = context.objective ?? center;
+     const awayFromFront = normalize(sub(anchor, objective), normalize(sub(context.position, center)));
+     const safeRadius = Math.max(18, context.safeRadius ?? Math.min(context.mapWidth, context.mapHeight) * 0.42);
+-    const rearOffset = context.phase === "early" ? 13 : context.phase === "mid" ? 10 : 7;
++    const rearOffset = openingDeployment
++        ? 7
++        : context.phase === "early"
++          ? 13
++          : context.phase === "mid"
++            ? 10
++            : 7;
+     let target = add(anchor, mul(awayFromFront, rearOffset));
+     target = lerp(target, center, context.phase === "late" || context.phase === "final" ? 0.35 : 0.16);
+ 
+@@ -436,7 +451,13 @@
+     if (context.nearestStructureDistance < 7 && distance(context.position, target) < 4) {
+         target = add(target, mul(awayFromFront, 9));
+     }
+-    return { use: true, stagingPoint: target, reason: "escorted rear-line military airdrop" };
++    return {
++        use: true,
++        stagingPoint: target,
++        reason: openingDeployment
++            ? "leader opening deployment airdrop"
++            : "escorted rear-line military airdrop",
++    };
+ };
+ 
+ export const shouldSoundBugle = (context: BugleContext): boolean => {
+--- a/server/src/botAutoFill.ts
++++ b/server/src/botAutoFill.ts
+@@ -9,6 +9,10 @@
+     targetPlayerCount?: number;
+     /** Maximum server-controlled bots in each faction. */
+     factionBotCapPerTeam?: number;
++    /** Bots reserved inside one smart-bot worker process. */
++    processBatchSize?: number;
++    /** Delay between connections created by a batched worker. */
++    joinIntervalMs?: number;
+ }
+ 
+ export interface FactionBotSpawnPlanInput {
+@@ -27,8 +31,10 @@
+  *
+  * Ordinary modes are filled to a total contestant count. 50v50 is different:
+  * humans do not consume the AI quota, while server bots are capped at 20 per
+- * faction and enter one at a time each second. The planner alternates sides by
+- * always selecting the faction with fewer connected + pending bots.
++ * faction and enter one at a time each second. Several future connections are
++ * reserved in one worker process to avoid launching forty independent Node.js
++ * runtimes. The planner alternates sides by always selecting the faction with
++ * fewer connected + pending bots.
+  */
+ export function getBotAutoFillPolicy(
+     mapName: string,
+@@ -45,6 +51,8 @@
+             factionMode: true,
+             spawnPerSecond: 1,
+             factionBotCapPerTeam: 20,
++            processBatchSize: 5,
++            joinIntervalMs: 1000,
+         };
+     }
+ 
+--- a/server/src/factionAutoFillSmokeTest.ts
++++ b/server/src/factionAutoFillSmokeTest.ts
+@@ -46,6 +46,30 @@
+         policy.factionBotCapPerTeam,
+         20,
+         "each 50v50 faction must be capped at 20 server bots",
++    );
++    assert.equal(
++        policy.processBatchSize,
++        5,
++        "50v50 should reserve five sequential joins in one worker process",
++    );
++    assert.equal(
++        policy.joinIntervalMs,
++        1000,
++        "batched workers must preserve the one bot/second entry rate",
++    );
++
++    assert.deepEqual(
++        planFactionBotTeamIds({
++            connectedBotTeamCounts: [0, 0],
++            pendingBotTeamCounts: [0, 0],
++            connectedPlayerCount: 0,
++            reservedHumanCount: 0,
++            maxPlayers: 100,
++            spawnPerSecond: policy.processBatchSize ?? 1,
++            botCapPerTeam: 20,
++        }),
++        [1, 2, 1, 2, 1],
++        "one worker batch should stay balanced while reserving five future joins",
+     );
+ 
+     assert.deepEqual(
+@@ -149,7 +173,7 @@
+     await testForcedFactionToken();
+ 
+     console.log(
+-        "Faction auto-fill smoke test passed: 1 bot/second, balanced faction assignment, pending reservations, room capacity, and 20+20 hard cap.",
++        "Faction auto-fill smoke test passed: 1 bot/second, five-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.",
+     );
+ }
+ 
+--- a/server/src/gameServer.ts
++++ b/server/src/gameServer.ts
+@@ -69,6 +69,8 @@
+ interface BotProcessReservation {
+     count: number;
+     factionTeamCounts: number[];
++    /** Stop reserving missing joins after every delayed bot had time to connect. */
++    pendingUntil: number;
+ }
+ 
+ export class GameServer {
+@@ -466,7 +468,9 @@
+         );
+         let launchedBotSlots = 0;
+ 
++        const timestamp = Date.now();
+         for (const reservation of runningBotProcesses?.values() ?? []) {
++            if (timestamp > reservation.pendingUntil) continue;
+             launchedBotSlots += reservation.count;
+             for (let index = 0; index < factionCount; index++) {
+                 launchedBotTeamCounts[index] +=
+@@ -554,6 +558,15 @@
+                 let spawnCount = 0;
+ 
+                 if (policy.factionMode) {
++                    // Reserve several future faction bots in one worker process,
++                    // but let that worker connect them at the configured one-per-
++                    // second pace. Waiting for the current reservation to drain
++                    // prevents overlapping batches and keeps connection bursts flat.
++                    if (pendingBots > 0) continue;
++                    const processBatchSize = Math.max(
++                        1,
++                        policy.processBatchSize ?? policy.spawnPerSecond,
++                    );
+                     botTeamIds = planFactionBotTeamIds({
+                         connectedBotTeamCounts: game.serverBotTeamCounts,
+                         pendingBotTeamCounts:
+@@ -561,7 +574,7 @@
+                         connectedPlayerCount: game.connectedCount,
+                         reservedHumanCount: game.reservedHumanCount,
+                         maxPlayers: policy.maxPlayers,
+-                        spawnPerSecond: policy.spawnPerSecond,
++                        spawnPerSecond: processBatchSize,
+                         botCapPerTeam: policy.factionBotCapPerTeam ?? 20,
+                         factionCount,
+                     });
+@@ -610,6 +623,9 @@
+                         adrenalineEnabled: game.duelAdrenalineEnabled !== false,
+                         botCount: spawnCount,
+                         botTeamIds,
++                        joinDelayMs: policy.factionMode
++                            ? (policy.joinIntervalMs ?? 1000)
++                            : 120,
+                     });
+                 } catch (error) {
+                     this.logger.warn(
+@@ -634,6 +650,7 @@
+         adrenalineEnabled: boolean;
+         botCount?: number;
+         botTeamIds?: readonly number[];
++        joinDelayMs?: number;
+     }): void {
+         const {
+             gameId,
+@@ -645,6 +662,7 @@
+             adrenalineEnabled,
+             botCount = 1,
+             botTeamIds = [],
++            joinDelayMs = 120,
+         } = options;
+         const production = process.env.NODE_ENV === "production";
+         const script = path.join(__dirname, production ? "smartBot.js" : "smartBot.ts");
+@@ -670,6 +688,8 @@
+                 ...process.env,
+                 BOT_DIRECT_MATCH_JSON: JSON.stringify(matchData),
+                 BOT_COUNT: String(botCount),
++                BOT_JOIN_DELAY: String(Math.max(0, Math.round(joinDelayMs))),
++                BOT_FORCED_TEAM_IDS: JSON.stringify(botTeamIds),
+                 BOT_TEAM_SIZE: String(teamMode),
+                 BOT_GAME_MODE: String(gameModeIdx),
+                 BOT_DIFFICULTY: difficulty,
+@@ -703,6 +723,9 @@
+         processes.set(child, {
+             count: botCount,
+             factionTeamCounts,
++            pendingUntil:
++                Date.now() +
++                Math.max(8000, Math.max(0, botCount - 1) * joinDelayMs + 8000),
+         });
+ 
+         const prefix = isDuel ? "duel-ai" : "mode-ai";
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -335,6 +335,13 @@
+     injuredAllies: number;
+ }
+ 
++interface SpecialRoleMission {
++    target: Vec2;
++    holdRadius: number;
++    utility: number;
++    reason: string;
++}
++
+ interface SquadMemberSnapshot {
+     botId: number;
+     playerId: number;
+@@ -432,6 +439,20 @@
+ };
+ 
+ const customBotName = (process.env.BOT_NAME ?? "").trim().slice(0, 16);
++const forcedFactionTeamIds = (() => {
++    const raw = process.env.BOT_FORCED_TEAM_IDS;
++    if (!raw) return [] as number[];
++    try {
++        const parsed = JSON.parse(raw);
++        return Array.isArray(parsed)
++            ? parsed.map((value) => Math.max(0, Math.trunc(Number(value) || 0)))
++            : [];
++    } catch {
++        return raw
++            .split(",")
++            .map((value) => Math.max(0, Math.trunc(Number(value) || 0)));
++    }
++})();
+ const configuredGameModeIdx = envNumber("BOT_GAME_MODE", 0, 0, 255);
+ const configuredPlaylist = ServerConfig.modes[configuredGameModeIdx];
+ const explicitTeamSize = Number(process.env.BOT_TEAM_SIZE);
+@@ -1039,6 +1060,16 @@
+     private reloadAimHoldDir: Vec2 | null = null;
+     private reloadAimHoldMouseLen = 50;
+     private reloadAimHoldUntil = 0;
++    private readonly doorInteractCooldownUntil = new Map<number, number>();
++    private lastDoorInteractId = 0;
++    private lastDoorInteractAt = 0;
++    private roomEscapeDoorId = 0;
++    private roomEscapeUntil = 0;
++    private roomEscapeDirection = v2.create(1, 0);
++    private indoorIdleSince = 0;
++    private specialRoleAssignedAt = 0;
++    private leaderOpeningFlareDeadline = 0;
++    private leaderOpeningFlareDone = false;
+ 
+     ws: WebSocket;
+     matchPriv: string;
+@@ -1664,7 +1695,7 @@
+             this.decisionBrain.reset();
+             this.setState("gas");
+             this.runToGas(myPos, enemy);
+-            this.autoOpenDoor(myPos);
++            this.autoOpenDoor(myPos, timestamp);
+             this.applyUnstuckOverride(timestamp);
+             this.lastCommandMoving = this.isMoving();
+             return;
+@@ -1674,7 +1705,7 @@
+             this.decisionBrain.reset();
+             this.setState("airstrike");
+             this.evadeAirstrike(myPos, airstrike, enemy, timestamp);
+-            this.autoOpenDoor(myPos);
++            this.autoOpenDoor(myPos, timestamp);
+             this.applyUnstuckOverride(timestamp);
+             this.lastCommandMoving = this.isMoving();
+             return;
+@@ -1722,7 +1753,7 @@
+             )
+         ) {
+             this.setState("special");
+-            this.autoOpenDoor(myPos);
++            this.autoOpenDoor(myPos, timestamp);
+             this.applyUnstuckOverride(timestamp);
+             this.lastCommandMoving = this.isMoving();
+             return;
+@@ -1995,6 +2026,7 @@
+             let formationTarget: Vec2 | null = null;
+             let normalLoot: LootChoice | null = null;
+             let normalCrate: CrateChoice | null = null;
++            let specialRoleMission: SpecialRoleMission | null = null;
+             let urgentFactionOrder = false;
+ 
+             if (!hasImmediateIntent) {
+@@ -2028,6 +2060,21 @@
+                         utility: 620,
+                         targetKey: `faction:${factionOrder.objectiveKind}`,
+                         reason: "urgent-faction-order",
++                    });
++                }
++                specialRoleMission = this.chooseSpecialRoleMission(
++                    myPos,
++                    factionOrder,
++                    timestamp,
++                );
++                if (specialRoleMission) {
++                    candidates.push({
++                        kind: "special-role",
++                        state: "regroup",
++                        tier: IntentTier.strategic,
++                        utility: specialRoleMission.utility,
++                        targetKey: `role:${this.currentSpecialRole}:${specialRoleMission.reason}`,
++                        reason: specialRoleMission.reason,
+                     });
+                 }
+                 if (
+@@ -2206,6 +2253,11 @@
+                 case "cover-rescue":
+                     if (coverOrder) this.coverRescue(myPos, coverOrder);
+                     break;
++                case "special-role":
++                    if (specialRoleMission) {
++                        this.followSpecialRoleMission(myPos, specialRoleMission, timestamp);
++                    }
++                    break;
+                 case "faction-order":
+                     if (factionOrder) this.followFactionOrder(myPos, factionOrder, timestamp);
+                     break;
+@@ -2235,13 +2287,14 @@
+             }
+         }
+ 
+-        this.autoOpenDoor(myPos);
++        this.updateIndoorIdleEscape(me, myPos, enemy, timestamp);
++        this.autoOpenDoor(myPos, timestamp);
+         this.applyUnstuckOverride(timestamp);
+         this.lastCommandMoving = this.isMoving();
+     }
+ 
+     private updateSquadSnapshot(me: GameObject, myPos: Vec2, timestamp: number): void {
+-        this.refreshSpecialRole(me);
++        this.refreshSpecialRole(me, timestamp);
+         const facing = normalize((me.data.dir as Vec2 | undefined) ?? this.output.aimDir);
+         this.squad.updateMember({
+             botId: this.id,
+@@ -2288,12 +2341,16 @@
+         }
+     }
+ 
+-    private refreshSpecialRole(me: GameObject): void {
++    private refreshSpecialRole(me: GameObject, timestamp: number): void {
+         const nextRole = normalizeSpecialFactionRole(String(me.data.role ?? ""));
+         if (nextRole === this.currentSpecialRole) return;
+         this.currentSpecialRole = nextRole;
++        this.specialRoleAssignedAt = timestamp;
+         this.pendingSpecialAction = null;
+         this.flareStagingPoint = null;
++        this.flarePlanUntil = 0;
++        this.leaderOpeningFlareDone = nextRole !== "leader";
++        this.leaderOpeningFlareDeadline = nextRole === "leader" ? timestamp + 24000 : 0;
+         if ((config.factionDebug || config.debug) && nextRole !== this.lastSpecialRoleLog) {
+             this.lastSpecialRoleLog = nextRole;
+             console.log(`[bot ${this.id}] special faction role=${nextRole}`);
+@@ -2433,6 +2490,7 @@
+ 
+         if (action.kind === "flare") {
+             this.lastFlareAt = timestamp;
++            this.leaderOpeningFlareDone = true;
+             this.airdropDefenseUntil = timestamp + 34000;
+             this.flareStagingPoint = null;
+             this.flarePlanUntil = 0;
+@@ -2590,6 +2648,18 @@
+             return false;
+         }
+ 
++        if (
++            this.currentSpecialRole === "leader" &&
++            !this.leaderOpeningFlareDone &&
++            timestamp > this.leaderOpeningFlareDeadline
++        ) {
++            this.leaderOpeningFlareDone = true;
++        }
++        const leaderOpeningWindow =
++            this.currentSpecialRole === "leader" &&
++            !this.leaderOpeningFlareDone &&
++            timestamp <= this.leaderOpeningFlareDeadline;
++
+         const nearestDrop = this.nearestAirdrop(myPos);
+         if (nearestDrop && !nearestDrop.object.data.landed && nearestDrop.distance < 9.5) {
+             const dropPos = nearestDrop.object.data.pos as Vec2;
+@@ -2598,6 +2668,14 @@
+             return true;
+         }
+         if (this.continueSpecialAction(myPos, timestamp)) return true;
++
++        const committedResource =
++            (this.currentCrateId > 0 && timestamp < this.crateLockUntil) ||
++            (this.currentLootId > 0 && timestamp < this.lootLockUntil);
++        // Special-role formation and utility actions must not starve an already
++        // reserved resource target. The only exception is the leader's one-time
++        // opening flare deployment, which is intentionally a match-opening duty.
++        if (committedResource && !leaderOpeningWindow) return false;
+ 
+         const enemyDistance = enemy?.distance ?? Infinity;
+         const roleStats = this.nearbyRoleStats(myPos, 34, timestamp);
+@@ -2713,6 +2791,7 @@
+                 homeAnchor: null,
+                 timestamp,
+                 lastFlareAt: this.lastFlareAt,
++                openingDeployment: leaderOpeningWindow,
+             });
+             if (decision.use) {
+                 if (!this.flareStagingPoint || timestamp > this.flarePlanUntil) {
+@@ -2775,6 +2854,204 @@
+         }
+ 
+         return false;
++    }
++
++    private nearestFriendlySpecialRole(
++        myPos: Vec2,
++        role: SpecialFactionRole,
++        maxDistance: number,
++    ): GameObject | null {
++        let best: GameObject | null = null;
++        let bestDistance = maxDistance;
++        for (const object of this.objectPool.values(ObjectType.Player)) {
++            const pos = object.data.pos as Vec2 | undefined;
++            if (
++                !pos ||
++                object.__id === this.activePlayerId ||
++                object.data.dead ||
++                !this.isTeammate(object.__id) ||
++                normalizeSpecialFactionRole(String(object.data.role ?? "")) !== role
++            ) {
++                continue;
++            }
++            const dist = distance(myPos, pos);
++            if (dist < bestDistance) {
++                best = object;
++                bestDistance = dist;
++            }
++        }
++        return best;
++    }
++
++    private nearestInjuredFriendly(myPos: Vec2, maxDistance: number): GameObject | null {
++        let best: GameObject | null = null;
++        let bestScore = Number.NEGATIVE_INFINITY;
++        for (const object of this.objectPool.values(ObjectType.Player)) {
++            const pos = object.data.pos as Vec2 | undefined;
++            if (
++                !pos ||
++                object.__id === this.activePlayerId ||
++                object.data.dead ||
++                object.data.downed ||
++                !this.isTeammate(object.__id)
++            ) {
++                continue;
++            }
++            const dist = distance(myPos, pos);
++            const directHealth = Number(object.data.health);
++            const healthT = Number(object.data.healthT);
++            const health = Number.isFinite(directHealth)
++                ? directHealth
++                : Number.isFinite(healthT)
++                  ? healthT * 100
++                  : 100;
++            if (dist > maxDistance || health >= 78) continue;
++            const score = (100 - health) * 2.2 - dist;
++            if (score > bestScore) {
++                best = object;
++                bestScore = score;
++            }
++        }
++        return best;
++    }
++
++    private chooseSpecialRoleMission(
++        myPos: Vec2,
++        order: FactionOrder | null,
++        timestamp: number,
++    ): SpecialRoleMission | null {
++        if (
++            !order ||
++            !this.factionModeActive() ||
++            this.currentSpecialRole === "none" ||
++            (this.currentCrateId > 0 && timestamp < this.crateLockUntil) ||
++            (this.currentLootId > 0 && timestamp < this.lootLockUntil) ||
++            this.hasActiveOpeningResourceSweep(timestamp)
++        ) {
++            return null;
++        }
++
++        const front = normalize(
++            sub(order.objective, order.formationAnchor),
++            normalize(sub(order.objective, myPos), fromAngle(this.id * 0.37)),
++        );
++        const side = mul(perpendicular(front), this.id % 2 === 0 ? 1 : -1);
++        let target = order.formationAnchor;
++        let holdRadius = 4.5;
++        let utility = 410;
++        let reason = "role-formation";
++
++        switch (this.currentSpecialRole) {
++            case "leader": {
++                if (!this.leaderOpeningFlareDone) return null;
++                target = add(order.formationAnchor, mul(front, -6));
++                holdRadius = 5.5;
++                utility = 455;
++                reason = "leader-rear-command";
++                break;
++            }
++            case "lieutenant": {
++                const leader = this.nearestFriendlySpecialRole(myPos, "leader", 70);
++                const leaderPos = leader?.data.pos as Vec2 | undefined;
++                target = leaderPos
++                    ? add(leaderPos, add(mul(front, 5.5), mul(side, 2.5)))
++                    : add(order.formationAnchor, add(mul(front, 4), mul(side, 4)));
++                holdRadius = 4;
++                utility = leaderPos ? 515 : 430;
++                reason = leaderPos ? "lieutenant-leader-escort" : "lieutenant-front-command";
++                break;
++            }
++            case "medic": {
++                const injured = this.nearestInjuredFriendly(myPos, 55);
++                const injuredPos = injured?.data.pos as Vec2 | undefined;
++                target = injuredPos
++                    ? add(injuredPos, mul(front, -5))
++                    : add(order.formationAnchor, add(mul(front, -9), mul(side, 3)));
++                holdRadius = injuredPos ? 5 : 6;
++                utility = injuredPos ? 560 : 420;
++                reason = injuredPos ? "medic-support-injured" : "medic-rear-support";
++                break;
++            }
++            case "marksman":
++                target = add(order.formationAnchor, add(mul(front, -14), mul(side, 9)));
++                holdRadius = 6;
++                utility = 470;
++                reason = "marksman-overwatch";
++                break;
++            case "recon":
++                target = add(order.formationAnchor, add(mul(front, 14), mul(side, 10)));
++                holdRadius = 5;
++                utility = 465;
++                reason = "recon-forward-screen";
++                break;
++            case "grenadier":
++                target = add(order.formationAnchor, add(mul(front, 5), mul(side, 6)));
++                holdRadius = 4.5;
++                utility = 450;
++                reason = "grenadier-assault-support";
++                break;
++            case "bugler": {
++                const leader = this.nearestFriendlySpecialRole(myPos, "leader", 70);
++                const leaderPos = leader?.data.pos as Vec2 | undefined;
++                target = leaderPos
++                    ? add(leaderPos, add(mul(front, -6), mul(side, 3)))
++                    : add(order.formationAnchor, mul(front, -7));
++                holdRadius = 5.5;
++                utility = 445;
++                reason = "bugler-command-support";
++                break;
++            }
++            case "last_man":
++                target = add(order.objective, mul(side, 4));
++                holdRadius = 4;
++                utility = 520;
++                reason = "last-man-counterattack";
++                break;
++            default:
++                return null;
++        }
++
++        target = v2.create(
++            clamp(target.x, 2, Math.max(2, this.mapWidth - 2)),
++            clamp(target.y, 2, Math.max(2, this.mapHeight - 2)),
++        );
++        if (distance(myPos, target) <= holdRadius) return null;
++        return { target, holdRadius, utility, reason };
++    }
++
++    private followSpecialRoleMission(
++        myPos: Vec2,
++        mission: SpecialRoleMission,
++        timestamp: number,
++    ): void {
++        const dist = distance(myPos, mission.target);
++        const direct = normalize(sub(mission.target, myPos), this.output.aimDir);
++        this.output.aimDir = direct;
++        this.output.mouseLen = clamp(dist * 7, 12, net.Constants.MouseMaxDist);
++        if (dist <= mission.holdRadius) {
++            this.output.movement = EMPTY_MOVEMENT();
++            return;
++        }
++        let target = mission.target;
++        if (config.mapAi) {
++            const adjusted = this.mapNavigator.adjustStrategicDirection(
++                myPos,
++                mission.target,
++                this.currentMapPhase(),
++                this.role,
++                timestamp,
++            );
++            target = add(myPos, mul(adjusted, Math.min(12, dist)));
++        }
++        this.moveDirection(
++            this.steerToward(
++                myPos,
++                target,
++                timestamp,
++                0,
++                this.id * 31 + this.currentSpecialRole.length,
++            ),
++        );
+     }
+ 
+     private effectiveTeamMode(): TeamMode {
+@@ -7244,7 +7521,7 @@
+                 doorPos &&
+                 distance(from, doorPos) <= GameConfig.player.maxInteractionRad + 0.85
+             ) {
+-                this.addInput(GameConfig.Input.Interact);
++                this.requestDoorInteraction(door, timestamp);
+             }
+         }
+         return v2.create(plan.direction.x, plan.direction.y);
+@@ -7326,16 +7603,102 @@
+         return 1.1 * scale;
+     }
+ 
+-    private autoOpenDoor(myPos: Vec2): void {
++    private movementDirectionFromOutput(): Vec2 | null {
++        const movement = this.output.movement;
++        const x = Number(movement.right) - Number(movement.left);
++        const y = Number(movement.up) - Number(movement.down);
++        if (Math.abs(x) + Math.abs(y) <= 0) return null;
++        return normalize(v2.create(x, y));
++    }
++
++    private requestDoorInteraction(door: GameObject | undefined, timestamp: number): boolean {
++        if (!door || door.__type !== ObjectType.Obstacle) return false;
++        const data = door.data;
++        if (
++            !data.isDoor ||
++            !data.door ||
++            data.dead ||
++            data.door.open ||
++            !data.door.canUse ||
++            data.door.locked ||
++            Number(data.layer ?? 0) !== this.myLayer()
++        ) {
++            return false;
++        }
++        if ((this.doorInteractCooldownUntil.get(door.__id) ?? 0) > timestamp) {
++            return false;
++        }
++        // A single Interact input is enough. Repeating it before the authoritative
++        // door update arrives can immediately close the same door and produces the
++        // rapid open/close shaking seen around narrow rooms.
++        this.addInput(GameConfig.Input.Interact);
++        this.doorInteractCooldownUntil.set(door.__id, timestamp + 950);
++        this.lastDoorInteractId = door.__id;
++        this.lastDoorInteractAt = timestamp;
++        return true;
++    }
++
++    private nearestUsableDoor(myPos: Vec2, maxDistance: number): GameObject | null {
++        let best: GameObject | null = null;
++        let bestDistance = maxDistance;
+         for (const object of this.objectPool.values(ObjectType.Obstacle)) {
+             const data = object.data;
+-            if (!data.isDoor || !data.door || data.door.open || !data.door.canUse || data.door.locked) continue;
+-            if (Number(data.layer ?? 0) !== this.myLayer() || !data.pos) continue;
+-            if (distance(myPos, data.pos as Vec2) <= GameConfig.player.maxInteractionRad + 0.7) {
+-                this.addInput(GameConfig.Input.Interact);
+-                return;
+-            }
+-        }
++            const pos = data.pos as Vec2 | undefined;
++            if (
++                !pos ||
++                !data.isDoor ||
++                !data.door ||
++                data.dead ||
++                !data.door.canUse ||
++                data.door.locked ||
++                Number(data.layer ?? 0) !== this.myLayer()
++            ) {
++                continue;
++            }
++            const dist = distance(myPos, pos);
++            if (dist < bestDistance) {
++                best = object;
++                bestDistance = dist;
++            }
++        }
++        return best;
++    }
++
++    private autoOpenDoor(myPos: Vec2, timestamp: number): void {
++        const movementDirection = this.movementDirectionFromOutput();
++        if (!movementDirection) return;
++
++        let bestDoor: GameObject | null = null;
++        let bestScore = Number.POSITIVE_INFINITY;
++        for (const object of this.objectPool.values(ObjectType.Obstacle)) {
++            const data = object.data;
++            const doorPos = data.pos as Vec2 | undefined;
++            if (
++                !doorPos ||
++                !data.isDoor ||
++                !data.door ||
++                data.dead ||
++                data.door.open ||
++                !data.door.canUse ||
++                data.door.locked ||
++                Number(data.layer ?? 0) !== this.myLayer()
++            ) {
++                continue;
++            }
++            const offset = sub(doorPos, myPos);
++            const dist = length(offset);
++            if (dist > GameConfig.player.maxInteractionRad + 0.8 || dist <= 0.05) continue;
++            const alignment = dot(movementDirection, normalize(offset));
++            // Ignore doors beside or behind the current route. The old scan opened
++            // every nearby door, including doors the bot had just passed.
++            if (alignment < 0.22) continue;
++            const score = dist - alignment * 1.8;
++            if (score < bestScore) {
++                bestScore = score;
++                bestDoor = object;
++            }
++        }
++        if (bestDoor) this.requestDoorInteraction(bestDoor, timestamp);
+     }
+ 
+     private quickSwitchTo(slot: number, timestamp: number): void {
+@@ -7377,8 +7740,32 @@
+         if (moved < 0.5 && this.lastCommandMoving) {
+             if (!this.stuckSince) this.stuckSince = timestamp;
+             if (timestamp - this.stuckSince > 700) {
+-                this.unstuckDirection = fromAngle(randomAngle());
+-                this.unstuckUntil = timestamp + util.randomInt(550, 950);
++                const self = this.getSelf();
++                const indoors = Boolean(self?.data.indoors) || this.healingIndoorsAt(pos);
++                const canUseRoomEscape = ![
++                    "combat",
++                    "counterfire",
++                    "retreat",
++                    "heal",
++                    "revive",
++                    "gas",
++                    "airstrike",
++                    "special",
++                ].includes(this.state);
++                const exitDoor = indoors && canUseRoomEscape
++                    ? this.nearestUsableDoor(pos, 24)
++                    : null;
++                if (exitDoor) {
++                    this.roomEscapeDoorId = exitDoor.__id;
++                    this.roomEscapeUntil = timestamp + 5200;
++                    this.roomEscapeDirection = normalize(
++                        sub(exitDoor.data.pos as Vec2, pos),
++                        this.output.aimDir,
++                    );
++                } else {
++                    this.unstuckDirection = fromAngle(randomAngle());
++                    this.unstuckUntil = timestamp + util.randomInt(550, 950);
++                }
+                 this.stuckSince = 0;
+             }
+         } else {
+@@ -7388,13 +7775,107 @@
+         this.lastPositionAt = timestamp;
+     }
+ 
++    private updateIndoorIdleEscape(
++        me: GameObject,
++        myPos: Vec2,
++        enemy: TargetChoice | null,
++        timestamp: number,
++    ): void {
++        const indoors = Boolean(me.data.indoors) || this.healingIndoorsAt(myPos);
++        const protectedState = [
++            "combat",
++            "counterfire",
++            "retreat",
++            "heal",
++            "revive",
++            "gas",
++            "airstrike",
++            "special",
++            "loot",
++            "break-crate",
++        ].includes(this.state);
++        const meaningfulAction =
++            this.isMoving() ||
++            this.output.shootStart ||
++            this.output.shootHold ||
++            this.output.useItem.length > 0 ||
++            this.output.inputs.length > 0;
++        if (!indoors || enemy || protectedState || meaningfulAction) {
++            this.indoorIdleSince = 0;
++            return;
++        }
++        if (!this.indoorIdleSince) this.indoorIdleSince = timestamp;
++        if (timestamp - this.indoorIdleSince < 1500) return;
++        const exitDoor = this.nearestUsableDoor(myPos, 26);
++        if (!exitDoor) return;
++        this.roomEscapeDoorId = exitDoor.__id;
++        this.roomEscapeUntil = timestamp + 5200;
++        this.roomEscapeDirection = normalize(
++            sub(exitDoor.data.pos as Vec2, myPos),
++            this.output.aimDir,
++        );
++        this.indoorIdleSince = 0;
++    }
++
+     private applyUnstuckOverride(timestamp: number): void {
++        const roomEscapeAllowed = ![
++            "combat",
++            "counterfire",
++            "retreat",
++            "heal",
++            "revive",
++            "gas",
++            "airstrike",
++            "special",
++        ].includes(this.state);
++        if (roomEscapeAllowed && timestamp < this.roomEscapeUntil && this.roomEscapeDoorId) {
++            const me = this.getSelf();
++            const myPos = me?.data.pos as Vec2 | undefined;
++            const door = this.objectPool.getObjById(this.roomEscapeDoorId);
++            const doorPos = door?.data.pos as Vec2 | undefined;
++            if (myPos && door && doorPos && !door.data.dead) {
++                const approachDirection = normalize(sub(doorPos, myPos), this.roomEscapeDirection);
++                const target = door.data.door?.open
++                    ? add(doorPos, mul(this.roomEscapeDirection, 4.5))
++                    : doorPos;
++                const direction = this.steerToward(
++                    myPos,
++                    target,
++                    timestamp,
++                    door.__id,
++                    door.__id,
++                );
++                this.moveDirection(direction);
++                this.output.aimDir = door.data.door?.open
++                    ? this.roomEscapeDirection
++                    : approachDirection;
++                this.output.shootStart = false;
++                this.output.shootHold = false;
++                if (
++                    !door.data.door?.open &&
++                    distance(myPos, doorPos) <= GameConfig.player.maxInteractionRad + 0.85
++                ) {
++                    this.requestDoorInteraction(door, timestamp);
++                }
++                const passedDoor = dot(
++                    sub(myPos, doorPos),
++                    this.roomEscapeDirection,
++                );
++                if (door.data.door?.open && passedDoor >= 3.4) {
++                    this.roomEscapeDoorId = 0;
++                    this.roomEscapeUntil = 0;
++                }
++                return;
++            }
++            this.roomEscapeDoorId = 0;
++            this.roomEscapeUntil = 0;
++        }
++
+         if (timestamp >= this.unstuckUntil) return;
+         this.moveDirection(this.unstuckDirection);
+         this.output.aimDir = this.unstuckDirection;
+         this.output.shootStart = false;
+         this.output.shootHold = false;
+-        this.addInput(GameConfig.Input.Interact);
+     }
+ 
+     private cleanupExpiringMaps(timestamp: number): void {
+@@ -7403,6 +7884,9 @@
+         }
+         for (const [id, expiry] of this.ignoredCratesUntil) {
+             if (expiry <= timestamp) this.ignoredCratesUntil.delete(id);
++        }
++        for (const [id, expiry] of this.doorInteractCooldownUntil) {
++            if (expiry <= timestamp) this.doorInteractCooldownUntil.delete(id);
+         }
+         this.airstrikeZones = this.airstrikeZones.filter((zone) => zone.expiresAt > timestamp);
+     }
+@@ -7648,13 +8132,54 @@
+ 
+     if (directMatch) {
+         const directBotCount = Math.max(1, config.botCount);
+-        const coordinator = new SquadCoordinator(1, directBotCount);
+-        squads.set(1, coordinator);
++        const useFactionGroups =
++            config.factionAi &&
++            forcedFactionTeamIds.length >= directBotCount &&
++            forcedFactionTeamIds.slice(0, directBotCount).every((teamId) => teamId > 0);
++        const coordinatorByTeam = new Map<number, SquadCoordinator>();
++        const localSlotByGlobalSlot = new Map<number, number>();
++
++        if (useFactionGroups) {
++            const teamCounts = new Map<number, number>();
++            for (let slot = 0; slot < directBotCount; slot++) {
++                const teamId = forcedFactionTeamIds[slot];
++                teamCounts.set(teamId, (teamCounts.get(teamId) ?? 0) + 1);
++            }
++            for (const [teamId, count] of teamCounts) {
++                const coordinator = new SquadCoordinator(teamId, count);
++                coordinatorByTeam.set(teamId, coordinator);
++                squads.set(teamId, coordinator);
++            }
++            const nextLocalSlot = new Map<number, number>();
++            for (let slot = 0; slot < directBotCount; slot++) {
++                const teamId = forcedFactionTeamIds[slot];
++                const localSlot = nextLocalSlot.get(teamId) ?? 0;
++                localSlotByGlobalSlot.set(slot, localSlot);
++                nextLocalSlot.set(teamId, localSlot + 1);
++            }
++        } else {
++            const coordinator = new SquadCoordinator(1, directBotCount);
++            coordinatorByTeam.set(0, coordinator);
++            squads.set(1, coordinator);
++        }
++
+         for (let slot = 0; slot < directBotCount; slot++) {
+             const botId = slot + 1;
++            const teamId = useFactionGroups ? forcedFactionTeamIds[slot] : 0;
++            const coordinator = coordinatorByTeam.get(teamId)!;
++            const coordinatorSlot = useFactionGroups
++                ? (localSlotByGlobalSlot.get(slot) ?? 0)
++                : slot;
+             setTimeout(() => {
+                 try {
+-                    bots.add(new TacticalBot(botId, directMatch, coordinator, slot));
++                    bots.add(
++                        new TacticalBot(
++                            botId,
++                            directMatch,
++                            coordinator,
++                            coordinatorSlot,
++                        ),
++                    );
+                 } catch (error) {
+                     console.error(`[bot ${botId}] failed to start direct match`, error);
+                 } finally {
+--- a/server/src/smartBotBrainSmokeTest.ts
++++ b/server/src/smartBotBrainSmokeTest.ts
+@@ -79,6 +79,23 @@
+ );
+ assert.equal(decision.kind, "combat");
+ 
++
++// A committed resource action outranks low-priority special-role formation.
++brain.reset();
++decision = brain.choose(
++    [
++        candidate("break-crate", "break-crate", IntentTier.resource, 520, {
++            targetKey: "crate:91",
++            commitMs: 1200,
++        }),
++        candidate("special-role", "regroup", IntentTier.strategic, 610, {
++            targetKey: "role:leader",
++        }),
++    ],
++    3000,
++);
++assert.equal(decision.kind, "break-crate");
++
+ // Local steering: direct path remains direct.
+ let plan = planLocalSteering(
+     { x: 0, y: 0 },
+--- a/server/src/specialRoleSmokeTest.ts
++++ b/server/src/specialRoleSmokeTest.ts
+@@ -0,0 +1,53 @@
++import assert from "assert/strict";
++import { planLeaderFlare, specialRoleProfile } from "./bot/specialRoleStrategy";
++
++const base = {
++    position: { x: 300, y: 300 },
++    mapWidth: 1024,
++    mapHeight: 1024,
++    phase: "early" as const,
++    health: 100,
++    enemyDistance: 100,
++    outsideGas: false,
++    underAirstrike: false,
++    nearbyAllies: 0,
++    nearbyEnemies: 0,
++    hasFlareGun: true,
++    flareAmmo: 1,
++    nearestAirdropDistance: Infinity,
++    nearestStructureDistance: 12,
++    safeCenter: { x: 512, y: 512 },
++    safeRadius: 420,
++    formationAnchor: { x: 300, y: 300 },
++    objective: { x: 520, y: 520 },
++    homeAnchor: null,
++    timestamp: 60_000,
++    lastFlareAt: 0,
++};
++
++const ordinary = planLeaderFlare(base);
++assert.equal(ordinary.use, false, "ordinary flare use still requires an escort");
++
++const opening = planLeaderFlare({ ...base, openingDeployment: true });
++assert.equal(opening.use, true, "newly assigned leader should deploy the opening flare without waiting for an escort");
++assert.match(opening.reason, /opening deployment/);
++
++const threatened = planLeaderFlare({
++    ...base,
++    openingDeployment: true,
++    enemyDistance: 12,
++});
++assert.equal(threatened.use, false, "opening flare must still yield to a close enemy");
++
++assert.ok(
++    specialRoleProfile("marksman").preferredRangeMultiplier >
++        specialRoleProfile("recon").preferredRangeMultiplier,
++    "marksman and recon must keep distinct combat ranges",
++);
++assert.ok(
++    specialRoleProfile("medic").rescuePriority >
++        specialRoleProfile("lieutenant").rescuePriority,
++    "medic must retain a dedicated rescue profile",
++);
++
++console.log("special role smoke test passed");

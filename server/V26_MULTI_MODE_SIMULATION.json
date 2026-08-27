@@ -1,0 +1,79 @@
+{
+  "version": 26,
+  "simulatedStepMs": 500,
+  "scenarios": {
+    "solo": {
+      "system": "solo:normal",
+      "bots": 15,
+      "acquired": 15,
+      "longestAcquireMs": 8000,
+      "unreachableTargetsAbandoned": 2,
+      "totalAbandons": 2,
+      "peakInitialTargetConcentration": 2,
+      "commitmentMs": 12150,
+      "noProgressTimeoutMs": 3250,
+      "passed": true
+    },
+    "duo": {
+      "system": "duo:normal",
+      "bots": 20,
+      "acquired": 20,
+      "longestAcquireMs": 8500,
+      "unreachableTargetsAbandoned": 3,
+      "totalAbandons": 3,
+      "peakInitialTargetConcentration": 3,
+      "commitmentMs": 13500,
+      "noProgressTimeoutMs": 3500,
+      "passed": true
+    },
+    "squad": {
+      "system": "squad:normal",
+      "bots": 20,
+      "acquired": 20,
+      "longestAcquireMs": 8000,
+      "unreachableTargetsAbandoned": 3,
+      "totalAbandons": 3,
+      "peakInitialTargetConcentration": 4,
+      "commitmentMs": 11475,
+      "noProgressTimeoutMs": 3125,
+      "passed": true
+    },
+    "duel": {
+      "system": "duel",
+      "bots": 1,
+      "fixedLoadout": true,
+      "lootAttempts": 0,
+      "passed": true
+    },
+    "faction": {
+      "system": "faction:faction",
+      "bots": 40,
+      "acquired": 40,
+      "longestAcquireMs": 8500,
+      "unreachableTargetsAbandoned": 6,
+      "totalAbandons": 6,
+      "peakInitialTargetConcentration": 3,
+      "commitmentMs": 8775,
+      "noProgressTimeoutMs": 2625,
+      "passed": true
+    },
+    "potato": {
+      "system": "solo:event:potato",
+      "bots": 15,
+      "acquired": 15,
+      "longestAcquireMs": 8000,
+      "unreachableTargetsAbandoned": 2,
+      "totalAbandons": 2,
+      "peakInitialTargetConcentration": 2,
+      "commitmentMs": 15188,
+      "noProgressTimeoutMs": 3737,
+      "passed": true
+    }
+  },
+  "ammoSharing": {
+    "humanRequestClaimedAfterMs": 6500,
+    "recipientPlayerId": 9001,
+    "crossGroupGiftWorldRoute": "faction",
+    "passed": true
+  }
+}

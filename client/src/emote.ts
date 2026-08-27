@@ -1,6 +1,5 @@
 import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
-
 import { EmotesDefs } from "../../shared/defs/gameObjects/emoteDefs.ts";
 import type { AmmoDef } from "../../shared/defs/gameObjects/gearDefs.ts";
 import type { GunDef } from "../../shared/defs/gameObjects/gunDefs.ts";
@@ -8,8 +7,9 @@ import type { MeleeDef } from "../../shared/defs/gameObjects/meleeDefs.ts";
 import { PingDefs } from "../../shared/defs/gameObjects/pingDefs.ts";
 import type { ThrowableDef } from "../../shared/defs/gameObjects/throwableDefs.ts";
 import { GameObjectDefs } from "../../shared/defs/register.ts";
-import { EmoteSlot, GameConfig, Input, type TeamMode } from "../../shared/gameConfig.ts";
+import { EmoteSlot, GameConfig, Input, TeamMode } from "../../shared/gameConfig.ts";
 import type { Emote } from "../../shared/net/updateMsg.ts";
+import { resolveTeamPingWorldRoute } from "../../shared/teamPingRouting.ts";
 import { coldet } from "../../shared/utils/coldet.ts";
 import { math } from "../../shared/utils/math.ts";
 import { util } from "../../shared/utils/util.ts";
@@ -60,6 +60,7 @@ interface Indicator {
     pos: Vec2;
     mapEvent?: boolean;
     worldDisplay?: boolean;
+    sourcePlayerId?: number;
 }
 
 interface TeamPingSelector {
@@ -177,6 +178,7 @@ export class EmoteBarn {
     pingIndicators: Array<{
         ping: Indicator;
     }> = [];
+    factionPingIndicators: Indicator[] = [];
 
     airdropIndicator: Indicator;
     airstrikeIndicator: Indicator;
@@ -544,6 +546,17 @@ export class EmoteBarn {
         this.pingIndicators.push({
             ping: this.airstrikeIndicator,
         });
+
+        // Faction teammates outside the local four-player group still receive
+        // Team Ping messages. Keep a small transient pool so Gift/Danger/Coming
+        // pings also have a world marker instead of only a map icon and sound.
+        for (let i = 0; i < 8; i++) {
+            const indicator = createIndicator(airstrikeIdx + 1 + i);
+            this.pingContainer.addChild(indicator.pingContainer);
+            this.indContainer.addChild(indicator.indContainer);
+            this.factionPingIndicators.push(indicator);
+            this.pingIndicators.push({ ping: indicator });
+        }
     }
 
     m_free() {
@@ -622,12 +635,36 @@ export class EmoteBarn {
                             this.activePlayer.__id,
                         ).groupId;
                         const groupId = playerInfo.groupId;
-                        if (activeGroupId == groupId) {
+                        const activeInfo = this.playerBarn.getPlayerInfo(this.activePlayer.__id);
+                        const route = resolveTeamPingWorldRoute({
+                            factionMode,
+                            activeGroupId,
+                            senderGroupId: groupId,
+                            activeTeamId: activeInfo.teamId,
+                            senderTeamId: playerInfo.teamId,
+                        });
+                        if (route === "group") {
                             const l = this.playerBarn.getGroupInfo(groupId);
                             const c = l.playerIds.indexOf(ping.playerId);
                             if (c !== -1) {
                                 indicator = this.pingIndicators[c].ping;
                             }
+                        } else if (route === "faction") {
+                            indicator = this.factionPingIndicators.find(
+                                (entry) => entry.sourcePlayerId === ping.playerId && entry.fadeOut > 0,
+                            )
+                                ?? this.factionPingIndicators.find((entry) => entry.fadeOut <= 0)
+                                ?? this.factionPingIndicators.reduce((oldest, entry) =>
+                                    entry.life < oldest.life ? entry : oldest
+                                );
+                            indicator.sourcePlayerId = ping.playerId;
+                            const tint = this.playerBarn.getTeamColor(playerInfo.teamId) || 0xffffff;
+                            indicator.borderSprite.sprite.tint = tint;
+                            indicator.pingSprite.sprite.tint = tint;
+                            indicator.indSpriteInner.sprite.tint = tint;
+                            indicator.indSpriteInner.baseTint = tint;
+                            indicator.indSpriteOuter.sprite.tint = tint;
+                            indicator.indSpriteOuter.baseTint = tint;
                         }
                     }
                     const playerStatus = this.playerBarn.getPlayerStatus(ping.playerId);
@@ -1115,14 +1152,18 @@ export class EmoteBarn {
             te++
         ) {
             const indicator = this.pingIndicators[te].ping;
-            const playerId = groupInfo.playerIds[te];
+            const playerId = indicator.sourcePlayerId
+                ?? (te < 4 ? groupInfo.playerIds[te] : undefined);
             const indContainer = indicator.indContainer;
             const pingContainer = indicator.pingContainer;
 
             if (playerId != undefined || indicator.mapEvent) {
-                playerBarn.getPlayerInfo(playerId);
-                const isActivePlayer = playerId == this.activePlayer.__id;
-                const playerStatus = playerBarn.getPlayerStatus(playerId);
+                const resolvedPlayerId = playerId ?? 0;
+                playerBarn.getPlayerInfo(resolvedPlayerId);
+                const isActivePlayer = resolvedPlayerId == this.activePlayer.__id;
+                const playerStatus = resolvedPlayerId > 0
+                    ? playerBarn.getPlayerStatus(resolvedPlayerId)
+                    : undefined;
                 const borderSprite = indicator.borderSprite.sprite;
                 const pingSprite = indicator.pingSprite.sprite;
                 const indSpriteOuter = indicator.indSpriteOuter.sprite;
@@ -1222,6 +1263,7 @@ export class EmoteBarn {
                     pingContainer.visible = false;
                     indContainer.visible = false;
                     indicator.displayed = false;
+                    if (indicator.fadeOut <= 0) indicator.sourcePlayerId = undefined;
                 }
             } else {
                 pingContainer.visible = false;

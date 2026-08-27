@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { defineConfig, type RolldownOptions } from "rolldown";
 import { stripBlockPlugin } from "../shared/utils/stripBlockPlugin.ts";
 
@@ -10,10 +11,17 @@ const config: RolldownOptions = {
     output: {
         dir: "./dist",
         format: "es",
-        polyfillRequire: false,
+        // HJSON is CommonJS and is intentionally bundled into smartBot so the
+        // external compute package stays self-contained. The same shared
+        // config module is present in the other ESM entries, so their bundled
+        // HJSON calls also need Rolldown's Node require compatibility shim.
+        polyfillRequire: true,
         sourcemap: true,
         topLevelVar: true,
-        exports: "none",
+        // gameServer is also imported by compatibility smoke tests, so its
+        // public helpers must remain valid named ESM exports. Entries without
+        // runtime exports still collapse to side-effect-only bundles.
+        exports: "auto",
         minify: {
             compress: {
                 unused: true,
@@ -50,8 +58,16 @@ const config: RolldownOptions = {
     platform: "node",
     external: (id: string) => {
         if (id.includes("uWebSockets.js")) return true;
-        if (id.match(/(\.js|\.ts|\.json)/)) return false;
-
+        // smartBot.js is copied as a self-contained remote 50v50 runtime.
+        // Bundle HJSON so the compute node only needs Node.js, not a separate
+        // npm install or access to the monorepo's node_modules directory.
+        if (id === "hjson") return false;
+        // Legacy custom modules still contain extensionless relative imports.
+        // They are local source, not packages, and must be bundled so the ESM
+        // output never asks Node to resolve an extensionless filesystem path.
+        if (id.startsWith(".") || id.startsWith("\0") || path.isAbsolute(id)) {
+            return false;
+        }
         return true;
     },
     transform: {
@@ -69,6 +85,10 @@ export default defineConfig([
     {
         ...config,
         input: "src/game/gameProcess.ts",
+    },
+    {
+        ...config,
+        input: "src/smartBot.ts",
     },
     {
         ...config,

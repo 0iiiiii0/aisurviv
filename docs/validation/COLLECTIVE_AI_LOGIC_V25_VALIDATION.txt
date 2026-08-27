@@ -1,0 +1,73 @@
+V25 collective AI logic validation
+
+Server TypeScript build: PASS
+Client TypeScript type check: PASS
+Server test scripts: 36/36 PASS
+Failed scripts: none
+
+Passed scripts:
+- test:duel
+- test:duel-lobby
+- test:admin
+- test:ipv6
+- test:potato
+- test:bot-input
+- test:duel-vision
+- test:all-modes
+- test:spectator-autofill
+- test:loot-ai
+- test:bot-brain
+- test:faction-autofill
+- test:bot-combat-heal
+- test:resource-sweep
+- test:loot-safety
+- test:aim-control
+- test:special-roles
+- test:gameplay-roles
+- test:integrated-spec
+- test:faction-airdrop-container
+- test:admin-auth
+- test:bot-autofill-config
+- test:navigation-recovery
+- test:room-lifecycle
+- test:revive-coordination
+- test:spectator-difficulty
+- test:cpu-load
+- test:gas-escape
+- test:combat-tactics
+- test:v22-resource-combat
+- test:forbidden-ai
+- test:forbidden-context
+- test:airstrike-safety
+- test:spud-gun
+- test:ai-recorder
+- test:collective-sim
+
+40-bot simulation output:
+
+> test:collective-sim
+> node -r ts-node/register src/collectiveLogicSimulation.ts
+
+{
+  "simulation": "40-bot deterministic faction logic",
+  "durationMs": 180000,
+  "stepMs": 500,
+  "bots": 40,
+  "armedByThirtySeconds": 40,
+  "maxSimultaneousDefenders": 4,
+  "maxSupportDuration": 12000,
+  "specialStateShare": 1.11,
+  "gasRecoveryChecks": 6040,
+  "staleResourceRecoveries": 0,
+  "occupiedResourceCount": 40,
+  "assignedResources": 40,
+  "maxResourceCrowd": 1,
+  "stateTotals": {
+    "loot": 1120,
+    "combat": 7120,
+    "special": 160,
+    "gas": 6040
+  },
+  "result": "PASS"
+}
+

@@ -1,0 +1,36 @@
+﻿// 玩家仓库 / 服务器配置 / 账号等运行时数据：不参与同步（防止全量 patch 同步时删除服务器数据）
+// Surviv 服务器 Syncthing 忽略规则
+// 放到服务器项目根（Syncthing 同步目录的根），两端规则一致。
+
+// AI 录像正在写入的临时文件（写入完成后会自动改名为 .jsonl/.json 再同步）
+*.part
+
+// 启动器持续写入的日志（stdout/stderr 重定向，无法在线稳定同步）
+crash-logs/launcher.log
+
+// 本机备份输出，避免同步回环（backup-server.ps1 的输出目录）
+backups/
+
+// 依赖 / 版本库 / 调试残留 / 旧备份，不参与同步
+node_modules/
+.git/
+.pnpm-store/
+tmp-stash-debug.json
+tmp-stash-debug3.json
+survivio-stash.json.bak
+survivio-stash.json.root-bak-*
+.codex-backups/
+survivio-stash.json
+survivio-config.json
+survivio-player-accounts.json
+survivio-admin-auth.json
+
+// 打包/调试残留，不参与同步（已归档到外层 cleanup-archive-20260805/）
+client.zip
+shared.zip
+server/cnt_check.ts
+V36_FORBIDDEN_LEGIT_TACTICS_SIMULATION.json
+V56_AI_CAPABILITY_REPORT.json
+server/V26_MULTI_MODE_SIMULATION.json
+server/V27_AIRSTRIKE_RESOURCE_NAV_SIMULATION.json
+server/v32-combat-navigation-airdrop-simulation.json

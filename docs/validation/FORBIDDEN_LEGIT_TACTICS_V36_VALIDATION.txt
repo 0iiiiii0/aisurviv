@@ -1,0 +1,19 @@
+V36 Forbidden / LEGIT tactics validation
+
+Server TypeScript build: PASS
+Client TypeScript --noEmit: PASS
+Server test scripts discovered: 51
+Server test scripts passed: 51 / 51
+V36 deterministic tactics simulation: PASS
+ZIP integrity: PASS
+
+Final-change affected regressions rerun:
+- bot input safety
+- forbidden AI
+- forbidden context
+- combat tactics
+- airstrike safety
+- duel / dual switch
+- V34 vision process
+- V35 frequency / balance
+- V36 ricochet, barrel, gun-line, grenade, offscreen policy

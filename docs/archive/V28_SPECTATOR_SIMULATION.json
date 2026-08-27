@@ -1,0 +1,12 @@
+{
+  "simulatedBots": 60,
+  "visibleThreatResponsesPassed": 60,
+  "combatResponses": 24,
+  "counterfireResponses": 12,
+  "unarmedEvadeResponses": 12,
+  "survivalPriorityProtected": true,
+  "strategicTargetsSuppressed": 60,
+  "combatCandidatesPreserved": 60,
+  "minimumBackoffMs": 13900,
+  "maximumBackoffMs": 24000
+}

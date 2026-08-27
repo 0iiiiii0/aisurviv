@@ -9,7 +9,14 @@
   },
   "excludes": [
     "**/node_modules",
-    "**/*-lock.json"
+    "**/*-lock.json",
+    "server/src/**/*SmokeTest.ts",
+    "server/src/**/*Simulation.ts",
+    "server/src/**/*SeedSweep.ts",
+    "server/src/**/*Analysis.ts",
+    "server/src/_dualSwitchTest.ts",
+    "server/src/aiCapabilityTest.ts",
+    "server/src/smokeTestDataDir.ts"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.96.0.wasm",

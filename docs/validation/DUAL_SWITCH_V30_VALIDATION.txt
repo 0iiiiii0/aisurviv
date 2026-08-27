@@ -1,0 +1,45 @@
+V30 Stable Dual-Switch Validation
+=================================
+
+Source basis
+------------
+- Input recordings: ai-match-recordings(5).zip
+- Recording directories: 8
+- Non-empty frame sessions: 6
+- Frames analyzed: 8,249
+- Events analyzed: 7,836
+
+Observed pre-fix behavior
+-------------------------
+- Forbidden Mosin + SV-98: 35 confirmed shots, 9 slot changes.
+- Only 7 of 34 adjacent shot pairs alternated weapons (20.6%).
+- Active Legit Mosin + SV-98: 44 shots, 9 slot changes.
+- Only 5 of 43 adjacent shot pairs alternated weapons (11.6%).
+- Combined active duel sessions: 79 confirmed shots; 12 of 77 adjacent pairs alternated (15.6%).
+
+Targeted deterministic simulation
+---------------------------------
+- Duration: 20,000 ms
+- Loadout: Mosin + SV-98
+- Confirmed shots: 32
+- Confirmed switches: 32
+- Average interval between confirmed shots: 613 ms
+- Sequence invariant: each switch was followed by one confirmed shot from the newly equipped gun before switching back.
+
+Build and regression verification
+---------------------------------
+- Server TypeScript build: PASS
+- Client TypeScript noEmit check: PASS
+- Server test scripts discovered: 45
+- Final batch, scripts 1-31: all printed PASS before the outer batch command reached its execution limit.
+- Remaining scripts 32-45 were run separately: 14/14 PASS.
+- Final combined result: 45/45 PASS, no assertion failures.
+
+Important scope
+---------------
+- Stable dual-switch is enabled for Pro, Legit, and Forbidden AI.
+- Normal and Hard AI retain conventional weapon switching.
+- Utility weapons and launchers are excluded.
+- A switch is armed only after authoritative shot confirmation.
+- The newly equipped weapon must complete a confirmed shot before the AI may switch back.
+- Local weapon snapshots without authoritative cooldown fields cannot create false shot confirmations.

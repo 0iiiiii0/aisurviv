@@ -105,7 +105,7 @@ const defaultConfig = {
     touchAimLine: true,
     profile: null as { slug: string } | null,
     playerName: "",
-    region: "na",
+    region: "local",
     gameModeIdx: 2,
     teamAutoFill: true,
     language: "en" as Locale,

@@ -1,3 +1,5 @@
+import { PerkProperties } from "../../../../shared/defs/gameObjects/perkDefs.ts";
+import type { LootSpawnDef } from "../../../../shared/defs/mapObjectsTyping.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../../../shared/defs/register.ts";
 import { DamageType, GameConfig } from "../../../../shared/gameConfig.ts";
 import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
@@ -7,6 +9,7 @@ import { math } from "../../../../shared/utils/math.ts";
 import { assert, util } from "../../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
 import type { Game } from "../game.ts";
+import { shouldSpawnScavengerBonus } from "../scavengerDropPolicy.ts";
 import type { Building } from "./building.ts";
 import { BaseGameObject, type DamageParams } from "./gameObject.ts";
 import type { Player } from "./player.ts";
@@ -41,6 +44,19 @@ export class Obstacle extends BaseGameObject {
     maxScale: number;
 
     height: number;
+    suppressLoot = false;
+
+    /** 搜打撤 Boss 配置掉落（生成时注入，覆盖 def.loot；按权重随机）。 */
+    bossLoot?: Array<{ type: string; count: number; weight: number }>;
+
+    /** 搜打撤 Boss 拥有的能力（属性生效，如 steelskin / flak_jacket / gotw）。 */
+    bossPerks: string[] = [];
+
+    /** 搜打撤 Boss 随机佩戴的天赋：死亡后必定掉落（与 bossLoot 叠加）。 */
+    bossWornPerk = "";
+
+    /** 搜打撤 Boss 武器（独立于掉落表）：死亡后必定掉落。 */
+    bossWeapons: Array<{ type: string; count: number }> = [];
 
     interactionRad = 0;
     interactedBy?: Player;
@@ -57,6 +73,7 @@ export class Obstacle extends BaseGameObject {
         open: boolean;
         canUse: boolean;
         locked: boolean;
+        hinge: Vec2;
         closedOri: number;
         closedPos: Vec2;
         openOneWay: number;
@@ -69,6 +86,61 @@ export class Obstacle extends BaseGameObject {
         slideToOpen: boolean;
         slideOffset: number;
     };
+
+    /**
+     * Pending door/button actions (auto-open, auto-close, button use). They are
+     * advanced with worldDt so Sandevistan time dilation also slows map
+     * interactions such as automatic door opening/closing.
+     */
+    private pendingTimers: Array<{
+        kind: string;
+        remaining: number;
+        fire: () => void;
+    }> = [];
+
+    private scheduleDoorAction(kind: string, delaySeconds: number, fire: () => void): void {
+        if (delaySeconds <= 0) {
+            fire();
+            return;
+        }
+        if (this.pendingTimers.some((t) => t.kind === kind)) return;
+        this.pendingTimers.push({ kind, remaining: delaySeconds, fire });
+        this.game.map.registerTimedObstacle(this);
+    }
+
+    private cancelDoorAction(kind: string): void {
+        if (this.pendingTimers.length === 0) return;
+        for (let i = this.pendingTimers.length - 1; i >= 0; i--) {
+            if (this.pendingTimers[i].kind === kind) {
+                this.pendingTimers.splice(i, 1);
+            }
+        }
+        if (this.pendingTimers.length === 0) {
+            this.game.map.unregisterTimedObstacle(this);
+        }
+    }
+
+    private cancelAllDoorActions(): void {
+        if (this.pendingTimers.length === 0) return;
+        this.pendingTimers = [];
+        this.game.map.unregisterTimedObstacle(this);
+    }
+
+    /** Advance pending door/button actions with world (possibly dilated) time. */
+    updateDoorActions(dt: number): void {
+        if (this.pendingTimers.length === 0) return;
+        for (let i = this.pendingTimers.length - 1; i >= 0; i--) {
+            const timer = this.pendingTimers[i];
+            timer.remaining -= dt;
+            if (timer.remaining <= 0) {
+                this.pendingTimers.splice(i, 1);
+                timer.fire();
+            }
+        }
+        if (this.pendingTimers.length === 0) {
+            this.game.map.unregisterTimedObstacle(this);
+        }
+    }
 
     isButton: boolean;
     button?: {
@@ -189,6 +261,7 @@ export class Obstacle extends BaseGameObject {
             this.door = {
                 open: false,
                 canUse: def.door.canUse,
+                hinge: def.hinge!,
                 closedPos: v2.copy(this.pos),
                 closedOri: this.ori,
                 openDelay: def.door.openDelay ?? 0,
@@ -338,11 +411,37 @@ export class Obstacle extends BaseGameObject {
         dir?: Vec2;
         lock?: "lock" | "unlock";
     }) {
-        this.delayedDoorTicker = params.delay;
-        this.delayedDoorInteraction.player = params.player;
-        this.delayedDoorInteraction.dir = params.dir;
-        this.delayedDoorInteraction.type = params.type ?? "toggle";
-        this.delayedDoorInteraction.lock = params.lock;
+        const type = params.type ?? "toggle";
+        this.scheduleDoorAction(`door-${type}`, params.delay, () => {
+            if (
+                this.door?.open
+                && this.door.autoClose
+                && type !== "open"
+                && this.checkNearByPlayers()
+            ) {
+                return;
+            }
+
+            switch (type) {
+                case "open":
+                    this.openDoor(params.player, params.dir);
+                    break;
+                case "close":
+                    this.closeDoor(params.player, params.dir);
+                    break;
+                default:
+                    this.toggleDoor(params.player, params.dir);
+                    break;
+            }
+
+            if (this.door && params.lock) {
+                const canUse = params.lock === "unlock";
+                if (this.door.canUse !== canUse) {
+                    this.door.canUse = canUse;
+                    this.setDirty();
+                }
+            }
+        });
     }
 
     updateCollider() {
@@ -470,11 +569,41 @@ export class Obstacle extends BaseGameObject {
                 stonePiercing = sourceDef?.stonePiercing ?? false;
             }
 
+            // Secret-extraction bots are issued real firearms and the match
+            // commander can explicitly task one of them with clearing an ammo
+            // crate that seals a tunnel lane. Without this narrow exception
+            // every default secret loadout is rejected by armorPlated, making
+            // the coordinated route physically impossible despite sustained
+            // gunfire. Stone walls remain protected.
+            if (
+                params.source?.__type === ObjectType.Player
+                && params.source.serverBot
+                && params.source.game.extractionSecretEnabled
+                && params.source.game.extraction().isBattleClearAuthorized(
+                    params.source.__id,
+                    this.__id,
+                )
+            ) {
+                armorPiercing = true;
+            }
+
             if (def.armorPlated && !armorPiercing) return;
             if (def.stonePlated && !stonePiercing) return;
         }
 
-        this.health -= params.amount!;
+        let amount = params.amount ?? 0;
+        // 搜打撤 Boss 能力：steelskin 减伤、flak_jacket 减免爆炸伤害。
+        if (this.bossPerks.length > 0) {
+            if (this.bossPerks.includes("steelskin")) {
+                amount *= 1 - PerkProperties.steelskin.damageReduction;
+            }
+            if (this.bossPerks.includes("flak_jacket")) {
+                amount *= params.isExplosion
+                    ? 1 - PerkProperties.flak_jacket.explosionDamageReduction
+                    : 1 - PerkProperties.flak_jacket.damageReduction;
+            }
+        }
+        this.health -= amount;
         this.health = math.max(0, this.health);
 
         this.healthT = math.clamp(this.health / this.maxHealth, 0, 1);
@@ -495,6 +624,7 @@ export class Obstacle extends BaseGameObject {
     }
 
     kill(params: DamageParams) {
+        this.cancelAllDoorActions();
         const def = MapObjectDefs.typeToDef(this.type, "obstacle");
         this.health = this.healthT = 0;
         this.dead = true;
@@ -554,31 +684,32 @@ export class Obstacle extends BaseGameObject {
             pushSpeed *= def.lootSpawn.speedMult;
         }
 
-        const lootTablesOrItems = [...def.loot];
+        const lootTablesOrItems: LootSpawnDef[] = this.suppressLoot
+            ? []
+            : this.bossLoot && this.bossLoot.length > 0
+            ? this.bossLoot
+                .filter((entry) => Math.random() * 100 < entry.weight)
+                .map((entry) => ({
+                    type: entry.type,
+                    count: Math.max(1, Math.floor(Number(entry.count) || 1)),
+                }))
+            : [...def.loot];
 
-        if (
-            params.source?.__type === ObjectType.Player
-            && params.source.hasPerk("scavenger")
-        ) {
-            lootTablesOrItems.push({
-                tier: "tier_world",
-                min: 1,
-                max: 1,
-                props: {},
-            });
-        }
-
-        if (
-            params.source?.__type === ObjectType.Player
-            && params.source.hasPerk("scavenger_adv")
-        ) {
-            lootTablesOrItems.push({
-                tier: "tier_scavenger_adv",
-                min: 1,
-                max: 1,
-                props: {},
-            });
-        }
+        const sourcePlayer = params.source?.__type === ObjectType.Player
+            ? params.source
+            : undefined;
+        const scavengerTier = !this.suppressLoot && sourcePlayer
+            ? sourcePlayer.hasPerk("scavenger_adv")
+                ? "tier_scavenger_adv"
+                : sourcePlayer.hasPerk("scavenger")
+                ? "tier_world"
+                : ""
+            : "";
+        const spawnScavengerBonus = scavengerTier !== ""
+            && shouldSpawnScavengerBonus(
+                this.game.map.mapDef.gameMode.extractionMode === true,
+                this.game.extractionSecretEnabled,
+            );
 
         // cobalt class pod logic
         let ownerId = 0;
@@ -630,6 +761,33 @@ export class Obstacle extends BaseGameObject {
                     count: lootTierOrItem.count ?? 1,
                 });
             }
+        }
+
+        if (spawnScavengerBonus) {
+            // Scavenger rewards retain their own rarity distribution in secret extraction.
+            const item = this.game.lootBarn.getLootTable(
+                scavengerTier,
+                new Set<string>(),
+                { applyExtractionSecretBonus: false },
+            );
+            if (item) {
+                items.push({
+                    type: item.name,
+                    preload: item.preload,
+                    count: item.count,
+                });
+            }
+        }
+
+        if (this.bossWornPerk) {
+            items.push({ type: this.bossWornPerk, count: 1 });
+        }
+        for (const weapon of this.bossWeapons) {
+            if (!weapon?.type) continue;
+            items.push({
+                type: weapon.type,
+                count: Math.max(1, Math.floor(Number(weapon.count) || 1)),
+            });
         }
 
         let rad = 0;
@@ -688,14 +846,16 @@ export class Obstacle extends BaseGameObject {
                 }
             }
         }
+    }
 
-        if (def.isDecalAnchor && this.parentBuilding) {
-            for (const obj of this.parentBuilding.childObjects) {
-                if (obj.__type === ObjectType.Decal && v2.eq(obj.pos, this.pos, 0.01)) {
-                    obj.lifeTime = 0;
-                }
-            }
-        }
+    resetForArenaRound(): void {
+        this.cancelAllDoorActions();
+        this.dead = false;
+        this.health = this.maxHealth;
+        this.healthT = 1;
+        this.scale = this.maxScale;
+        this.updateCollider();
+        this.setDirty();
     }
 
     interact(player?: Player, auto = false): void {
@@ -727,7 +887,6 @@ export class Obstacle extends BaseGameObject {
             this.setDirty();
             if (this.door.openDelay > 0) {
                 this.delayedInteraction({ delay: this.door.openDelay, player });
-                this.delayedDoorTicker = this.door.openDelay;
             } else {
                 this.toggleDoor(player);
             }
@@ -797,7 +956,13 @@ export class Obstacle extends BaseGameObject {
         }
         const def = MapObjectDefs.typeToDef(this.type, "obstacle");
         if (def.button?.destroyOnUse) {
-            this.killTicker = this.button.useDelay;
+            this.scheduleDoorAction("btn-kill", this.button.useDelay, () => {
+                this.kill({
+                    damageType: GameConfig.DamageType.Airdrop,
+                    dir: v2.create(0, 0),
+                    source: player,
+                });
+            });
         }
         this.setDirty();
     }

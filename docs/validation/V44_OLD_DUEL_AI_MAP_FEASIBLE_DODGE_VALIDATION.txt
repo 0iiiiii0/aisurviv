@@ -1,0 +1,71 @@
+V44 OLD DUEL / AI MAP / FEASIBLE DODGE VALIDATION
+==================================================
+
+Scope
+-----
+1. Restore the V40 human duel arena without redesigning it.
+2. Create a separate AI-only duel map.
+3. Route admin-created pure-AI duels to duel_ai only.
+4. Calculate whether a bullet or gun-line dodge can succeed before moving.
+5. Preserve V43 combat, aim-training, spectator, lobby and mode behavior.
+
+Static checks
+-------------
+PASS  Server TypeScript noEmit check
+PASS  Client TypeScript noEmit check
+PASS  Server production build
+PASS  V44 launcher/build marker check
+
+Targeted V44 test
+-----------------
+PASS  Old duel dimensions: 176 x 136
+PASS  Old duel spawns: (0.2, 0.5), (0.8, 0.5)
+PASS  New duel_ai dimensions: 188 x 152
+PASS  New map name: AI Combat Lab: Crossfire
+PASS  New map initializes as a seven-round arena
+PASS  New map contains 36 arena objects
+PASS  Horizontal and vertical object symmetry
+PASS  Frame-one spawn-to-spawn shot is blocked
+PASS  Both spawns are path-connected
+PASS  North, centre and south crossings are reachable
+PASS  Avoidable bullet selects a legal lateral dodge
+PASS  Too-late/unavoidable bullet returns no dodge
+PASS  Obstacle-blocked movement returns no dodge
+PASS  Short-flight proactive gun-line returns no dodge
+PASS  Long-flight proactive gun-line selects a useful dodge
+
+Targeted test output
+--------------------
+V44 old duel / AI map / feasible dodge smoke test passed
+
+Production multi-process test
+-----------------------------
+PASS  Admin pure-AI request created mapName=duel_ai
+PASS  Game ID: eaf90d4f2ae985c0ac07837e99b88df3a9320a4b
+PASS  Pro AI joined
+PASS  Hard AI joined
+PASS  aiPlayerCount=2
+PASS  serverBotCount=2
+PASS  Match-scoped spectator share code returned
+
+Regression coverage
+-------------------
+PASS  All 61 non-aggregate server test scripts
+PASS  Duel room and lobby tests
+PASS  V40/V43 direct-fire and ricochet tests
+PASS  HACKER/LEGIT information boundaries
+PASS  Dual-weapon switching
+PASS  Grenade, airstrike and gas behavior
+PASS  Aim-training and moving-target recovery
+PASS  Spectator sharing, free camera and private messages
+PASS  Multi-process room creation/reuse
+PASS  Public mode and map isolation
+PASS  All public maps remain separate from duel_ai
+
+Packaging hygiene
+-----------------
+Test AI recordings removed.
+Crash recordings/logs removed.
+Temporary admin authentication removed.
+Vite caches removed.
+No runtime server process left listening after validation.

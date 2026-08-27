@@ -1,0 +1,362 @@
+{
+  "source": "ai-match-recordings(3).zip",
+  "method": "Replay every recorded bad resource-target segment through V26 per-mode commitment and repeated-recovery limits. This is a deterministic policy replay, not a physics simulation.",
+  "matches": {
+    "f3948b915d6ad6c24094c3512e560a6e17d87f83": {
+      "map": "main",
+      "segments": 120,
+      "oldTotalMs": 1371831,
+      "replayV26TotalMs": 654809,
+      "reductionPct": 52.27,
+      "oldMaxMs": 51906,
+      "replayMaxMs": 12150,
+      "over30sOld": 7,
+      "over30sReplay": 0,
+      "topCuts": [
+        {
+          "botId": 2,
+          "target": "crate:1625",
+          "oldMs": 51906,
+          "replayV26Ms": 4500,
+          "cutMs": 47406,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 6,
+          "target": "crate:1096",
+          "oldMs": 47192,
+          "replayV26Ms": 4500,
+          "cutMs": 42692,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 6,
+          "target": "crate:1094",
+          "oldMs": 41284,
+          "replayV26Ms": 4500,
+          "cutMs": 36784,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 2,
+          "target": "crate:1625",
+          "oldMs": 40108,
+          "replayV26Ms": 4500,
+          "cutMs": 35608,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 18,
+          "target": "crate:310",
+          "oldMs": 34274,
+          "replayV26Ms": 4500,
+          "cutMs": 29774,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 5,
+          "target": "crate:275",
+          "oldMs": 31281,
+          "replayV26Ms": 4500,
+          "cutMs": 26781,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 18,
+          "target": "crate:310",
+          "oldMs": 31271,
+          "replayV26Ms": 4500,
+          "cutMs": 26771,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 16,
+          "target": "loot:3247",
+          "oldMs": 24884,
+          "replayV26Ms": 4500,
+          "cutMs": 20384,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 10,
+          "target": "loot:3212",
+          "oldMs": 24349,
+          "replayV26Ms": 4500,
+          "cutMs": 19849,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 17,
+          "target": "crate:244",
+          "oldMs": 24085,
+          "replayV26Ms": 4500,
+          "cutMs": 19585,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 23,
+          "target": "loot:210",
+          "oldMs": 23214,
+          "replayV26Ms": 4500,
+          "cutMs": 18714,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 9,
+          "target": "loot:1004",
+          "oldMs": 22439,
+          "replayV26Ms": 4500,
+          "cutMs": 17939,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 17,
+          "target": "crate:235",
+          "oldMs": 22240,
+          "replayV26Ms": 4500,
+          "cutMs": 17740,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 18,
+          "target": "crate:310",
+          "oldMs": 21448,
+          "replayV26Ms": 4500,
+          "cutMs": 16948,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 7,
+          "target": "crate:1428",
+          "oldMs": 21144,
+          "replayV26Ms": 4500,
+          "cutMs": 16644,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 23,
+          "target": "loot:210",
+          "oldMs": 20465,
+          "replayV26Ms": 4500,
+          "cutMs": 15965,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 3,
+          "target": "loot:3247",
+          "oldMs": 20229,
+          "replayV26Ms": 4500,
+          "cutMs": 15729,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 18,
+          "target": "crate:310",
+          "oldMs": 19475,
+          "replayV26Ms": 4500,
+          "cutMs": 14975,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 2,
+          "target": "crate:315",
+          "oldMs": 18602,
+          "replayV26Ms": 4500,
+          "cutMs": 14102,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 8,
+          "target": "loot:3446",
+          "oldMs": 18256,
+          "replayV26Ms": 4500,
+          "cutMs": 13756,
+          "rule": "repeated-recovery"
+        }
+      ]
+    },
+    "1278f4261094571a8564892f73c566256e94a597": {
+      "map": "faction",
+      "segments": 386,
+      "oldTotalMs": 4182446,
+      "replayV26TotalMs": 1700061,
+      "reductionPct": 59.35,
+      "oldMaxMs": 209649,
+      "replayMaxMs": 8775,
+      "over30sOld": 20,
+      "over30sReplay": 0,
+      "topCuts": [
+        {
+          "botId": 63,
+          "target": "loot:3974",
+          "oldMs": 209649,
+          "replayV26Ms": 3500,
+          "cutMs": 206149,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 10,
+          "target": "crate:530",
+          "oldMs": 162057,
+          "replayV26Ms": 3500,
+          "cutMs": 158557,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 41,
+          "target": "loot:4116",
+          "oldMs": 82978,
+          "replayV26Ms": 3500,
+          "cutMs": 79478,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 6,
+          "target": "crate:2047",
+          "oldMs": 61883,
+          "replayV26Ms": 3500,
+          "cutMs": 58383,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 26,
+          "target": "loot:1446",
+          "oldMs": 58155,
+          "replayV26Ms": 3500,
+          "cutMs": 54655,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 31,
+          "target": "crate:1860",
+          "oldMs": 44260,
+          "replayV26Ms": 3500,
+          "cutMs": 40760,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 14,
+          "target": "crate:1861",
+          "oldMs": 43156,
+          "replayV26Ms": 3500,
+          "cutMs": 39656,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 31,
+          "target": "crate:1701",
+          "oldMs": 41866,
+          "replayV26Ms": 3500,
+          "cutMs": 38366,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 39,
+          "target": "crate:529",
+          "oldMs": 41565,
+          "replayV26Ms": 3500,
+          "cutMs": 38065,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 12,
+          "target": "loot:4333",
+          "oldMs": 41261,
+          "replayV26Ms": 3500,
+          "cutMs": 37761,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 39,
+          "target": "crate:529",
+          "oldMs": 39294,
+          "replayV26Ms": 3500,
+          "cutMs": 35794,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 9,
+          "target": "loot:1668",
+          "oldMs": 37796,
+          "replayV26Ms": 3500,
+          "cutMs": 34296,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 1,
+          "target": "loot:1515",
+          "oldMs": 36439,
+          "replayV26Ms": 3500,
+          "cutMs": 32939,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 43,
+          "target": "crate:1302",
+          "oldMs": 35750,
+          "replayV26Ms": 3500,
+          "cutMs": 32250,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 2,
+          "target": "loot:271",
+          "oldMs": 34190,
+          "replayV26Ms": 3500,
+          "cutMs": 30690,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 59,
+          "target": "crate:101",
+          "oldMs": 33881,
+          "replayV26Ms": 3500,
+          "cutMs": 30381,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 31,
+          "target": "crate:1700",
+          "oldMs": 33533,
+          "replayV26Ms": 3500,
+          "cutMs": 30033,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 40,
+          "target": "crate:1660",
+          "oldMs": 33412,
+          "replayV26Ms": 3500,
+          "cutMs": 29912,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 25,
+          "target": "loot:4683",
+          "oldMs": 31686,
+          "replayV26Ms": 3500,
+          "cutMs": 28186,
+          "rule": "repeated-recovery"
+        },
+        {
+          "botId": 44,
+          "target": "crate:845",
+          "oldMs": 31054,
+          "replayV26Ms": 3500,
+          "cutMs": 27554,
+          "rule": "repeated-recovery"
+        }
+      ]
+    }
+  },
+  "totals": {
+    "segments": 506,
+    "oldTotalMs": 5554277,
+    "replayV26TotalMs": 2354870,
+    "reductionPct": 57.6,
+    "oldMaxMs": 209649,
+    "replayMaxMs": 12150,
+    "over30sOld": 27,
+    "over30sReplay": 0
+  }
+}

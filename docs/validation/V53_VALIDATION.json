@@ -1,0 +1,16 @@
+{
+  "version": "V53",
+  "serverBuild": true,
+  "clientTypecheck": true,
+  "serverTests": {
+    "passed": 72,
+    "total": 72
+  },
+  "stoppedRoomRollover": true,
+  "replacementTokenIssued": true,
+  "regionForwardTimeoutMs": 8000,
+  "roomCreateTimeoutMs": 15000,
+  "proxyClientIp": true,
+  "structuredFailureResponse": true,
+  "longRunningPublicDeploymentTested": false
+}

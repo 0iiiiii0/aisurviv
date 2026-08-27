@@ -1,0 +1,161 @@
+ROLE_NAVIGATION_POTATO_V12 validation
+UTC: 2026-07-24 15:04:17
+
+===== npm run build =====
+
+> build
+> tsc
+
+
+===== npm run test:duel =====
+
+> test:duel
+> node -r ts-node/register src/duelSmokeTest.ts
+
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Created in 17 ms
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Player Red joined game ID duel-smoke-test
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Player Blue joined game ID duel-smoke-test
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Spectator Admin Spectator joined game ID duel-smoke-test
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Created in 2 ms
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Player No Boost joined game ID duel-no-adrenaline-smoke-test
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Game Ended
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Created in 1 ms
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Player Flare Red joined game ID duel-flare-smoke-test
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Player Flare Blue joined game ID duel-flare-smoke-test
+Duel smoke test passed: 176x136, 3 players, five rounds, final score 3:2; round-bound airstrikes are cleared; single and dual flare guns are safe.
+[36m[2026-07-24 3:04:24 PM][0m [32mGame #duel[0m | Game Ended
+
+===== npm run test:duel-lobby =====
+
+> test:duel-lobby
+> node -r ts-node/register src/duelLobbySmokeTest.ts
+
+Duel lobby smoke test passed: human invite, AI opponent, customization, start and return flow.
+
+===== npm run test:admin =====
+
+> test:admin
+> node -r ts-node/register src/adminSmokeTest.ts
+
+Admin smoke test passed: modes, announcement, duel weapons, status, create room and stop room.
+
+===== npm run test:potato =====
+
+> test:potato
+> node -r ts-node/register src/potatoSmokeTest.ts
+
+Potato weapon rotation smoke test passed.
+
+===== npm run test:bot-input =====
+
+> test:bot-input
+> node -r ts-node/register src/smartBotInputSmokeTest.ts
+
+SmartBot input safety smoke test passed: mouse distance and world-space movement mapping are valid.
+
+===== npm run test:duel-vision =====
+
+> test:duel-vision
+> node -r ts-node/register src/duelVisionSmokeTest.ts
+
+Duel vision/search smoke test passed.
+
+===== npm run test:all-modes =====
+
+> test:all-modes
+> node -r ts-node/register src/allModesSmokeTest.ts
+
+All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.
+
+===== npm run test:spectator-autofill =====
+
+> test:spectator-autofill
+> node -r ts-node/register src/spectatorAutoFillSmokeTest.ts
+
+[36m[2026-07-24 3:04:33 PM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Created in 746 ms
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Player First joined game ID spectator-autofill-smoke
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Player Second joined game ID spectator-autofill-smoke
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Player Server Bot joined game ID spectator-autofill-smoke
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Spectator Observer joined game ID spectator-autofill-smoke
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | "Server Bot" left
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | "First" left
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Created in 154 ms
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Spectator Early Observer joined game ID spectator-first-packet
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Player First Contestant joined game ID spectator-first-packet
+[36m[2026-07-24 3:04:34 PM][0m [32mGame #spec[0m | Spectator Late Observer joined game ID spectator-first-packet
+Spectator/auto-fill smoke test passed: target metadata, observer-before-bots binding, switching, disconnect fallback, and room counts.
+[36m[2026-07-24 3:04:35 PM][0m [32mGame #spec[0m | Game Ended
+
+===== npm run test:loot-ai =====
+
+> test:loot-ai
+> node -r ts-node/register src/lootStrategySmokeTest.ts
+
+Loot/resource search strategy smoke test passed
+
+===== npm run test:bot-brain =====
+
+> test:bot-brain
+> node -r ts-node/register src/smartBotBrainSmokeTest.ts
+
+smart bot brain smoke test passed
+
+===== npm run test:faction-autofill =====
+
+> test:faction-autofill
+> node -r ts-node/register src/factionAutoFillSmokeTest.ts
+
+[36m[2026-07-24 3:04:39 PM][0m [32mGame #fact[0m | Creating
+[36m[2026-07-24 3:04:39 PM][0m [32mGame #fact[0m | Created in 218 ms
+[36m[2026-07-24 3:04:39 PM][0m [32mGame #fact[0m | Player Blue Bot joined game ID faction-autofill-forced-team
+[36m[2026-07-24 3:04:39 PM][0m [32mGame #fact[0m | Player Red Bot joined game ID faction-autofill-forced-team
+Faction auto-fill smoke test passed: one bot every two seconds, five-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.
+
+===== npm run test:bot-combat-heal =====
+
+> test:bot-combat-heal
+> node -r ts-node/register src/botCombatHealSmokeTest.ts
+
+Bot combat/heal smoke test passed: deterministic 1v1 firing, no out-of-range rooting, and cover-gated combat healing.
+
+===== npm run test:resource-sweep =====
+
+> test:resource-sweep
+> node -r ts-node/register src/resourceSweepSmokeTest.ts
+
+Opening resource sweep smoke test passed
+
+===== npm run test:loot-safety =====
+
+> test:loot-safety
+> node -r ts-node/register src/lootSafetySmokeTest.ts
+
+Loot definition/runtime and anti-tunnelling safety smoke test passed
+
+===== npm run test:aim-control =====
+
+> test:aim-control
+> node -r ts-node/register src/aimControlSmokeTest.ts
+
+Aim control smoke test passed: reload tracking can turn smoothly without one-frame snapping.
+
+===== npm run test:special-roles =====
+
+> test:special-roles
+> node -r ts-node/register src/specialRoleSmokeTest.ts
+
+special role smoke test passed
+
+===== npm run test:integrated-spec =====
+
+> test:integrated-spec
+> node -r ts-node/register src/integratedLogicSpecSmokeTest.ts
+
+Full integrated logic specification smoke test passed
+
+ALL TESTS PASSED

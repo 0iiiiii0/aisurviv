@@ -1,0 +1,824 @@
+--- a/server/package.json
++++ b/server/package.json
+@@ -33,7 +33,8 @@
+         "test:navigation-recovery": "node -r ts-node/register src/navigationRecoverySmokeTest.ts",
+         "test:room-lifecycle": "node -r ts-node/register src/roomLifecycleSmokeTest.ts",
+         "test:revive-coordination": "node -r ts-node/register src/reviveCoordinationSmokeTest.ts",
+-        "test:spectator-difficulty": "node -r ts-node/register src/spectatorDifficultySmokeTest.ts"
++        "test:spectator-difficulty": "node -r ts-node/register src/spectatorDifficultySmokeTest.ts",
++        "test:cpu-load": "node -r ts-node/register src/cpuLoadControlSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+--- /dev/null
++++ b/server/src/utils/systemCpu.ts
+@@ -0,0 +1,113 @@
++import os from "os";
++
++interface CpuTimesSnapshot {
++    idle: number;
++    total: number;
++}
++
++function readCpuTimes(): CpuTimesSnapshot {
++    let idle = 0;
++    let total = 0;
++    for (const cpu of os.cpus()) {
++        idle += Number(cpu.times.idle) || 0;
++        total +=
++            (Number(cpu.times.user) || 0) +
++            (Number(cpu.times.nice) || 0) +
++            (Number(cpu.times.sys) || 0) +
++            (Number(cpu.times.idle) || 0) +
++            (Number(cpu.times.irq) || 0);
++    }
++    return { idle, total };
++}
++
++/**
++ * Lightweight whole-system CPU sampler. It works on Windows because it derives
++ * utilization from os.cpus() time deltas rather than Unix load averages.
++ */
++export class SystemCpuMonitor {
++    private previous = readCpuTimes();
++    private smoothedPercent = 0;
++    private initialized = false;
++
++    sample(): number {
++        const current = readCpuTimes();
++        const totalDelta = Math.max(0, current.total - this.previous.total);
++        const idleDelta = Math.max(0, current.idle - this.previous.idle);
++        this.previous = current;
++
++        if (totalDelta <= 0) return this.smoothedPercent;
++        const instant = Math.max(
++            0,
++            Math.min(100, ((totalDelta - Math.min(totalDelta, idleDelta)) / totalDelta) * 100),
++        );
++        if (!this.initialized) {
++            this.initialized = true;
++            this.smoothedPercent = instant;
++        } else {
++            // Short spikes matter for spawn protection, but smoothing avoids
++            // oscillating the bot cadence every second.
++            this.smoothedPercent = this.smoothedPercent * 0.62 + instant * 0.38;
++        }
++        return this.smoothedPercent;
++    }
++
++    get percent(): number {
++        return this.smoothedPercent;
++    }
++}
++
++export function normalizeCpuLimits(
++    softLimit: number,
++    hardLimit: number,
++): { softLimit: number; hardLimit: number } {
++    const hard = Math.max(45, Math.min(95, Number(hardLimit) || 80));
++    const soft = Math.max(25, Math.min(hard - 3, Number(softLimit) || 70));
++    return { softLimit: soft, hardLimit: hard };
++}
++
++/**
++ * Multiplier for bot thinking/tick intervals. 1 means normal cadence. The
++ * multiplier rises before the hard target and becomes aggressive above it.
++ */
++export function cpuThrottleScale(
++    cpuPercent: number,
++    softLimit = 70,
++    hardLimit = 80,
++): number {
++    const limits = normalizeCpuLimits(softLimit, hardLimit);
++    const usage = Math.max(0, Number(cpuPercent) || 0);
++    if (usage < limits.softLimit) return 1;
++    if (usage < limits.hardLimit) {
++        const t = (usage - limits.softLimit) / (limits.hardLimit - limits.softLimit);
++        return 1.2 + t * 1.35;
++    }
++    const over = Math.min(20, usage - limits.hardLimit);
++    return Math.min(4.5, 2.8 + over * 0.085);
++}
++
++/**
++ * Adaptive connection delay. Above the hard target new AI creation is paused;
++ * the caller can retry after the returned delay.
++ */
++export function adaptiveBotJoinDelay(
++    baseDelayMs: number,
++    cpuPercent: number,
++    softLimit = 70,
++    hardLimit = 80,
++): { delayMs: number; pause: boolean } {
++    const limits = normalizeCpuLimits(softLimit, hardLimit);
++    const base = Math.max(500, Math.min(60_000, Math.round(baseDelayMs) || 2000));
++    const usage = Math.max(0, Number(cpuPercent) || 0);
++    if (usage >= limits.hardLimit) {
++        return {
++            delayMs: Math.max(5000, Math.round(base * 3)),
++            pause: true,
++        };
++    }
++    if (usage < limits.softLimit) return { delayMs: base, pause: false };
++    const t = (usage - limits.softLimit) / (limits.hardLimit - limits.softLimit);
++    return {
++        delayMs: Math.round(base * (1.45 + t * 1.8)),
++        pause: false,
++    };
++}
+--- a/server/src/gameServer.ts
++++ b/server/src/gameServer.ts
+@@ -1,5 +1,6 @@
+ import { spawn, type ChildProcess } from "child_process";
+ import { randomBytes } from "crypto";
++import os from "os";
+ import path from "path";
+ import { App, SSLApp, type TemplatedApp, type WebSocket } from "uWebSockets.js";
+ import { version } from "../../package.json";
+@@ -28,6 +29,11 @@
+ import { Logger } from "./utils/logger";
+ import { getListenHosts, listenOnHosts } from "./utils/listen";
+ import {
++    SystemCpuMonitor,
++    adaptiveBotJoinDelay,
++    normalizeCpuLimits,
++} from "./utils/systemCpu";
++import {
+     HTTPRateLimit,
+     WebSocketRateLimit,
+     cors,
+@@ -100,6 +106,13 @@
+     private readonly nextAutoFillAt = new Map<string, number>();
+     private autoFillTickRunning = false;
+     private botDifficultyCursor = 0;
++    private readonly cpuMonitor = new SystemCpuMonitor();
++    private readonly cpuLimits = normalizeCpuLimits(
++        Number(process.env.SURVIV_CPU_SOFT_LIMIT ?? 70),
++        Number(process.env.SURVIV_CPU_HARD_LIMIT ?? 80),
++    );
++    private systemCpuPercent = 0;
++    private cpuThrottleState = "normal";
+ 
+     constructor() {}
+ 
+@@ -124,10 +137,27 @@
+         this.mountDuelLobbyApi(app);
+ 
+         setInterval(() => {
+-            const memoryUsage = process.memoryUsage().rss;
+-
+-            const perfString = `Memory usage: ${Math.round((memoryUsage / 1024 / 1024) * 100) / 100} MB`;
++            this.systemCpuPercent = this.cpuMonitor.sample();
++            const nextState =
++                this.systemCpuPercent >= this.cpuLimits.hardLimit
++                    ? "hard"
++                    : this.systemCpuPercent >= this.cpuLimits.softLimit
++                      ? "soft"
++                      : "normal";
++            if (nextState !== this.cpuThrottleState) {
++                this.cpuThrottleState = nextState;
++                this.logger.log(
++                    `CPU control: ${nextState}; system ${this.systemCpuPercent.toFixed(1)}% ` +
++                        `(soft ${this.cpuLimits.softLimit}%, target ${this.cpuLimits.hardLimit}%)`,
++                );
++            }
++        }, 1000).unref?.();
+ 
++        setInterval(() => {
++            const memoryUsage = process.memoryUsage().rss;
++            const perfString =
++                `Memory usage: ${Math.round((memoryUsage / 1024 / 1024) * 100) / 100} MB | ` +
++                `System CPU: ${this.systemCpuPercent.toFixed(1)}%`;
+             this.logger.log(perfString);
+         }, 60000);
+ 
+@@ -533,6 +563,12 @@
+ 
+                 const policy = getBotAutoFillPolicy(game.mapName, game.teamMode);
+                 if (!policy) continue;
++                const adaptiveJoin = adaptiveBotJoinDelay(
++                    policy.joinIntervalMs ?? 2000,
++                    this.systemCpuPercent,
++                    this.cpuLimits.softLimit,
++                    this.cpuLimits.hardLimit,
++                );
+ 
+                 const completed = policy.factionMode
+                     ? Array.from(
+@@ -557,6 +593,10 @@
+                 this.autoFilledGames.delete(game.id);
+                 if (!game.canJoin) continue;
+                 if (Date.now() < (this.nextAutoFillAt.get(game.id) ?? 0)) continue;
++                if (adaptiveJoin.pause) {
++                    this.nextAutoFillAt.set(game.id, Date.now() + adaptiveJoin.delayMs);
++                    continue;
++                }
+ 
+                 const factionCount = Math.max(
+                     2,
+@@ -598,11 +638,20 @@
+                     });
+                     spawnCount = botTeamIds.length;
+                 } else {
++                    // Reserve a delayed group in one worker process. This keeps the
++                    // configured one-at-a-time join cadence while avoiding one
++                    // ts-node process per AI, which was the largest CPU spike during
++                    // room creation.
++                    if (pendingBots > 0) continue;
+                     const effectiveCount =
+                         game.connectedCount + game.reservedHumanCount + pendingBots;
+                     const effectiveBotCount = game.serverBotCount + pendingBots;
++                    const processBatchSize = Math.max(
++                        1,
++                        policy.processBatchSize ?? policy.spawnPerSecond,
++                    );
+                     spawnCount = Math.min(
+-                        policy.spawnPerSecond,
++                        processBatchSize,
+                         Math.max(
+                             0,
+                             (policy.targetPlayerCount ?? 0) - effectiveCount,
+@@ -617,7 +666,7 @@
+                 if (!currentGame || currentGame.stopped || !currentGame.canJoin) continue;
+ 
+                 try {
+-                    const joinDelayMs = policy.joinIntervalMs ?? 2000;
++                    const joinDelayMs = adaptiveJoin.delayMs;
+                     const tokenLifetimeMs = Math.max(
+                         60_000,
+                         Math.max(0, spawnCount - 1) * joinDelayMs + 30_000,
+@@ -653,7 +702,7 @@
+                     });
+                     this.nextAutoFillAt.set(
+                         game.id,
+-                        Date.now() + (policy.joinIntervalMs ?? 2000),
++                        Date.now() + adaptiveJoin.delayMs,
+                     );
+                 } catch (error) {
+                     this.logger.warn(
+@@ -698,7 +747,7 @@
+         const script = path.join(__dirname, production ? "smartBot.js" : "smartBot.ts");
+         const args = production
+             ? ["--enable-source-maps", script]
+-            : ["-r", "ts-node/register", script];
++            : ["-r", "ts-node/register/transpile-only", script];
+         const localAddress = formatHostPort("127.0.0.1", Config.gameServer.port);
+         const matchData: DuelLobbyMatchData = {
+             zone: "",
+@@ -739,10 +788,22 @@
+                 BOT_FACTION_FORCE: isFaction ? "1" : "0",
+                 BOT_MAP_AI: "1",
+                 BOT_DEBUG: "0",
++                BOT_CPU_SOFT_LIMIT: String(this.cpuLimits.softLimit),
++                BOT_CPU_HARD_LIMIT: String(this.cpuLimits.hardLimit),
++                TS_NODE_TRANSPILE_ONLY: "1",
+             },
+             stdio: ["ignore", "pipe", "pipe"],
++            windowsHide: true,
+         });
+ 
++        try {
++            if (child.pid) {
++                os.setPriority(child.pid, os.constants.priority.PRIORITY_BELOW_NORMAL);
++            }
++        } catch {
++            // Priority changes are best-effort and may be denied by the host.
++        }
++
+         let processes = this.botProcesses.get(gameId);
+         if (!processes) {
+             processes = new Map();
+--- a/server/src/botAutoFill.ts
++++ b/server/src/botAutoFill.ts
+@@ -104,7 +104,7 @@
+             spawnPerSecond: 1,
+             factionBotCapPerTeam: totalCap / 2,
+             factionBotCapTotal: totalCap,
+-            processBatchSize: 5,
++            processBatchSize: 8,
+             joinIntervalMs,
+         };
+     }
+@@ -135,6 +135,7 @@
+         spawnPerSecond: 1,
+         targetPlayerCount,
+         maxBotCount: botLimit,
++        processBatchSize: 8,
+         joinIntervalMs,
+     };
+ }
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -104,12 +104,17 @@
+     rotateDirectionTowards,
+     shouldDelayGunfire,
+ } from "./bot/aimControl";
+-import { shouldPullTrigger, shouldStopForPrecisionShot } from "./bot/combatExecution";
++import {
++    isFreshCombatObservation,
++    shouldPullTrigger,
++    shouldStopForPrecisionShot,
++} from "./bot/combatExecution";
+ import {
+     isSafeContainerEntryBlocker,
+     shippingContainerRoute,
+ } from "./bot/containerNavigation";
+ import { assessHealSafety, type HealSafetyDecision } from "./bot/healSafety";
++import { SystemCpuMonitor, cpuThrottleScale, normalizeCpuLimits } from "./utils/systemCpu";
+ import { movementInputFromDirection } from "./bot/movementInput";
+ import { interactionApproachPlan } from "./bot/interactionGeometry";
+ import {
+@@ -214,6 +219,8 @@
+     autoFill: boolean;
+     joinDelay: number;
+     tickMs: number;
++    cpuSoftLimit: number;
++    cpuHardLimit: number;
+     difficulty: DifficultyName;
+     debug: boolean;
+     lootScanRange: number;
+@@ -547,6 +554,8 @@
+     autoFill: process.env.BOT_AUTOFILL === "1" || process.env.BOT_AUTOFILL === "true",
+     joinDelay: envNumber("BOT_JOIN_DELAY", 120, 0, 5000),
+     tickMs: envNumber("BOT_TICK_MS", 30, 20, 250),
++    cpuSoftLimit: envNumber("BOT_CPU_SOFT_LIMIT", 70, 25, 92),
++    cpuHardLimit: envNumber("BOT_CPU_HARD_LIMIT", 80, 45, 95),
+     difficulty: difficultyFromEnv(),
+     debug: process.env.BOT_DEBUG === "1" || process.env.BOT_DEBUG === "true",
+     lootScanRange: envNumber("BOT_LOOT_RANGE", 55, 10, 160),
+@@ -1341,6 +1350,8 @@
+     strafeSign = Math.random() < 0.5 ? -1 : 1;
+     nextStrafeAt = 0;
+     nextThinkAt = 0;
++    private adaptiveLoadScale = 1;
++    private lastPlayerMemoryUpdate = 0;
+     lastHealth = 100;
+     lastDamagedAt = 0;
+     lastPosition = v2.create(0, 0);
+@@ -1427,6 +1438,9 @@
+         this.id = id;
+         this.difficulty = difficulty;
+         this.profile = DIFFICULTIES[this.difficulty];
++        // Stagger expensive decision passes inside a shared worker so a batch of
++        // bots never performs perception/pathfinding on the same event-loop turn.
++        this.nextThinkAt = now() + ((id * 37 + squadSlot * 19) % this.profile.thinkIntervalMs);
+         this.squad = squad;
+         this.squadSlot = squadSlot;
+         this.role = squad.roleForSlot(squadSlot);
+@@ -1646,7 +1660,7 @@
+         }
+ 
+         this.rebuildSpatialGrid(timestamp);
+-        this.updatePlayerMemory();
++        this.updatePlayerMemory(timestamp);
+         if (config.combatIntelligence && config.projectilePrediction && msg.bullets.length > 0) {
+             this.observeBulletEntries(msg.bullets, timestamp);
+         }
+@@ -1728,7 +1742,8 @@
+     }
+ 
+     private rebuildSpatialGrid(timestamp: number, force = false): void {
+-        if (!force && timestamp - this.lastGridRebuild <= 120) return;
++        const minimumInterval = Math.round(120 * Math.min(3, this.adaptiveLoadScale));
++        if (!force && timestamp - this.lastGridRebuild <= minimumInterval) return;
+         // Rebuild once with both query-heavy types. Calling rebuild separately
+         // would clear the first type before the second one is inserted.
+         const spatialObjects = this.objectPool.values().filter(
+@@ -1740,8 +1755,10 @@
+         this.lastGridRebuild = timestamp;
+     }
+ 
+-    private updatePlayerMemory(): void {
+-        const timestamp = now();
++    private updatePlayerMemory(timestamp = now()): void {
++        const minimumInterval = Math.round(45 * Math.min(4, this.adaptiveLoadScale));
++        if (timestamp - this.lastPlayerMemoryUpdate < minimumInterval) return;
++        this.lastPlayerMemoryUpdate = timestamp;
+         const self = this.getSelf();
+         const myPos = self?.data.pos as Vec2 | undefined;
+         const viewport = myPos ? this.maxScopeViewport(myPos) : null;
+@@ -1813,11 +1830,15 @@
+         }
+     }
+ 
+-    tick(): void {
++    tick(loadScale = 1): void {
+         if (!this.connected || !this.activePlayerId) return;
+         const timestamp = now();
++        this.adaptiveLoadScale = clamp(Number(loadScale) || 1, 1, 4.5);
+         if (timestamp >= this.nextThinkAt) {
+-            this.nextThinkAt = timestamp + this.profile.thinkIntervalMs;
++            const combatResponsive = this.state === "combat" || this.state === "counterfire";
++            const scaled = this.profile.thinkIntervalMs * this.adaptiveLoadScale;
++            const maximum = combatResponsive ? 220 : 420;
++            this.nextThinkAt = timestamp + Math.round(clamp(scaled, this.profile.thinkIntervalMs, maximum));
+             this.think(timestamp);
+         }
+         this.sendInputs();
+@@ -2027,15 +2048,17 @@
+         }
+         if (reviving && reviveUnsafe) this.addInput(GameConfig.Input.Cancel);
+ 
+-        // Once a healing/boost action has started, keep still and allow the server
+-        // action timer to finish. Only cancel when the situation becomes unsafe.
++        // Healing does not require standing still in this server. Keep drifting
++        // deeper behind cover (or laterally away from the last threat) so an
++        // opponent cannot simply walk around the obstacle and find a stationary
++        // target. Unsafe exposure still cancels the action in the branch above.
+         if (usingMedicine && activeMedicineSafety.canHeal) {
+             this.setState("heal");
+-            this.output.movement = EMPTY_MOVEMENT();
+-            if (healingThreat) {
+-                this.output.aimDir = normalize(sub(healingThreat.pos, myPos));
+-            }
+-            this.lastCommandMoving = false;
++            const cover = this.chooseHealingCoverTarget(myPos, healingThreat, timestamp);
++            this.moveWhileHealing(myPos, cover, healingThreat, timestamp);
++            this.autoOpenDoor(myPos, timestamp);
++            this.applyUnstuckOverride(timestamp);
++            this.lastCommandMoving = this.isMoving();
+             return;
+         }
+         if (usingMedicine && activeMedicineSafety.cancelActiveAction) {
+@@ -5404,6 +5427,9 @@
+             if (!onScreen) continue;
+ 
+             const dist = distance(myPos, pos);
++            const memory = this.playerMemory.get(object.__id);
++            const observationAge = memory ? timestamp - memory.seenAt : Infinity;
++            if (!isFreshCombatObservation(dist, observationAge, viewport.scopeLevel)) continue;
+             const sharedRangeBonus = object.__id === sharedTargetId ? 28 : 0;
+             const factionRangeBonus = object.__id === factionTargetId ? 42 : 0;
+             if (dist > Math.max(mapScanRange + sharedRangeBonus + factionRangeBonus, maxScreenDistance)) continue;
+@@ -5525,7 +5551,8 @@
+         factionOrder: FactionOrder | null = null,
+     ): void {
+         const enemyPos = target.object.data.pos as Vec2;
+-        const enemyVelocity = this.playerMemory.get(target.object.__id)?.velocity ?? v2.create(0, 0);
++        const targetMemory = this.playerMemory.get(target.object.__id);
++        const enemyVelocity = targetMemory?.velocity ?? v2.create(0, 0);
+         const enemySpeed = length(enemyVelocity);
+         const perkAdaptation = this.perkAdaptation(target.object, timestamp);
+         const slot = this.chooseCombatWeapon(target.distance, -1, false, 1, 1, enemySpeed, false, timestamp);
+@@ -5579,6 +5606,11 @@
+                 this.currentConcealmentZones,
+             );
+         const shotClear = predictedLineClear || directLineClear;
++        const observationAge = targetMemory ? timestamp - targetMemory.seenAt : Infinity;
++        const currentViewport = this.maxScopeViewport(myPos);
++        const freshVisibleShot =
++            target.onScreen &&
++            isFreshCombatObservation(target.distance, observationAge, currentViewport.scopeLevel);
+         const shotAimPoint = predictedLineClear ? predicted : enemyPos;
+         const directAim = normalize(sub(shotAimPoint, myPos));
+         const movingPenalty = this.isMoving() ? 1.25 : 1;
+@@ -5748,7 +5780,7 @@
+                 weaponRange: isMeleeWeapon
+                     ? Number(weaponDef?.attack?.rad ?? 3.2) + 1.4
+                     : gunRange(weaponType),
+-                lineClear: shotClear,
++                lineClear: shotClear && freshVisibleShot,
+                 healthSafe:
+                     this.local.health >
+                     effectiveCombatRetreatHealth(
+@@ -5785,7 +5817,7 @@
+             duelMode: this.duelModeActive,
+             reactionReady: reactionReady && (!this.duelModeActive || cadenceReady),
+             inRange,
+-            lineClear: shotClear,
++            lineClear: shotClear && freshVisibleShot,
+             ammoReady: isMeleeWeapon || Number(weapon?.ammo ?? 0) > 0,
+             shootConfidence: this.profile.shootConfidence,
+             randomRoll: Math.random(),
+@@ -6828,6 +6860,50 @@
+         this.explore(myPos, timestamp);
+     }
+ 
++    private moveWhileHealing(
++        myPos: Vec2,
++        target: Vec2 | null,
++        threat: { pos: Vec2; distance: number; visible: boolean } | null,
++        timestamp: number,
++    ): void {
++        const threatPos = threat?.pos ?? this.healThreatPos;
++        if (target && distance(myPos, target) > 0.8) {
++            const towardCover = this.steerToward(myPos, target, timestamp, 0, this.id + 1701);
++            this.moveDirection(towardCover);
++            this.output.aimDir = threatPos ? normalize(sub(threatPos, myPos)) : towardCover;
++            return;
++        }
++        if (threatPos) {
++            const away = normalize(sub(myPos, threatPos));
++            // Mostly lateral movement keeps the same cover between the two players
++            // while the smaller retreat component makes flanking take longer.
++            const lateral = mul(perpendicular(away), this.strafeSign * 0.88);
++            const drift = normalize(add(mul(away, 0.36), lateral));
++            const safeDrift = this.steerToward(
++                myPos,
++                add(myPos, mul(drift, 5.5)),
++                timestamp,
++                0,
++                this.id + 1702,
++            );
++            this.moveDirection(safeDrift);
++            this.output.aimDir = normalize(sub(threatPos, myPos));
++            return;
++        }
++        // No known threat: make a short deterministic orbit instead of walking
++        // out of cover toward an arbitrary exploration point.
++        const facing = normalize(this.output.aimDir, v2.create(1, 0));
++        const orbit = mul(perpendicular(facing), this.strafeSign);
++        const safeOrbit = this.steerToward(
++            myPos,
++            add(myPos, mul(orbit, 2.4)),
++            timestamp,
++            0,
++            this.id + 1703,
++        );
++        this.moveDirection(safeOrbit);
++    }
++
+     private chooseMedicine(
+         myPos: Vec2,
+         enemyDistance: number,
+@@ -6917,13 +6993,12 @@
+         const input = itemInput[item];
+         if (input !== undefined) this.addInput(input);
+ 
+-        // Movement cancels item use in normal game handling, so begin the action
+-        // while stationary. Keep aiming at a known enemy without firing.
+-        this.output.movement = EMPTY_MOVEMENT();
+-        if (enemy) {
+-            const enemyPos = enemy.object.data.pos as Vec2;
+-            this.output.aimDir = normalize(sub(enemyPos, myPos));
+-        }
++        // The server permits movement while using medicine (at reduced speed).
++        // Start the action while already shifting toward hard cover rather than
++        // presenting a stationary target during the first healing frame.
++        const threat = this.recentHealingThreat(myPos, enemy, timestamp);
++        const cover = this.chooseHealingCoverTarget(myPos, threat, timestamp);
++        this.moveWhileHealing(myPos, cover, threat, timestamp);
+     }
+ 
+     private hasActiveOpeningResourceSweep(timestamp: number): boolean {
+@@ -10211,9 +10286,28 @@
+ 
+ const bots = new Set<TacticalBot>();
+ const squads = new Map<number, SquadCoordinator>();
++const botCpuMonitor = new SystemCpuMonitor();
++const botCpuLimits = normalizeCpuLimits(config.cpuSoftLimit, config.cpuHardLimit);
++let botSystemCpuPercent = 0;
+ let allBotsAttempted = false;
+ let attemptedBots = 0;
+ 
++setInterval(() => {
++    botSystemCpuPercent = botCpuMonitor.sample();
++}, 1000).unref?.();
++
++const currentBotLoadScale = (): number => {
++    const cpuScale = cpuThrottleScale(
++        botSystemCpuPercent,
++        botCpuLimits.softLimit,
++        botCpuLimits.hardLimit,
++    );
++    // A shared worker with several bots is cheaper than several workers, but its
++    // decision passes still need slight staggering as the local batch grows.
++    const localDensityScale = 1 + Math.max(0, bots.size - 2) * 0.07;
++    return clamp(cpuScale * localDensityScale, 1, 4.5);
++};
++
+ const findGame = async (playerCount: number): Promise<FindGameResponse> => {
+     const response = await fetch(`${config.address}/api/find_game`, {
+         method: "POST",
+@@ -10368,13 +10462,19 @@
+     if (attemptedBots >= config.botCount) allBotsAttempted = true;
+ })();
+ 
+-setInterval(() => {
++const runBotTick = (): void => {
++    const loadScale = currentBotLoadScale();
+     for (const bot of bots) {
+-        bot.tick();
++        bot.tick(loadScale);
+         if (bot.disconnect) bots.delete(bot);
+     }
+     if (bots.size === 0 && allBotsAttempted) {
+         console.log("[smartBot] all bots died, disconnected, or failed to join");
+         process.exit(0);
+     }
+-}, config.tickMs);
++    const nextDelay = Math.round(
++        clamp(config.tickMs * Math.min(2.5, loadScale), config.tickMs, 180),
++    );
++    setTimeout(runBotTick, nextDelay).unref?.();
++};
++runBotTick();
+--- a/server/src/bot/combatExecution.ts
++++ b/server/src/bot/combatExecution.ts
+@@ -22,9 +22,8 @@
+ 
+ /**
+  * A precision weapon may only root the bot when a real shot is currently
+- * possible. This prevents the 1v1 failure where a bot selected a long-range
+- * weapon, aimed at the opponent, stopped moving, but remained outside the
+- * weapon's effective range forever.
++ * possible. This prevents the failure where a bot selected a long-range
++ * weapon, aimed at the opponent, stopped moving, but could not actually fire.
+  */
+ export function shouldStopForPrecisionShot(context: PrecisionStopContext): boolean {
+     return Boolean(
+@@ -40,20 +39,42 @@
+ }
+ 
+ /**
+- * Duel mode uses deterministic trigger discipline once reaction time, range,
+- * line-of-sight, and ammunition checks pass. Aim jitter and weapon cooldowns
+- * still keep the result human-like, but a bad random streak can no longer make
+- * the bot stare at a visible opponent without firing.
++ * Old versions rolled shootConfidence every decision pass. A bad roll exactly
++ * when aim alignment completed could leave a bot visually tracking a player but
++ * never sending a usable shot. Accuracy and difficulty are already represented
++ * by reaction time, aim jitter, lead quality, cadence and movement, so the hard
++ * trigger gate is deterministic once all physical checks pass.
+  */
+ export function shouldPullTrigger(context: TriggerContext): boolean {
+-    if (
+-        !context.reactionReady ||
+-        !context.inRange ||
+-        !context.lineClear ||
+-        !context.ammoReady
+-    ) {
+-        return false;
+-    }
+-    if (context.duelMode) return true;
+-    return context.randomRoll <= Math.max(0, Math.min(1, context.shootConfidence));
++    void context.duelMode;
++    void context.shootConfidence;
++    void context.randomRoll;
++    return Boolean(
++        context.reactionReady &&
++            context.inRange &&
++            context.lineClear &&
++            context.ammoReady,
++    );
++}
++
++/**
++ * Stale object-pool coordinates must not become long-range wall information.
++ * At close range a slightly older sample is tolerable; at rifle/scope ranges the
++ * enemy has to have appeared in the bot's current camera very recently.
++ */
++export function isFreshCombatObservation(
++    targetDistance: number,
++    observationAgeMs: number,
++    currentScopeLevel = 1,
++): boolean {
++    const distance = Math.max(0, Number(targetDistance) || 0);
++    const age = Math.max(0, Number(observationAgeMs) || 0);
++    const scope = Math.max(1, Number(currentScopeLevel) || 1);
++
++    if (distance <= 18) return age <= 1250;
++    if (distance <= 34) return age <= 700;
++    // Larger scopes update a wider scene, but still require a current visible
++    // sample rather than a backpack scope or old object coordinate.
++    const longRangeFreshness = Math.max(180, Math.min(330, 230 + scope * 6));
++    return age <= longRangeFreshness;
+ }
+--- a/server/src/bot/healSafety.ts
++++ b/server/src/bot/healSafety.ts
+@@ -27,8 +27,9 @@
+ }
+ 
+ /**
+- * Healing is a committed, stationary action. During combat it is permitted
+- * only after line-of-sight has been broken by hard cover and after a meaningful
++ * Healing is a committed action. The server allows movement at reduced speed,
++ * but combat healing is permitted only after line-of-sight has been broken by
++ * hard cover and after a meaningful
+  * no-damage window. Being inside a building is not cover by itself: an enemy in
+  * the same room can still punish the stationary action. Critical HP increases urgency to
+  * reach cover; it does not allow face-tanking a medkit in front of an enemy.
+--- a/server/src/botCombatHealSmokeTest.ts
++++ b/server/src/botCombatHealSmokeTest.ts
+@@ -1,5 +1,6 @@
+ import assert from "assert/strict";
+ import {
++    isFreshCombatObservation,
+     shouldPullTrigger,
+     shouldStopForPrecisionShot,
+ } from "./bot/combatExecution";
+@@ -52,6 +53,37 @@
+         "1v1 must fire deterministically once all hard checks pass",
+     );
+ 
++
++    assert.equal(
++        shouldPullTrigger({
++            duelMode: false,
++            reactionReady: true,
++            inRange: true,
++            lineClear: true,
++            ammoReady: true,
++            shootConfidence: 0,
++            randomRoll: 0.999,
++        }),
++        true,
++        "ordinary AI must not stare at an aligned visible target because of a random no-fire roll",
++    );
++
++    assert.equal(
++        isFreshCombatObservation(72, 180, 4),
++        true,
++        "a recent target sample inside the current scope may be used at long range",
++    );
++    assert.equal(
++        isFreshCombatObservation(72, 500, 8),
++        false,
++        "a stale long-range object coordinate must not be treated as current scope vision",
++    );
++    assert.equal(
++        isFreshCombatObservation(12, 900, 1),
++        true,
++        "close threats may tolerate a slightly older packet",
++    );
++
+     for (const blocked of [
+         { reactionReady: false, inRange: true, lineClear: true, ammoReady: true },
+         { reactionReady: true, inRange: false, lineClear: true, ammoReady: true },
+@@ -161,7 +193,7 @@
+     testDuelTriggerDiscipline();
+     testHealingSafety();
+     console.log(
+-        "Bot combat/heal smoke test passed: deterministic 1v1 firing, no out-of-range rooting, and cover-gated combat healing.",
++        "Bot combat/heal smoke test passed: deterministic firing, current-scope freshness, no out-of-range rooting, and cover-gated healing.",
+     );
+ }
+ 
+--- /dev/null
++++ b/server/src/cpuLoadControlSmokeTest.ts
+@@ -0,0 +1,32 @@
++import assert from "assert/strict";
++import {
++    adaptiveBotJoinDelay,
++    cpuThrottleScale,
++    normalizeCpuLimits,
++} from "./utils/systemCpu";
++
++function main(): void {
++    assert.deepEqual(normalizeCpuLimits(70, 80), { softLimit: 70, hardLimit: 80 });
++    assert.equal(cpuThrottleScale(55, 70, 80), 1);
++    assert(cpuThrottleScale(74, 70, 80) > 1, "soft pressure must slow bot thinking");
++    assert(
++        cpuThrottleScale(83, 70, 80) > cpuThrottleScale(76, 70, 80),
++        "hard pressure must throttle more aggressively",
++    );
++
++    const normal = adaptiveBotJoinDelay(2000, 55, 70, 80);
++    assert.equal(normal.pause, false);
++    assert.equal(normal.delayMs, 2000);
++
++    const soft = adaptiveBotJoinDelay(2000, 75, 70, 80);
++    assert.equal(soft.pause, false);
++    assert(soft.delayMs > 2000, "70%+ CPU must reduce AI generation speed");
++
++    const hard = adaptiveBotJoinDelay(2000, 82, 70, 80);
++    assert.equal(hard.pause, true, "80%+ CPU must pause new AI creation");
++    assert(hard.delayMs >= 5000);
++
++    console.log("CPU load control smoke test passed: soft throttle, hard spawn pause, and bounded limits.");
++}
++
++main();
+--- a/server/src/factionAutoFillSmokeTest.ts
++++ b/server/src/factionAutoFillSmokeTest.ts
+@@ -61,8 +61,8 @@
+     );
+     assert.equal(
+         policy.processBatchSize,
+-        5,
+-        "50v50 should reserve five sequential joins in one worker process",
++        8,
++        "50v50 should reserve eight sequential joins in one worker process",
+     );
+     assert.equal(
+         policy.joinIntervalMs,
+@@ -88,8 +88,8 @@
+             spawnPerSecond: policy.processBatchSize ?? 1,
+             botCapPerTeam: 20,
+         }),
+-        [1, 2, 1, 2, 1],
+-        "one worker batch should stay balanced while reserving five future joins",
++        [1, 2, 1, 2, 1, 2, 1, 2],
++        "one worker batch should stay balanced while reserving eight future joins",
+     );
+ 
+     assert.deepEqual(
+@@ -193,7 +193,7 @@
+     await testForcedFactionToken();
+ 
+     console.log(
+-        "Faction auto-fill smoke test passed: one bot every two seconds, five-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.",
++        "Faction auto-fill smoke test passed: one bot every two seconds, eight-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.",
+     );
+ }
+ 

@@ -1,0 +1,114 @@
+$ npm run build
+
+> build
+> tsc
+
+
+$ npm run test:faction-airdrop-container
+
+> test:faction-airdrop-container
+> node -r ts-node/register src/factionAirdropContainerSmokeTest.ts
+
+faction airdrop/container smoke test passed
+
+$ npm run test:integrated-spec
+
+> test:integrated-spec
+> node -r ts-node/register src/integratedLogicSpecSmokeTest.ts
+
+Full integrated logic specification smoke test passed
+
+$ npm run test:revive-coordination
+
+> test:revive-coordination
+> node -r ts-node/register src/reviveCoordinationSmokeTest.ts
+
+revive coordination smoke test passed
+
+$ npm run test:loot-ai
+
+> test:loot-ai
+> node -r ts-node/register src/lootStrategySmokeTest.ts
+
+Loot/resource search strategy smoke test passed
+
+$ npm run test:bot-brain
+
+> test:bot-brain
+> node -r ts-node/register src/smartBotBrainSmokeTest.ts
+
+smart bot brain smoke test passed
+
+$ npm run test:bot-combat-heal
+
+> test:bot-combat-heal
+> node -r ts-node/register src/botCombatHealSmokeTest.ts
+
+Bot combat/heal smoke test passed: deterministic 1v1 firing, no out-of-range rooting, and cover-gated combat healing.
+
+$ npm run test:faction-autofill
+
+> test:faction-autofill
+> node -r ts-node/register src/factionAutoFillSmokeTest.ts
+
+[36m[2026-07-25 2:55:37 PM][0m [32mGame #fact[0m | Creating
+[36m[2026-07-25 2:55:37 PM][0m [32mGame #fact[0m | Created in 148 ms
+[36m[2026-07-25 2:55:37 PM][0m [32mGame #fact[0m | Player Blue Bot joined game ID faction-autofill-forced-team
+[36m[2026-07-25 2:55:37 PM][0m [32mGame #fact[0m | Player Red Bot joined game ID faction-autofill-forced-team
+Faction auto-fill smoke test passed: one bot every two seconds, five-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.
+
+$ npm run test:spectator-autofill
+
+> test:spectator-autofill
+> node -r ts-node/register src/spectatorAutoFillSmokeTest.ts
+
+[36m[2026-07-25 2:55:38 PM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Created in 459 ms
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Player First joined game ID spectator-autofill-smoke
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Player Second joined game ID spectator-autofill-smoke
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Player Server Bot joined game ID spectator-autofill-smoke
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Spectator Observer joined game ID spectator-autofill-smoke
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | "Server Bot" left
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | "First" left
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Created in 102 ms
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Spectator Early Observer joined game ID spectator-first-packet
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Player First Contestant joined game ID spectator-first-packet
+[36m[2026-07-25 2:55:39 PM][0m [32mGame #spec[0m | Spectator Late Observer joined game ID spectator-first-packet
+Spectator/auto-fill smoke test passed: target metadata, observer-before-bots binding, switching, disconnect fallback, and room counts.
+[36m[2026-07-25 2:55:40 PM][0m [32mGame #spec[0m | Game Ended
+
+$ npm run test:all-modes
+
+> test:all-modes
+> node -r ts-node/register src/allModesSmokeTest.ts
+
+All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.
+
+$ npm run test:admin-auth
+
+> test:admin-auth
+> node -r ts-node/register src/adminAuthSmokeTest.ts
+
+Admin auth smoke test passed: scrypt password storage, login sessions, logout, password rotation and session invalidation.
+
+$ npm run test:bot-autofill-config
+
+> test:bot-autofill-config
+> node -r ts-node/register src/botAutoFillConfigSmokeTest.ts
+
+Bot auto-fill config smoke test passed: live per-mode cadence, one shared Solo/Duo/Squad AI cap, per-mode targets, and balanced faction total limits.
+
+$ npm run test:navigation-recovery
+
+> test:navigation-recovery
+> node -r ts-node/register src/navigationRecoverySmokeTest.ts
+
+Navigation recovery smoke test passed
+
+$ npm run test:room-lifecycle
+
+> test:room-lifecycle
+> node -r ts-node/register src/roomLifecycleSmokeTest.ts
+
+Room lifecycle smoke test passed

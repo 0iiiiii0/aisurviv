@@ -3,6 +3,38 @@
 import { z } from "zod";
 import type { FindGameMatchData } from "./api.ts";
 
+/**
+ * The browser must send traffic more frequently than the websocket idle
+ * timeout. Keeping both values in the shared protocol prevents drift.
+ */
+export const TEAM_KEEP_ALIVE_INTERVAL_SECONDS = 10;
+export const TEAM_SOCKET_IDLE_TIMEOUT_SECONDS = 60;
+
+export const TEAM_ROOM_CODE_LENGTH = 4;
+
+/**
+ * Accept a raw invite code, a hash ("#Ab12"), or a copied invite URL.
+ * Room codes remain case-sensitive because the server generates mixed case.
+ */
+export function normalizeTeamRoomUrl(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+
+    let roomCode = value.trim();
+    if (!roomCode) return null;
+    try {
+        roomCode = decodeURIComponent(roomCode);
+    } catch {
+        return null;
+    }
+
+    const hashIndex = roomCode.lastIndexOf("#");
+    if (hashIndex >= 0) roomCode = roomCode.slice(hashIndex + 1);
+    roomCode = roomCode.trim();
+
+    const pattern = new RegExp(`^[A-Za-z0-9]{${TEAM_ROOM_CODE_LENGTH}}$`);
+    return pattern.test(roomCode) ? `#${roomCode}` : null;
+}
+
 export type TeamMenuErrorType =
     | "join_full"
     | "join_not_found"
@@ -14,6 +46,7 @@ export type TeamMenuErrorType =
     | "find_game_full"
     | "find_game_invalid_protocol"
     | "find_game_invalid_captcha"
+    | "login_required"
     | "kicked"
     | "banned"
     | "behind_proxy"
@@ -105,12 +138,22 @@ export const zKeepAliveMsg = z.object({
 });
 export type TeamKeepAliveMsg = z.infer<typeof zKeepAliveMsg>;
 
+/** Refreshes the account session attached to an already-open team socket. */
+export const zTeamUpdateAccountMsg = z.object({
+    type: z.literal("updateAccount"),
+    data: z.object({
+        accountToken: z.string().optional(),
+    }),
+});
+export type TeamUpdateAccountMsg = z.infer<typeof zTeamUpdateAccountMsg>;
+
 export const zTeamJoinMsg = z.object({
     type: z.literal("join"),
     data: z.object({
         roomUrl: z.string(),
         playerData: z.object({
             name: z.string(),
+            accountToken: z.string().optional(),
         }),
     }),
 });
@@ -138,6 +181,7 @@ export const zTeamCreateMsg = z.object({
         roomData: zClientRoomData,
         playerData: z.object({
             name: z.string(),
+            accountToken: z.string().optional(),
         }),
     }),
 });
@@ -160,6 +204,9 @@ export const zTeamPlayGameMsg = z.object({
         region: z.string(),
         zones: z.array(z.string()),
         turnstileToken: z.string().optional(),
+        /** Revalidated for the leader immediately before custom matchmaking. */
+        accountToken: z.string().optional(),
+        zombieDifficulty: z.enum(["simple", "normal", "hard"]).optional(),
     }),
 });
 
@@ -174,6 +221,7 @@ export type TeamGameCompleteMsg = z.infer<typeof zGameCompleteMsg>;
 
 export const zTeamClientMsg = z.discriminatedUnion("type", [
     zTeamCreateMsg,
+    zTeamUpdateAccountMsg,
     zTeamSetRoomPropsMsg,
     zTeamJoinMsg,
     zTeamPlayGameMsg,
@@ -185,6 +233,7 @@ export const zTeamClientMsg = z.discriminatedUnion("type", [
 
 export type ClientToServerTeamMsg =
     | TeamKeepAliveMsg
+    | TeamUpdateAccountMsg
     | TeamJoinMsg
     | TeamChangeNameMsg
     | TeamSetRoomPropsMsg

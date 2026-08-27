@@ -206,8 +206,11 @@ export class RiverCreator {
     }
 
     createLake(lake: MapDef["mapGen"]["map"]["rivers"]["lakes"][number]) {
+        const spawnBoundPos = typeof lake.spawnBound.pos === "function"
+            ? lake.spawnBound.pos()
+            : lake.spawnBound.pos;
         const center = v2.add(
-            v2.mulElems(v2.create(this.map.width, this.map.height), lake.spawnBound.pos),
+            v2.mulElems(v2.create(this.map.width, this.map.height), spawnBoundPos),
             util.randomPointInCircle(lake.spawnBound.rad, this.randomGenerator),
         );
 

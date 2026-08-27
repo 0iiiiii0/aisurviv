@@ -8,6 +8,7 @@ survev-config.json
 
 # new one
 survev-config.hjson
+survivio-config.json
 
 # env file
 .env
@@ -15,6 +16,13 @@ survev-config.hjson
 # sqlite db
 *.db
 lost_game_data/
+server-data/
+crash-logs/
+ai-match-recordings/
+backups/
+.codex-backups/
+game-process-crashes/
+surviv-ai-config-pack-v21-alpha1.7/
 
 # Compiled source
 dist/

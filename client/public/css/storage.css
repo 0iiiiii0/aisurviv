@@ -1,0 +1,1304 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #060c12;
+  color: #d7e6ea;
+  font-family: "Roboto Condensed", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+}
+
+#storage-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.storage-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  background: rgba(10, 18, 28, 0.95);
+  border-bottom: 1px solid rgba(110, 197, 190, 0.3);
+}
+
+.storage-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: rgba(110, 197, 190, 0.95);
+  white-space: nowrap;
+}
+
+.storage-identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.storage-identity input {
+  flex: 1;
+  max-width: 320px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 5px;
+  color: #e8f4f6;
+  font-size: 14px;
+}
+
+.storage-identity button {
+  flex-shrink: 0;
+}
+
+.storage-back {
+  padding: 8px 16px;
+  background: rgba(110, 197, 190, 0.18);
+  border: 1px solid rgba(110, 197, 190, 0.5);
+  border-radius: 5px;
+  color: #bff0ea;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.storage-back:hover {
+  background: rgba(110, 197, 190, 0.32);
+}
+
+button.storage-back {
+  font: inherit;
+  cursor: pointer;
+}
+
+.storage-back.clear {
+  background: rgba(255, 138, 101, 0.16);
+  border-color: rgba(255, 138, 101, 0.5);
+  color: #ffdccd;
+}
+
+.storage-back.clear:hover {
+  background: rgba(255, 138, 101, 0.3);
+}
+
+.extraction-stash-status {
+  padding: 6px 20px;
+  min-height: 20px;
+  font-size: 13px;
+  background: rgba(6, 12, 18, 0.6);
+}
+
+.storage-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* 进入仓库页时商店/出售面板必须隐藏：上面的 .storage-main /
+   .storage-shop-sell 的 display 规则会覆盖 HTML 的 hidden 属性，
+   导致“进入时展示一半的商店界面”。用更高特异性的选择器（不用
+   !important，避免 jQuery .show() 无法再显示它）。 */
+.storage-main[hidden],
+.storage-shop-sell[hidden] {
+  display: none;
+}
+
+/* ---------- 右：仓库 ---------- */
+.storage-stash {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.stash-left {
+  width: 330px;
+  flex: 0 0 330px;
+  border-right: 1px solid rgba(110, 197, 190, 0.25);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.stash-avatar-wrap {
+  position: relative;
+  height: 280px;
+  background: transparent;
+  border: 0;
+  overflow: hidden;
+}
+
+.stash-player-canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stash-player-canvas canvas {
+  display: block;
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.stash-dummy {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 200px;
+}
+
+.stash-dummy::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #e8c39a, #b98a5e 70%);
+  border: 2px solid rgba(20, 40, 50, 0.8);
+}
+
+.stash-dummy::after {
+  content: "";
+  position: absolute;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 78px;
+  height: 120px;
+  border-radius: 22px 22px 10px 10px;
+  background: linear-gradient(180deg, #3f6f76, #2c4f57);
+  border: 2px solid rgba(20, 40, 50, 0.8);
+}
+
+.stash-equip {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px dashed rgba(110, 197, 190, 0.45);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.stash-equip.filled {
+  border-style: solid;
+  border-color: rgba(110, 197, 190, 0.75);
+  box-shadow: 0 0 8px rgba(110, 197, 190, 0.35);
+}
+
+.stash-equip-helmet {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.stash-equip-chest {
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.stash-equip-backpack {
+  top: 92px;
+  right: 22px;
+}
+.stash-equip-scope {
+  top: 40px;
+  right: 34px;
+}
+
+.stash-weapons {
+  display: flex;
+  gap: 10px;
+  min-height: 150px;
+}
+
+.stash-weapon {
+  flex: 1;
+  min-height: 118px;
+  border: 1px solid rgba(110, 197, 190, 0.3);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stash-weapon.filled {
+  cursor: pointer;
+}
+
+.stash-weapon.filled:hover {
+  border-color: rgba(110, 197, 190, 0.85);
+  box-shadow: 0 0 8px rgba(110, 197, 190, 0.35);
+}
+
+.stash-weapon.drag-over {
+  border-color: #ffd76a;
+  box-shadow: 0 0 10px rgba(255, 215, 106, 0.5);
+}
+
+.stash-weapon img {
+  height: 92px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.stash-weapon-name {
+  font-size: 11px;
+  color: #cfe8ea;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stash-weapon-ammo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(110, 197, 190, 0.95);
+}
+
+.stash-weapon-ammo img {
+  height: 12px;
+}
+.stash-weapon-empty {
+  color: rgba(215, 230, 234, 0.4);
+  font-size: 12px;
+}
+
+.stash-left-stats {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(110, 197, 190, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.stash-stats-title {
+  font-size: 13px;
+  color: rgba(160, 220, 200, 0.85);
+  margin-bottom: 6px;
+}
+
+.stash-stat-subtitle {
+  font-size: 11px;
+  color: rgba(160, 220, 200, 0.55);
+  margin: 4px 0 2px;
+}
+
+.stash-stat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+}
+
+.stash-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.stash-stat img {
+  height: 18px;
+}
+.stash-stat-empty {
+  color: rgba(215, 230, 234, 0.35);
+  font-size: 12px;
+}
+
+.one-time-perk-label,
+.one-time-perk-section h3 {
+  color: rgba(150, 200, 255, 0.95);
+}
+
+#stash-one-time-perk-list .stash-stat {
+  padding: 2px 5px;
+  border: 1px solid rgba(122, 184, 255, 0.42);
+  border-radius: 5px;
+  background: rgba(122, 184, 255, 0.09);
+  color: #bfddff;
+}
+
+.stash-perk-slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.stash-perk-slot {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(160, 220, 200, 0.45);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(160, 220, 200, 0.55);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.stash-perk-slot.filled {
+  border-style: solid;
+  border-color: rgba(110, 197, 190, 0.7);
+  background: rgba(110, 197, 190, 0.12);
+}
+
+.stash-perk-slot.one-time {
+  position: relative;
+  border-color: rgba(122, 184, 255, 0.85);
+  background: rgba(122, 184, 255, 0.18);
+}
+
+.stash-perk-slot.one-time::after {
+  content: "1";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  min-width: 11px;
+  height: 11px;
+  border-radius: 6px;
+  background: #79b9ff;
+  color: #08131e;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 11px;
+  text-align: center;
+}
+
+.stash-perk-slot img {
+  height: 20px;
+  width: 20px;
+  object-fit: contain;
+}
+
+.stash-perk-slot-info {
+  font-size: 11px;
+  color: rgba(160, 220, 200, 0.6);
+  margin-left: 2px;
+}
+
+.stash-right {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 18px 20px;
+}
+
+.stash-section {
+  margin-bottom: 16px;
+}
+.stash-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: rgba(160, 220, 200, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stash-hint {
+  font-size: 11px;
+  color: rgba(215, 230, 234, 0.4);
+  font-weight: 400;
+}
+
+.stash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.stash-item {
+  position: relative;
+  border: 1px solid rgba(110, 197, 190, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  padding: 8px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  min-height: 92px;
+  justify-content: center;
+}
+
+.stash-item:hover {
+  border-color: rgba(110, 197, 190, 0.7);
+  background: rgba(20, 40, 60, 0.5);
+}
+
+.stash-item.equipped {
+  border-color: #6ec5be;
+  box-shadow: 0 0 8px rgba(110, 197, 190, 0.5);
+}
+
+.stash-item img {
+  height: 76px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.stash-item.small {
+  min-height: 78px;
+}
+
+.stash-item.small img {
+  height: 38px;
+}
+
+.stash-stepper {
+  display: grid;
+  grid-template-columns: 26px 40px 26px;
+  overflow: hidden;
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 6px;
+  background: rgba(8, 13, 19, 0.9);
+}
+
+.stash-stepper-btn {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(18, 27, 37, 0.9);
+  color: #8fb0cb;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.stash-stepper-btn:hover {
+  background: #1a2a38;
+  color: #c7e7ff;
+}
+
+.stash-item-input {
+  width: 40px;
+  min-width: 0;
+  padding: 3px 2px;
+  border: 0;
+  border-right: 1px solid rgba(44, 57, 71, 0.8);
+  border-left: 1px solid rgba(44, 57, 71, 0.8);
+  border-radius: 0;
+  appearance: textfield;
+  background: rgba(8, 13, 19, 0.9);
+  color: #d7dee6;
+  text-align: center;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.stash-item-input::-webkit-inner-spin-button,
+.stash-item-input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.stash-item-name {
+  font-size: 11px;
+  text-align: center;
+  color: #cfe8ea;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stash-item-count {
+  font-size: 12px;
+  color: rgba(110, 197, 190, 0.95);
+  font-weight: 700;
+}
+
+.stash-empty {
+  color: rgba(215, 230, 234, 0.4);
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.stash-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(110, 197, 190, 0.2);
+}
+
+.stash-add-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 5px;
+  color: #e8f4f6;
+  font-size: 14px;
+}
+
+.stash-add-row input[type="number"] {
+  width: 72px;
+  flex: 0 0 72px;
+}
+
+.stash-add-row button {
+  padding: 8px 14px;
+  background: rgba(110, 197, 190, 0.18);
+  border: 1px solid rgba(110, 197, 190, 0.5);
+  border-radius: 5px;
+  color: #bff0ea;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.stash-add-row button:hover {
+  background: rgba(110, 197, 190, 0.32);
+}
+
+@media (max-width: 900px) {
+  .storage-main {
+    flex-direction: column;
+  }
+  .storage-character {
+    width: auto;
+    flex: 0 0 300px;
+    border-right: none;
+    border-bottom: 1px solid rgba(110, 197, 190, 0.25);
+  }
+  .char-stage {
+    height: 200px;
+  }
+  .char-dummy {
+    height: 160px;
+  }
+  .char-dummy::after {
+    height: 100px;
+  }
+  .storage-stash {
+    flex-direction: column;
+  }
+  .stash-left {
+    width: auto;
+    flex: 0 0 auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(110, 197, 190, 0.25);
+  }
+}
+
+.stash-item.one-time-perk {
+  border-color: rgba(122, 184, 255, 0.48);
+  background: rgba(47, 91, 138, 0.18);
+}
+
+.stash-item.one-time-perk:hover,
+.stash-item.one-time-perk.equipped {
+  border-color: rgba(160, 210, 255, 0.9);
+  box-shadow: 0 0 8px rgba(122, 184, 255, 0.45);
+}
+
+.stash-item.one-time-perk::after {
+  content: "一次性";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: rgba(85, 150, 220, 0.9);
+  color: #f4f9ff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.perk-fusion-panel {
+  margin: 8px 0 12px;
+  padding: 10px;
+  border: 1px solid rgba(122, 184, 255, 0.38);
+  border-radius: 8px;
+  background: rgba(31, 69, 108, 0.2);
+}
+
+.perk-fusion-title {
+  margin-bottom: 8px;
+  color: #d7ecff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.perk-fusion-title span {
+  margin-left: 6px;
+  color: rgba(215, 236, 255, 0.68);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.perk-fusion-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.perk-fusion-controls select {
+  min-width: 150px;
+  max-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid rgba(122, 184, 255, 0.42);
+  border-radius: 5px;
+  background: #172533;
+  color: #eef8ff;
+}
+
+.perk-fusion-plus {
+  color: #8fc8ff;
+  font-weight: 700;
+}
+
+.perk-fusion-submit {
+  padding: 6px 13px;
+  border: 1px solid rgba(138, 204, 255, 0.72);
+  border-radius: 5px;
+  background: rgba(53, 126, 190, 0.72);
+  color: white;
+  cursor: pointer;
+}
+
+.perk-fusion-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.perk-fusion-result {
+  min-height: 16px;
+  margin-top: 7px;
+  color: #8fffb0;
+  font-size: 12px;
+}
+
+/* ---------- 商店（经济系统） ---------- */
+
+.storage-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(110, 197, 190, 0.25);
+  border-radius: 8px;
+}
+
+.storage-tab {
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(215, 230, 234, 0.75);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.storage-tab:hover {
+  color: #e8f4f6;
+}
+
+.storage-tab.active {
+  background: rgba(110, 197, 190, 0.22);
+  color: #bff0ea;
+}
+
+.storage-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 215, 130, 0.08);
+  border: 1px solid rgba(255, 205, 100, 0.4);
+  border-radius: 6px;
+  color: #ffd982;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.storage-coins::before {
+  content: "◆";
+  color: #ffd982;
+  font-size: 12px;
+}
+
+.storage-shop {
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.storage-shop-panel {
+  width: 100%;
+}
+
+.storage-shop-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.storage-shop-head h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  color: #bff0ea;
+  letter-spacing: 2px;
+}
+
+.storage-shop-hint {
+  margin: 0;
+  color: rgba(215, 230, 234, 0.65);
+  font-size: 13px;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.storage-shop .shop-section {
+  margin-bottom: 18px;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(110, 197, 190, 0.22);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.shop-item img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.shop-item .stash-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 18px;
+}
+
+.shop-item .stash-item-count {
+  color: rgba(215, 230, 234, 0.6);
+  font-size: 12px;
+}
+
+.shop-item.sell-only {
+  border-color: rgba(255, 160, 120, 0.35);
+  background: rgba(255, 160, 120, 0.05);
+}
+
+.shop-item.sell-only .stash-item-name::after {
+  content: "仅出售";
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 170, 130, 0.9);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* 一次性技能（仅限一局）：浅蓝色标识。 */
+.shop-one-time-hint {
+  font-size: 11px;
+  color: rgba(160, 205, 255, 0.75);
+  font-weight: 400;
+  margin: -4px 0 10px;
+}
+.shop-one-time-section h3 {
+  color: rgba(150, 200, 255, 0.95);
+}
+.shop-item.shop-one-time-item {
+  border-color: rgba(122, 184, 255, 0.45);
+  background: rgba(122, 184, 255, 0.08);
+}
+.shop-item.shop-one-time-item:hover {
+  border-color: rgba(160, 210, 255, 0.85);
+  background: rgba(122, 184, 255, 0.16);
+}
+.shop-item.shop-one-time-item.owned {
+  border-color: rgba(160, 210, 255, 0.6);
+  box-shadow: 0 0 8px rgba(122, 184, 255, 0.4);
+}
+.shop-item.shop-one-time-item.banned {
+  border-color: rgba(180, 150, 150, 0.3);
+  background: rgba(120, 100, 100, 0.05);
+}
+
+.shop-price {
+  font-size: 12px;
+  color: rgba(215, 230, 234, 0.7);
+}
+
+.shop-price b {
+  color: #ffd982;
+  font-weight: 700;
+}
+
+.shop-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.shop-btn {
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 1px solid;
+  font-size: 13px;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.shop-btn.buy {
+  background: rgba(110, 197, 190, 0.18);
+  border-color: rgba(110, 197, 190, 0.5);
+  color: #bff0ea;
+}
+
+.shop-btn.sell {
+  background: rgba(255, 205, 100, 0.14);
+  border-color: rgba(255, 205, 100, 0.5);
+  color: #ffe2a8;
+}
+
+.shop-btn:hover {
+  filter: brightness(1.25);
+}
+
+.shop-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* header 购买 / 出售 快捷按钮（确认配装左侧） */
+.storage-back.shop-nav {
+  background: rgba(110, 197, 190, 0.14);
+  border: 1px solid rgba(110, 197, 190, 0.45);
+  border-radius: 6px;
+  color: #bff0ea;
+  cursor: pointer;
+  padding: 8px 14px;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.storage-back.shop-nav:hover {
+  background: rgba(110, 197, 190, 0.3);
+}
+
+.storage-back.shop-nav.active {
+  background: rgba(110, 197, 190, 0.28);
+}
+
+/* 商店购买 / 出售 子标签 */
+.storage-shop-subtabs {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(110, 197, 190, 0.25);
+  border-radius: 8px;
+}
+
+.storage-shop-subtabs .storage-tab {
+  padding: 5px 18px;
+}
+
+/* 出售视图 */
+.storage-shop-sell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shop-sell-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-sell-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 70px 120px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(110, 197, 190, 0.2);
+  border-radius: 8px;
+}
+
+.shop-sell-item img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.shop-sell-name {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-sell-count {
+  font-size: 12px;
+  color: rgba(215, 230, 234, 0.7);
+}
+
+.shop-sell-count b {
+  color: #ffd982;
+}
+
+.shop-sell-price {
+  font-size: 12px;
+  color: #ffd982;
+  text-align: right;
+}
+
+.shop-sell-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.shop-sell-input {
+  width: 72px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 5px;
+  color: #e8f4f6;
+  font-size: 13px;
+}
+
+.shop-sell-all-btn {
+  padding: 4px 10px;
+  background: rgba(110, 197, 190, 0.14);
+  border: 1px solid rgba(110, 197, 190, 0.4);
+  border-radius: 5px;
+  color: #bff0ea;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.shop-sell-all-btn:hover {
+  background: rgba(110, 197, 190, 0.3);
+}
+
+.storage-shop-sell-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 10px 12px;
+  background: rgba(10, 18, 28, 0.8);
+  border: 1px solid rgba(110, 197, 190, 0.3);
+  border-radius: 8px;
+  position: sticky;
+  bottom: 12px;
+}
+
+#shop-sell-summary {
+  font-size: 13px;
+  color: #ffd982;
+}
+
+.shop-btn.bulk {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 购买成功高亮提示 */
+.extraction-stash-status.shop-flash {
+  animation: shop-flash-pulse 1.6s ease;
+}
+
+@keyframes shop-flash-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.03);
+    text-shadow: 0 0 8px rgba(125, 255, 168, 0.8);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .shop-sell-item {
+    grid-template-columns: 32px minmax(0, 1fr) 60px;
+  }
+  .shop-sell-price,
+  .shop-sell-controls {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .storage-back.shop-nav {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+/* ---------- 排行榜 / 查看他人仓库 ---------- */
+.storage-leaderboard {
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.storage-leaderboard-panel {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.storage-leaderboard-head {
+  margin-bottom: 16px;
+}
+
+.storage-leaderboard-head h2 {
+  margin: 0 0 6px;
+  color: #e8f4f6;
+}
+
+.storage-leaderboard-hint {
+  margin: 0 0 10px;
+  color: rgba(232, 244, 246, 0.75);
+  font-size: 13px;
+}
+
+.storage-leaderboard-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.storage-leaderboard-search input {
+  flex: 1;
+  max-width: 280px;
+  padding: 7px 10px;
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 6px;
+  background: rgba(6, 12, 18, 0.7);
+  color: #e8f4f6;
+  font-size: 13px;
+  outline: none;
+}
+
+.storage-leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.storage-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border: 1px solid rgba(110, 197, 190, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 18, 28, 0.55);
+}
+
+.storage-leaderboard-row.rank-first {
+  border-color: rgba(255, 209, 130, 0.7);
+  background: rgba(60, 42, 12, 0.45);
+}
+
+.storage-leaderboard-rank {
+  width: 26px;
+  flex: 0 0 26px;
+  text-align: center;
+  font-weight: 700;
+  color: rgba(232, 244, 246, 0.55);
+}
+
+.storage-leaderboard-row.rank-first .storage-leaderboard-rank {
+  color: #ffd982;
+}
+
+.storage-leaderboard-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  color: #e8f4f6;
+}
+
+.storage-leaderboard-name > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storage-achievements {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.storage-achievement-badge {
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 4px rgba(255, 217, 130, .5));
+}
+
+.storage-leaderboard-level {
+  color: #6ec5be;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.storage-leaderboard-score {
+  color: #ffd982;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.storage-leaderboard-loading,
+.storage-leaderboard-empty,
+.storage-leaderboard-error {
+  padding: 18px;
+  text-align: center;
+  color: rgba(232, 244, 246, 0.7);
+}
+
+.storage-leaderboard-error {
+  color: #ff7c81;
+}
+
+.storage-stash-view {
+  margin-top: 8px;
+}
+
+.storage-stash-view-full {
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.storage-stash-view-full-panel {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.storage-stash-view-full h2 {
+  margin: 0 0 6px;
+  color: #e8f4f6;
+}
+
+.storage-stash-view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.storage-stash-view-head b {
+  color: #e8f4f6;
+  font-size: 15px;
+}
+
+.storage-stash-view-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stash-view-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid rgba(110, 197, 190, 0.18);
+  border-radius: 6px;
+  background: rgba(6, 12, 18, 0.5);
+  text-align: center;
+}
+
+.stash-view-item img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.stash-view-item span {
+  font-size: 11px;
+  color: #e8f4f6;
+  line-height: 1.2;
+}
+
+.stash-view-item em {
+  font-style: normal;
+  font-size: 12px;
+  color: #6ec5be;
+}

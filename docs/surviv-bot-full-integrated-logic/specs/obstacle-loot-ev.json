@@ -1,0 +1,15 @@
+{
+  "loot_keywords": [
+    "crate",
+    "chest",
+    "case",
+    "box",
+    "cache",
+    "locker",
+    "supply",
+    "airdrop",
+    "toilet"
+  ],
+  "melee_stat": "obstacleDamage",
+  "max_hits": 16
+}

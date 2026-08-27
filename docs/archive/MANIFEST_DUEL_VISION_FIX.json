@@ -1,0 +1,71 @@
+{
+  "version": "duel-ai-vision-sandbag-spectator-fix",
+  "created": "2026-07-24",
+  "files": [
+    {
+      "path": "server/package.json",
+      "bytes": 1656,
+      "sha256": "eb2497d220b1316df69c250fc631e8b383bf8b0373ca4a4bc019dbce770458df"
+    },
+    {
+      "path": "server/src/bot/combatIntelligence.ts",
+      "bytes": 19175,
+      "sha256": "dc943fd4e5dd00dc68af9c08f96821ae0a511d83858475da6d4f14f22c359b4b"
+    },
+    {
+      "path": "server/src/bot/duelStrategy.ts",
+      "bytes": 11685,
+      "sha256": "6163d4af30d22a54a87d3656a426ecf32a326f8cc6d0b437382111ab5267e6e8"
+    },
+    {
+      "path": "server/src/smartBot.ts",
+      "bytes": 249885,
+      "sha256": "22bccbb2354d0a88ed7cfee519d2eab01e674e81bcf74a4b424975f47fc148f7"
+    },
+    {
+      "path": "server/src/game/game.ts",
+      "bytes": 18946,
+      "sha256": "06095b52f7260cf3e66d2209f580f0673a21209bde280ebdc68168463b3c53b2"
+    },
+    {
+      "path": "server/src/game/objects/player.ts",
+      "bytes": 138710,
+      "sha256": "9d87b361b9125d9760a4de87a2aae8b6e96947e232bcc61d1fc08074c071c63d"
+    },
+    {
+      "path": "server/src/duelSmokeTest.ts",
+      "bytes": 13917,
+      "sha256": "d65220004e293970f1231682915226be39439c548ae8a23e5ddc1c3f82d35fb9"
+    },
+    {
+      "path": "server/src/duelVisionSmokeTest.ts",
+      "bytes": 1389,
+      "sha256": "e4988741c323a9bd4fb64e775f70d407508ae4c6d66077e575132cfc0a8f47dc"
+    },
+    {
+      "path": "client/src/main.ts",
+      "bytes": 32447,
+      "sha256": "8c1810be4ad4b7e21cb0e39a1329089065f5485bf97813eaf5291019e8076d8d"
+    },
+    {
+      "path": "DUEL_VISION_SANDBAG_SPECTATOR_FIX.md",
+      "bytes": 1983,
+      "sha256": "29be4c9851b7f92b56254dfd42fa4208d59b9ddb0a432ac6a09ddf2dfb30d143"
+    },
+    {
+      "path": "VALIDATION_DUEL_VISION_FIX.txt",
+      "bytes": 2094,
+      "sha256": "2ef6d7e5c6c3443ad11e798cf0ff5adc6b11d1eda18b2b37ab35915a71a3227e"
+    },
+    {
+      "path": "CHANGELOG_DUEL_AI.md",
+      "bytes": 2582,
+      "sha256": "a57c06a833296e30f5677cc4d43d26bbcfc3cf6ad4e16e4afe7eef1e6633eb8a"
+    },
+    {
+      "path": "VALIDATION_DUEL_AI.md",
+      "bytes": 3387,
+      "sha256": "722aaee70a7bde7923f498eee192b8b67bea865e404105c26f217446c253682e"
+    }
+  ]
+}

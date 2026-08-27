@@ -29,6 +29,29 @@ export type GameObject =
     | Smoke
     | Airdrop;
 
+/**
+ * Server-only identity for one projectile included in aim-training stats.
+ * Derived damage keeps the same token so one projectile contributes at most one hit.
+ */
+export interface TrainingShotToken {
+    readonly shooterId: number;
+    readonly epoch: number;
+    readonly sourceType: string;
+    hitRecorded: boolean;
+}
+
+/**
+ * Server-only identity for one projectile included in aim-training stats.
+ * Derived damage (reflection, shrapnel or an on-hit explosion) keeps the same
+ * object so one projectile can contribute at most one hit.
+ */
+export interface TrainingShotToken {
+    readonly shooterId: number;
+    readonly epoch: number;
+    readonly sourceType: string;
+    hitRecorded: boolean;
+}
+
 export interface DamageParams {
     amount?: number;
     damageType: DamageType;
@@ -48,6 +71,7 @@ export interface DamageParams {
      * Example: 0.85 will reduce 15% of the armor
      */
     armorPenetration?: number;
+    trainingShot?: TrainingShotToken;
 }
 
 const MAX_ID = 65535;

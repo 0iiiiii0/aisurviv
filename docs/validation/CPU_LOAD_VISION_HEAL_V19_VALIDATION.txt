@@ -1,0 +1,20 @@
+V19 validation summary
+======================
+
+Passed:
+- Server TypeScript build
+- Client TypeScript no-emit check
+- CPU soft-throttle / hard-spawn-pause smoke test
+- Deterministic trigger and current-scope freshness test
+- SmartBot input safety test
+- Aim smoothing/reload tracking test
+- Duel active-scope vision test
+- 50v50 one-per-two-second scheduling and eight-bot worker batching test
+- Live bot auto-fill configuration test
+- All-mode AI test: 47 playlists / 17 maps
+- Spectator/free-camera and mixed-difficulty regression test
+- Room lifecycle regression test
+- Admin authentication regression test
+
+Important limitation:
+The 80% CPU value is an application-level adaptive target based on whole-system CPU sampling. It is not a Windows kernel Job Object hard quota. No claim is made that unrelated applications or transient spikes can never push total CPU above 80%.

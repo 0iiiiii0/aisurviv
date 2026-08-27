@@ -1,0 +1,23 @@
+50v50 AI Auto-fill V5 validation
+================================
+
+Build:
+  cd server && npm run build
+  Result: passed
+
+Tests:
+  npm run test:faction-autofill   passed
+  npm run test:spectator-autofill passed
+  npm run test:bot-brain          passed
+  npm run test:loot-ai            passed
+  npm run test:all-modes          passed (47 playlists / 17 maps)
+  npm run test:duel-lobby         passed
+  npm run test:admin              passed
+
+Verified behavior:
+  - 50v50 launches no more than 2 automatic bots per one-second tick.
+  - A normal batch forces one bot to faction 1 and one bot to faction 2.
+  - Either faction is hard-capped at 30 connected or pending server bots.
+  - Pending bot connections are included before another batch is created.
+  - Reserved human slots and the map's 100-player capacity are preserved.
+  - A multi-use bot join token can assign its uses to different factions.

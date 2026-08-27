@@ -81,7 +81,7 @@ export class ImageManager {
         const fullPath = Path.join(imagesCacheFolder, `${cached.hash}.png`);
         return {
             edges: cached.edges,
-            image: await loadImage(fullPath),
+            image: await loadImage(fs.readFileSync(fullPath)),
         };
     }
 

@@ -1,0 +1,1056 @@
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/package.json	2026-07-24 01:40:47.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/package.json	2026-07-24 02:33:28.271314427 +0000
+@@ -15,7 +15,8 @@
+     "test:potato": "node -r ts-node/register src/potatoSmokeTest.ts",
+     "bot": "node -r ts-node/register src/smartBot.ts",
+     "test:bot-input": "node -r ts-node/register src/smartBotInputSmokeTest.ts",
+-    "test:duel-vision": "node -r ts-node/register src/duelVisionSmokeTest.ts"
++    "test:duel-vision": "node -r ts-node/register src/duelVisionSmokeTest.ts",
++    "test:all-modes": "node -r ts-node/register src/allModesSmokeTest.ts"
+   },
+   "dependencies": {
+     "nanotimer": "^0.3.15",
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/src/allModesSmokeTest.ts	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/src/allModesSmokeTest.ts	2026-07-24 02:33:27.871314417 +0000
+@@ -0,0 +1,65 @@
++import assert from "assert";
++
++import { MapDefs } from "../../shared/defs/mapDefs";
++import { TeamMode } from "../../shared/gameConfig";
++import { Config } from "./config";
++import { ModeStrategy, resolveModeStrategy } from "./bot/modeStrategy";
++
++const expectedMaps = new Set(Object.keys(MapDefs));
++assert.equal(Config.modes.length, 47, "expected the complete 47-playlist catalogue");
++
++for (const [index, mode] of Config.modes.entries()) {
++    const profile = resolveModeStrategy(mode.mapName, mode.teamMode);
++    assert.equal(profile.mapName, mode.mapName, `playlist ${index} map mismatch`);
++    assert.equal(profile.teamMode, mode.teamMode, `playlist ${index} team mode mismatch`);
++    assert.ok(profile.maxPlayers >= 2, `playlist ${index} invalid maxPlayers`);
++    assert.ok(profile.specialTags.length >= 2, `playlist ${index} missing strategy tags`);
++    expectedMaps.delete(mode.mapName);
++
++    if (mode.mapName === "duel") {
++        assert.equal(profile.kind, "duel");
++        assert.equal(profile.lootEnabled, false);
++        assert.equal(profile.crateLootEnabled, false);
++        assert.equal(profile.reviveEnabled, false);
++    } else if (mode.mapName === "faction") {
++        assert.equal(profile.kind, "faction");
++        assert.equal(profile.factionMode, true);
++        assert.equal(profile.reviveEnabled, true);
++    } else if (mode.teamMode === TeamMode.Solo) {
++        assert.equal(profile.kind, "solo");
++        assert.equal(profile.reviveEnabled, false);
++    } else if (mode.teamMode === TeamMode.Duo) {
++        assert.equal(profile.kind, "duo");
++        assert.equal(profile.reviveEnabled, true);
++    } else {
++        assert.equal(profile.kind, "squad");
++        assert.equal(profile.squadCoordination, true);
++    }
++}
++
++assert.deepEqual([...expectedMaps], [], "every map definition must appear in the playlist catalogue");
++
++const strategy = new ModeStrategy();
++assert.equal(strategy.load("potato", TeamMode.Solo).potatoMode, true);
++assert.equal(strategy.load("cobalt", TeamMode.Squad).perkMode, true);
++assert.equal(strategy.load("savannah", TeamMode.Solo).sniperMode, true);
++assert.equal(strategy.load("woods_snow", TeamMode.Duo).woodsMode, true);
++assert.equal(strategy.load("desert", TeamMode.Squad).desertMode, true);
++assert.equal(strategy.load("turkey", TeamMode.Solo).turkeyMode, true);
++assert.equal(strategy.load("unknown_custom", TeamMode.Duo).family, "custom");
++
++assert.ok(
++    strategy.load("savannah", TeamMode.Solo).combatScanMultiplier >
++        strategy.load("woods", TeamMode.Solo).combatScanMultiplier,
++    "open sniper maps should scan farther than Woods",
++);
++assert.ok(
++    strategy.load("potato", TeamMode.Solo).lootRangeMultiplier > 1,
++    "Potato mode should search more aggressively for weapon turnover",
++);
++assert.ok(
++    strategy.load("faction", TeamMode.Squad).ammoReserveMultiplier > 1.2,
++    "50v50 should retain larger ammunition reserves",
++);
++
++console.log("All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.");
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/src/bot/modeStrategy.ts	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/src/bot/modeStrategy.ts	2026-07-24 02:43:37.539330371 +0000
+@@ -0,0 +1,410 @@
++import { MapDefs } from "../../../shared/defs/mapDefs";
++import { TeamMode } from "../../../shared/gameConfig";
++
++export type BotModeKind = "duel" | "solo" | "duo" | "squad" | "faction";
++export type BotModeFamily =
++    | "normal"
++    | "seasonal"
++    | "desert"
++    | "woods"
++    | "savannah"
++    | "potato"
++    | "cobalt"
++    | "turkey"
++    | "halloween"
++    | "snow"
++    | "faction"
++    | "duel"
++    | "custom";
++
++export interface ModeStrategyProfile {
++    mapName: string;
++    kind: BotModeKind;
++    family: BotModeFamily;
++    teamMode: TeamMode;
++    maxPlayers: number;
++    factionMode: boolean;
++    perkMode: boolean;
++    sniperMode: boolean;
++    potatoMode: boolean;
++    woodsMode: boolean;
++    desertMode: boolean;
++    turkeyMode: boolean;
++    lootEnabled: boolean;
++    crateLootEnabled: boolean;
++    reviveEnabled: boolean;
++    squadCoordination: boolean;
++    formationMultiplier: number;
++    cohesionMultiplier: number;
++    rescueMultiplier: number;
++    aggressionMultiplier: number;
++    retreatHealthDelta: number;
++    combatScanMultiplier: number;
++    lootRangeMultiplier: number;
++    crateRangeMultiplier: number;
++    ammoReserveMultiplier: number;
++    gasEdgePreference: number;
++    openingLootSeconds: number;
++    specialTags: string[];
++}
++
++export interface ModeTargetContext {
++    distance: number;
++    downed: boolean;
++    enemyRole: string;
++    phase: "early" | "mid" | "late" | "final";
++    currentTarget: boolean;
++}
++
++export interface ModeLootContext {
++    itemType: string;
++    defType: string;
++    inventoryCount: number;
++    health: number;
++    phase: "early" | "mid" | "late" | "final";
++}
++
++export interface ModeWeaponContext {
++    weaponType: string;
++    defType: string;
++    range: number;
++    distance: number;
++    explosive: boolean;
++    phase: "early" | "mid" | "late" | "final";
++    targetBehindCover: boolean;
++}
++
++const normalize = (value: string): string =>
++    String(value || "unknown")
++        .toLowerCase()
++        .replace(/[^a-z0-9]+/g, "_")
++        .replace(/^_+|_+$/g, "");
++
++function familyForMap(mapName: string): BotModeFamily {
++    const name = normalize(mapName);
++    if (name === "duel" || /(?:^|_)1v1(?:_|$)/.test(name)) return "duel";
++    if (name === "faction" || /50v50|faction/.test(name)) return "faction";
++    if (name.startsWith("potato")) return "potato";
++    if (name.startsWith("woods")) return "woods";
++    if (name === "desert") return "desert";
++    if (name === "savannah") return "savannah";
++    if (name === "cobalt") return "cobalt";
++    if (name === "turkey") return "turkey";
++    if (name === "halloween") return "halloween";
++    if (name === "snow") return "snow";
++    if (name === "main_spring" || name === "main_summer") return "seasonal";
++    if (name === "main") return "normal";
++    return "custom";
++}
++
++function kindFor(teamMode: TeamMode, factionMode: boolean, family: BotModeFamily): BotModeKind {
++    if (family === "duel") return "duel";
++    if (factionMode || family === "faction") return "faction";
++    if (teamMode === TeamMode.Duo) return "duo";
++    if (teamMode === TeamMode.Squad) return "squad";
++    return "solo";
++}
++
++function baseTeamProfile(kind: BotModeKind): Pick<
++    ModeStrategyProfile,
++    | "lootEnabled"
++    | "crateLootEnabled"
++    | "reviveEnabled"
++    | "squadCoordination"
++    | "formationMultiplier"
++    | "cohesionMultiplier"
++    | "rescueMultiplier"
++    | "aggressionMultiplier"
++    | "retreatHealthDelta"
++    | "combatScanMultiplier"
++    | "lootRangeMultiplier"
++    | "crateRangeMultiplier"
++    | "ammoReserveMultiplier"
++    | "gasEdgePreference"
++    | "openingLootSeconds"
++> {
++    switch (kind) {
++        case "duel":
++            return {
++                lootEnabled: false,
++                crateLootEnabled: false,
++                reviveEnabled: false,
++                squadCoordination: false,
++                formationMultiplier: 1,
++                cohesionMultiplier: 1,
++                rescueMultiplier: 0,
++                aggressionMultiplier: 1.16,
++                retreatHealthDelta: 4,
++                combatScanMultiplier: 0.9,
++                lootRangeMultiplier: 0,
++                crateRangeMultiplier: 0,
++                ammoReserveMultiplier: 0,
++                gasEdgePreference: 1.2,
++                openingLootSeconds: 0,
++            };
++        case "solo":
++            return {
++                lootEnabled: true,
++                crateLootEnabled: true,
++                reviveEnabled: false,
++                squadCoordination: false,
++                formationMultiplier: 1.15,
++                cohesionMultiplier: 1.2,
++                rescueMultiplier: 0,
++                aggressionMultiplier: 1.05,
++                retreatHealthDelta: 2,
++                combatScanMultiplier: 1,
++                lootRangeMultiplier: 1.06,
++                crateRangeMultiplier: 1.05,
++                ammoReserveMultiplier: 1,
++                gasEdgePreference: 1.08,
++                openingLootSeconds: 72,
++            };
++        case "duo":
++            return {
++                lootEnabled: true,
++                crateLootEnabled: true,
++                reviveEnabled: true,
++                squadCoordination: true,
++                formationMultiplier: 0.84,
++                cohesionMultiplier: 0.86,
++                rescueMultiplier: 1.28,
++                aggressionMultiplier: 1.02,
++                retreatHealthDelta: 4,
++                combatScanMultiplier: 1.04,
++                lootRangeMultiplier: 0.98,
++                crateRangeMultiplier: 0.96,
++                ammoReserveMultiplier: 1.08,
++                gasEdgePreference: 0.96,
++                openingLootSeconds: 64,
++            };
++        case "squad":
++            return {
++                lootEnabled: true,
++                crateLootEnabled: true,
++                reviveEnabled: true,
++                squadCoordination: true,
++                formationMultiplier: 0.78,
++                cohesionMultiplier: 0.8,
++                rescueMultiplier: 1.2,
++                aggressionMultiplier: 1.06,
++                retreatHealthDelta: 5,
++                combatScanMultiplier: 1.08,
++                lootRangeMultiplier: 0.94,
++                crateRangeMultiplier: 0.92,
++                ammoReserveMultiplier: 1.15,
++                gasEdgePreference: 0.9,
++                openingLootSeconds: 58,
++            };
++        case "faction":
++            return {
++                lootEnabled: true,
++                crateLootEnabled: true,
++                reviveEnabled: true,
++                squadCoordination: true,
++                formationMultiplier: 0.7,
++                cohesionMultiplier: 0.74,
++                rescueMultiplier: 1.35,
++                aggressionMultiplier: 1.12,
++                retreatHealthDelta: 2,
++                combatScanMultiplier: 1.18,
++                lootRangeMultiplier: 0.9,
++                crateRangeMultiplier: 0.88,
++                ammoReserveMultiplier: 1.28,
++                gasEdgePreference: 0.82,
++                openingLootSeconds: 46,
++            };
++    }
++}
++
++export function resolveModeStrategy(
++    mapNameValue: string,
++    teamModeValue: TeamMode | number,
++): ModeStrategyProfile {
++    const mapName = normalize(mapNameValue);
++    const mapDef = (MapDefs as Record<string, any>)[mapName];
++    const gameMode = mapDef?.gameMode ?? {};
++    const family = familyForMap(mapName);
++    const teamMode =
++        teamModeValue === TeamMode.Duo || teamModeValue === TeamMode.Squad
++            ? teamModeValue
++            : TeamMode.Solo;
++    const kind = kindFor(teamMode, Boolean(gameMode.factionMode), family);
++    const team = baseTeamProfile(kind);
++
++    let aggression = team.aggressionMultiplier;
++    let scan = team.combatScanMultiplier;
++    let lootRange = team.lootRangeMultiplier;
++    let crateRange = team.crateRangeMultiplier;
++    let ammo = team.ammoReserveMultiplier;
++    let gasEdge = team.gasEdgePreference;
++    const tags: string[] = [kind, family];
++
++    switch (family) {
++        case "desert":
++        case "savannah":
++            scan *= 1.18;
++            aggression *= 0.96;
++            ammo *= 1.16;
++            gasEdge *= 0.9;
++            tags.push("long-range", "early-rotation");
++            break;
++        case "woods":
++            scan *= 0.82;
++            aggression *= 1.08;
++            crateRange *= 1.08;
++            tags.push("close-range", "vegetation");
++            break;
++        case "potato":
++            lootRange *= 1.18;
++            crateRange *= 1.24;
++            aggression *= 1.12;
++            ammo *= 1.22;
++            tags.push("weapon-turnover", "potato");
++            break;
++        case "cobalt":
++            lootRange *= 1.08;
++            ammo *= 1.1;
++            tags.push("perk-mode", "class-role");
++            break;
++        case "turkey":
++            lootRange *= 1.12;
++            crateRange *= 1.16;
++            tags.push("event-loot", "turkey");
++            break;
++        case "halloween":
++            scan *= 0.9;
++            aggression *= 1.1;
++            crateRange *= 1.12;
++            tags.push("ambush", "event-loot");
++            break;
++        case "snow":
++            scan *= 1.1;
++            ammo *= 1.08;
++            gasEdge *= 0.94;
++            tags.push("snowball", "open-ground");
++            break;
++        case "faction":
++            tags.push("bridge-control", "roles", "airdrop");
++            break;
++        case "duel":
++            tags.push("sandbag", "fixed-loadout");
++            break;
++        case "seasonal":
++            tags.push("seasonal", "balanced");
++            break;
++        default:
++            break;
++    }
++
++    return {
++        mapName,
++        kind,
++        family,
++        teamMode,
++        maxPlayers: Number(gameMode.maxPlayers ?? (kind === "duel" ? 2 : 80)),
++        factionMode: Boolean(gameMode.factionMode || family === "faction"),
++        perkMode: Boolean(gameMode.perkMode || family === "cobalt"),
++        sniperMode: Boolean(gameMode.sniperMode || family === "savannah"),
++        potatoMode: Boolean(gameMode.potatoMode || family === "potato"),
++        woodsMode: Boolean(gameMode.woodsMode || family === "woods"),
++        desertMode: Boolean(gameMode.desertMode || family === "desert"),
++        turkeyMode: Boolean(gameMode.turkeyMode || family === "turkey"),
++        ...team,
++        aggressionMultiplier: aggression,
++        combatScanMultiplier: scan,
++        lootRangeMultiplier: lootRange,
++        crateRangeMultiplier: crateRange,
++        ammoReserveMultiplier: ammo,
++        gasEdgePreference: gasEdge,
++        specialTags: [...new Set(tags)],
++    };
++}
++
++export class ModeStrategy {
++    profile: ModeStrategyProfile = resolveModeStrategy("unknown", TeamMode.Solo);
++
++    load(mapName: string, teamMode: TeamMode | number): ModeStrategyProfile {
++        this.profile = resolveModeStrategy(mapName, teamMode);
++        return this.profile;
++    }
++
++    targetScoreModifier(context: ModeTargetContext): number {
++        const role = normalize(context.enemyRole);
++        let value = 0;
++        if (this.profile.sniperMode && role === "kill_leader") value += 58;
++        if (this.profile.perkMode && role && role !== "none") value += 18;
++        if (this.profile.factionMode && /leader|medic|bugler|grenadier/.test(role)) value += 22;
++        if (context.downed) {
++            value += this.profile.kind === "solo" ? -34 : this.profile.kind === "faction" ? -8 : -18;
++        }
++        if (this.profile.potatoMode && context.distance < 26) value += 10;
++        if (this.profile.family === "woods" && context.distance < 24) value += 14;
++        if ((this.profile.family === "desert" || this.profile.family === "savannah") && context.distance > 42) value += 15;
++        if (context.phase === "final") value += context.currentTarget ? 15 : 5;
++        return value;
++    }
++
++    lootScoreModifier(context: ModeLootContext): number {
++        if (!this.profile.lootEnabled) return -10000;
++        const item = normalize(context.itemType);
++        const def = normalize(context.defType);
++        let value = 0;
++        if (this.profile.potatoMode && def === "gun") value += 24;
++        if (this.profile.sniperMode && /sniper|dmr|mosin|sv98|awm|scout|mk12|m39|garand/.test(item)) value += 34;
++        if (this.profile.family === "woods" && /shotgun|smg|m870|mp220|saiga|vector|mac10|spas/.test(item)) value += 28;
++        if (this.profile.desertMode && /8x|15x|sniper|dmr|mosin|sv98|awm|scout|mk12|m39/.test(item)) value += 30;
++        if (this.profile.perkMode && def === "perk") value += 42;
++        if (this.profile.turkeyMode && /xp|turkey|feather|pumpkin/.test(item)) value += 32;
++        if (this.profile.family === "snow" && /snowball/.test(item)) value += 15;
++        if (this.profile.family === "halloween" && /katana|perk|pumpkin|event/.test(item)) value += 20;
++        if ((context.phase === "late" || context.phase === "final") && /heal|boost/.test(def) && context.inventoryCount < 2) value += 20;
++        if (context.health < 55 && /heal|boost/.test(def)) value += 18;
++        return value;
++    }
++
++    weaponScoreModifier(context: ModeWeaponContext): number {
++        const weapon = normalize(context.weaponType);
++        let value = 0;
++        if (this.profile.sniperMode && context.range >= 70) value += 34;
++        if (this.profile.desertMode && context.range >= 65) value += 24;
++        if (this.profile.family === "woods" && context.range <= 52) value += 22;
++        if (this.profile.family === "woods" && context.range > 80) value -= 18;
++        if (this.profile.potatoMode) value += 5;
++        if (this.profile.family === "snow" && /snowball/.test(weapon)) value += context.distance < 22 ? 14 : -12;
++        if (this.profile.family === "halloween" && /katana|shotgun|smg/.test(weapon)) value += 13;
++        if (this.profile.factionMode && /m249|pkp|qbb|dp28|lmg/.test(weapon)) value += 16;
++        if (context.targetBehindCover && context.explosive) value += 16;
++        if (context.phase === "final" && context.distance < 30 && context.range <= 58) value += 10;
++        return value;
++    }
++
++    crateScoreModifier(typeValue: string): number {
++        if (!this.profile.crateLootEnabled) return -10000;
++        const type = normalize(typeValue);
++        let value = 0;
++        if (this.profile.potatoMode) value += 22;
++        if (this.profile.perkMode && /pod|class|perk/.test(type)) value += 48;
++        if (this.profile.factionMode && /military|airdrop|role/.test(type)) value += 38;
++        if (this.profile.desertMode && /gold|airdrop/.test(type)) value += 42;
++        if (this.profile.turkeyMode && /turkey|pumpkin|event/.test(type)) value += 25;
++        if (this.profile.family === "halloween" && /chrysanthemum|pumpkin|event/.test(type)) value += 28;
++        if (this.profile.family === "snow" && /airdrop|gift|snow/.test(type)) value += 18;
++        return value;
++    }
++
++    aggressionMultiplier(phase: "early" | "mid" | "late" | "final", aliveCount: number): number {
++        let value = this.profile.aggressionMultiplier;
++        if (phase === "late") value *= 1.06;
++        if (phase === "final") value *= aliveCount <= 8 ? 1.2 : 1.1;
++        if (this.profile.kind === "solo" && aliveCount <= 4) value *= 1.08;
++        if (this.profile.kind === "duo" || this.profile.kind === "squad") value *= 0.98;
++        return value;
++    }
++
++    retreatHealth(base: number, phase: "early" | "mid" | "late" | "final"): number {
++        let value = base + this.profile.retreatHealthDelta;
++        if (phase === "final") value -= this.profile.kind === "solo" || this.profile.kind === "duel" ? 5 : 2;
++        return Math.max(20, Math.min(65, value));
++    }
++}
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/src/game/gameManager.ts	2026-07-24 00:02:57.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/src/game/gameManager.ts	2026-07-24 02:32:09.175312357 +0000
+@@ -76,6 +76,8 @@
+         gameId: string,
+         expiresInMs: number,
+         spectator?: boolean,
++        playerCount?: number,
++        autoFill?: boolean,
+     ): Promise<FindGameResponse>;
+ 
+     abstract stopGame(id: string): boolean;
+@@ -209,11 +211,13 @@
+         gameId: string,
+         expiresInMs: number,
+         spectator = false,
++        playerCount = 1,
++        autoFill = false,
+     ): Promise<FindGameResponse> {
+         const game = this.gamesById.get(gameId);
+         if (!game || game.stopped) throw new Error("Game not found");
+         const token = randomBytes(20).toString("hex");
+-        game.addJoinToken(token, false, 1, expiresInMs, spectator);
++        game.addJoinToken(token, autoFill, Math.max(1, playerCount), expiresInMs, spectator);
+         return { gameId: game.id, data: token };
+     }
+ 
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/src/game/gameProcessManager.ts	2026-07-24 00:02:57.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/src/game/gameProcessManager.ts	2026-07-24 02:32:09.175312357 +0000
+@@ -211,7 +211,7 @@
+             expiresInMs,
+             spectator,
+         });
+-        if (!spectator) this.avaliableSlots--;
++        if (!spectator) this.avaliableSlots = Math.max(0, this.avaliableSlots - Math.max(1, playerCount));
+     }
+ 
+     handleMsg(data: ArrayBuffer, socketId: string) {
+@@ -384,11 +384,13 @@
+         gameId: string,
+         expiresInMs: number,
+         spectator = false,
++        playerCount = 1,
++        autoFill = false,
+     ): Promise<FindGameResponse> {
+         const game = this.processById.get(gameId);
+         if (!game || game.stopped) throw new Error("Game not found");
+         const token = randomBytes(20).toString("hex");
+-        game.addJoinToken(token, false, 1, expiresInMs, spectator);
++        game.addJoinToken(token, autoFill, Math.max(1, playerCount), expiresInMs, spectator);
+         return { gameId: game.id, data: token };
+     }
+ 
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/src/gameServer.ts	2026-07-24 00:16:49.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/src/gameServer.ts	2026-07-24 02:32:42.191313221 +0000
+@@ -3,6 +3,7 @@
+ import path from "path";
+ import { App, SSLApp, type TemplatedApp, type WebSocket } from "uWebSockets.js";
+ import { version } from "../../package.json";
++import { MapDefs } from "../../shared/defs/mapDefs";
+ import { TeamMode } from "../../shared/gameConfig";
+ import { math } from "../../shared/utils/math";
+ import { formatHostPort } from "../../shared/utils/networkAddress";
+@@ -312,12 +313,15 @@
+         );
+ 
+         if (loadout.aiEnabled) {
+-            this.spawnDuelBot(
+-                joins[0].gameId,
+-                joins[1].data,
+-                loadout.aiDifficulty,
+-                loadout.adrenalineEnabled,
+-            );
++            this.spawnGameBot({
++                gameId: joins[0].gameId,
++                token: joins[1].data,
++                difficulty: loadout.aiDifficulty,
++                mapName: "duel",
++                teamMode: TeamMode.Solo,
++                gameModeIdx: Config.modes.findIndex((mode) => mode.mapName === "duel"),
++                adrenalineEnabled: loadout.adrenalineEnabled,
++            });
+         }
+ 
+         const humanJoins = loadout.aiEnabled ? joins.slice(0, 1) : joins;
+@@ -351,30 +355,72 @@
+     private async addAiToGame(
+         gameId: string,
+         difficulty: DuelAiDifficulty,
+-    ): Promise<{ gameId: string; difficulty: DuelAiDifficulty }> {
++    ): Promise<{
++        gameId: string;
++        difficulty: DuelAiDifficulty;
++        mapName: string;
++        teamMode: TeamMode;
++    }> {
+         const game = this.manager.getById(gameId);
+         if (!game || game.stopped) throw new Error("房间不存在或已经结束");
+-        if (game.mapName !== "duel") throw new Error("目前只能向1v1房间加入 AI");
+-        if (game.aliveCount >= 2) throw new Error("这个1v1房间已经满员");
+-        if ((this.botProcesses.get(gameId)?.size ?? 0) > 0) {
+-            throw new Error("这个房间已经有 AI 对手");
++
++        const mapDef = MapDefs[game.mapName as keyof typeof MapDefs];
++        if (!mapDef) throw new Error("房间地图定义不存在");
++        const maxPlayers = Number(mapDef.gameMode.maxPlayers ?? 80);
++        if (!game.canJoin || game.aliveCount >= maxPlayers) {
++            throw new Error("这个房间已经满员或不再允许加入");
+         }
+-        const join = await this.manager.createJoinToken(gameId, 60_000, false);
+-        this.spawnDuelBot(
+-            join.gameId,
+-            join.data,
+-            difficulty,
+-            game.duelAdrenalineEnabled !== false,
++        if (game.mapName === "duel" && (this.botProcesses.get(gameId)?.size ?? 0) > 0) {
++            throw new Error("这个1v1房间已经有 AI 对手");
++        }
++
++        const gameModeIdx = Config.modes.findIndex(
++            (mode) => mode.mapName === game.mapName && mode.teamMode === game.teamMode,
+         );
+-        return { gameId: join.gameId, difficulty };
++        if (gameModeIdx < 0) throw new Error("找不到该房间对应的模式配置");
++
++        const join = await this.manager.createJoinToken(
++            gameId,
++            60_000,
++            false,
++            1,
++            game.teamMode !== TeamMode.Solo,
++        );
++        this.spawnGameBot({
++            gameId: join.gameId,
++            token: join.data,
++            difficulty,
++            mapName: game.mapName,
++            teamMode: game.teamMode,
++            gameModeIdx,
++            adrenalineEnabled: game.duelAdrenalineEnabled !== false,
++        });
++        return {
++            gameId: join.gameId,
++            difficulty,
++            mapName: game.mapName,
++            teamMode: game.teamMode,
++        };
+     }
+ 
+-    private spawnDuelBot(
+-        gameId: string,
+-        token: string,
+-        difficulty: DuelAiDifficulty,
+-        adrenalineEnabled: boolean,
+-    ): void {
++    private spawnGameBot(options: {
++        gameId: string;
++        token: string;
++        difficulty: DuelAiDifficulty;
++        mapName: string;
++        teamMode: TeamMode;
++        gameModeIdx: number;
++        adrenalineEnabled: boolean;
++    }): void {
++        const {
++            gameId,
++            token,
++            difficulty,
++            mapName,
++            teamMode,
++            gameModeIdx,
++            adrenalineEnabled,
++        } = options;
+         const production = process.env.NODE_ENV === "production";
+         const script = path.join(__dirname, production ? "smartBot.js" : "smartBot.ts");
+         const args = production
+@@ -389,20 +435,29 @@
+             hosts: [localAddress],
+             addrs: [localAddress],
+         };
++        const isDuel = mapName === "duel";
++        const isFaction = Boolean(
++            MapDefs[mapName as keyof typeof MapDefs]?.gameMode.factionMode,
++        );
+         const child = spawn(process.execPath, args, {
+             cwd: process.cwd(),
+             env: {
+                 ...process.env,
+                 BOT_DIRECT_MATCH_JSON: JSON.stringify(matchData),
+                 BOT_COUNT: "1",
+-                BOT_TEAM_SIZE: "1",
++                BOT_TEAM_SIZE: String(teamMode),
++                BOT_GAME_MODE: String(gameModeIdx),
+                 BOT_DIFFICULTY: difficulty,
+                 BOT_NAME: `AI-${difficulty}`,
+-                BOT_DUEL_MODE: "force",
+-                BOT_DUEL_ADRENALINE_POLICY: adrenalineEnabled
+-                    ? "inherit"
+-                    : "prohibited",
++                BOT_DUEL_MODE: isDuel ? "force" : "off",
++                BOT_DUEL_ADRENALINE_POLICY: isDuel
++                    ? adrenalineEnabled
++                        ? "inherit"
++                        : "prohibited"
++                    : "build",
+                 BOT_DUEL_THROWABLES: "1",
++                BOT_FACTION_FORCE: isFaction ? "1" : "0",
++                BOT_MAP_AI: "1",
+                 BOT_DEBUG: "0",
+             },
+             stdio: ["ignore", "pipe", "pipe"],
+@@ -415,10 +470,11 @@
+         }
+         processes.add(child);
+ 
++        const prefix = isDuel ? "duel-ai" : "mode-ai";
+         const logLines = (chunk: Buffer, error = false) => {
+             for (const line of chunk.toString().split(/\r?\n/)) {
+                 if (!line.trim()) continue;
+-                const text = `[duel-ai ${gameId.slice(0, 8)}] ${line}`;
++                const text = `[${prefix} ${gameId.slice(0, 8)} ${mapName}] ${line}`;
+                 if (error) this.logger.warn(text);
+                 else this.logger.log(text);
+             }
+@@ -426,7 +482,7 @@
+         child.stdout?.on("data", (chunk: Buffer) => logLines(chunk));
+         child.stderr?.on("data", (chunk: Buffer) => logLines(chunk, true));
+         child.on("error", (error) => {
+-            this.logger.warn(`Failed to start duel AI: ${error.message}`);
++            this.logger.warn(`Failed to start ${mapName} AI: ${error.message}`);
+         });
+         child.on("exit", () => {
+             const set = this.botProcesses.get(gameId);
+--- /mnt/data/work_allmodes/base/surviv.io-main/server/src/smartBot.ts	2026-07-24 01:43:34.000000000 +0000
++++ /mnt/data/work_allmodes/surviv.io-main/server/src/smartBot.ts	2026-07-24 02:36:28.563319145 +0000
+@@ -42,7 +42,7 @@
+ import { MeleeDefs } from "../../shared/defs/gameObjects/meleeDefs";
+ import { OutfitDefs } from "../../shared/defs/gameObjects/outfitDefs";
+ import { UnlockDefs } from "../../shared/defs/gameObjects/unlockDefs";
+-import { GameConfig, type Input } from "../../shared/gameConfig";
++import { GameConfig, TeamMode, type Input } from "../../shared/gameConfig";
+ import * as net from "../../shared/net/net";
+ import {
+     type ObjectData,
+@@ -58,6 +58,7 @@
+ import { util } from "../../shared/utils/util";
+ import { v2, type Vec2 } from "../../shared/utils/v2";
+ import type { FindGameResponse } from "./gameServer";
++import { Config as ServerConfig } from "./config";
+ import {
+     MapNavigator,
+     type LootSourceContext,
+@@ -129,6 +130,7 @@
+     type DuelAdrenalinePolicy,
+     type DuelModeSetting,
+ } from "./bot/duelStrategy";
++import { ModeStrategy } from "./bot/modeStrategy";
+ 
+ type DifficultyName = "easy" | "normal" | "hard";
+ type BotRole = "leader" | "assault" | "support" | "scout";
+@@ -408,13 +410,22 @@
+ };
+ 
+ const customBotName = (process.env.BOT_NAME ?? "").trim().slice(0, 16);
++const configuredGameModeIdx = envNumber("BOT_GAME_MODE", 0, 0, 255);
++const configuredPlaylist = ServerConfig.modes[configuredGameModeIdx];
++const explicitTeamSize = Number(process.env.BOT_TEAM_SIZE);
++const inferredTeamSize = configuredPlaylist?.mapName === "duel"
++    ? TeamMode.Solo
++    : configuredPlaylist?.teamMode ?? TeamMode.Solo;
++const resolvedTeamSize = [TeamMode.Solo, TeamMode.Duo, TeamMode.Squad].includes(explicitTeamSize as TeamMode)
++    ? explicitTeamSize
++    : inferredTeamSize;
+ 
+ const config: Config = {
+     address: process.env.BOT_SERVER ?? "http://127.0.0.1:8001",
+     region: process.env.BOT_REGION ?? "local",
+-    gameModeIdx: envNumber("BOT_GAME_MODE", 0, 0, 255),
++    gameModeIdx: configuredGameModeIdx,
+     botCount: envNumber("BOT_COUNT", 8, 1, 200),
+-    teamSize: envNumber("BOT_TEAM_SIZE", 4, 1, 4),
++    teamSize: resolvedTeamSize,
+     autoFill: process.env.BOT_AUTOFILL === "1" || process.env.BOT_AUTOFILL === "true",
+     joinDelay: envNumber("BOT_JOIN_DELAY", 120, 0, 5000),
+     tickMs: envNumber("BOT_TICK_MS", 30, 20, 250),
+@@ -972,6 +983,7 @@
+     readonly ignoredLootUntil = new Map<number, number>();
+     readonly ignoredCratesUntil = new Map<number, number>();
+     readonly mapNavigator = new MapNavigator();
++    readonly modeStrategy = new ModeStrategy();
+     readonly ballisticInference = new BallisticInferenceEngine();
+     readonly concealmentTracker = new ConcealmentTracker();
+     readonly spatialGrid = new SpatialGrid<GameObject>(
+@@ -1182,6 +1194,16 @@
+                 this.mapName = msg.mapName || "unknown";
+                 this.mapWidth = msg.width || this.mapWidth;
+                 this.mapHeight = msg.height || this.mapHeight;
++                const modeProfile = this.modeStrategy.load(
++                    this.mapName,
++                    this.effectiveTeamMode(),
++                );
++                if (config.debug || config.mapDebug) {
++                    console.log(
++                        `[bot ${this.id}] mode=${modeProfile.kind}/${modeProfile.family} ` +
++                            `team=${modeProfile.teamMode} tags=${modeProfile.specialTags.join(",")}`,
++                    );
++                }
+                 if (config.mapAi) {
+                     this.mapNavigator.load({
+                         mapName: this.mapName,
+@@ -1524,7 +1546,9 @@
+         const activeActionItem = String(me.data.actionItem ?? "");
+         const usingMedicine = this.isMedicineItem(activeActionItem);
+         const reviving = Number(me.data.actionType ?? GameConfig.Action.None) === GameConfig.Action.Revive;
+-        const downedTeammates = this.findDownedTeammates(myPos, enemyDistance);
++        const downedTeammates = this.modeStrategy.profile.reviveEnabled
++            ? this.findDownedTeammates(myPos, enemyDistance)
++            : [];
+         this.squad.reportDowned(downedTeammates, timestamp);
+         if (this.factionModeActive() && this.factionTeamId > 0) {
+             const factionReports: FactionDownedReport[] = downedTeammates.map((report) => ({
+@@ -1675,8 +1699,12 @@
+             this.setState("hide");
+             this.moveIntoConcealment(myPos, hideChoice, enemy, timestamp);
+         } else {
+-            const coverOrder = this.squad.getCoverOrder(this.id, timestamp);
+-            const formationTarget = this.squad.getFormationTarget(this.id, timestamp);
++            const coverOrder = this.modeStrategy.profile.reviveEnabled
++                ? this.squad.getCoverOrder(this.id, timestamp)
++                : null;
++            const formationTarget = this.modeStrategy.profile.squadCoordination
++                ? this.squad.getFormationTarget(this.id, timestamp)
++                : null;
+             const urgentFactionOrder =
+                 factionOrder &&
+                 factionCoordinator.shouldFollowOrder(factionOrder, myPos) &&
+@@ -1692,7 +1720,7 @@
+                 distance(myPos, formationTarget) >
+                     (config.mapAi
+                         ? this.mapNavigator.formationDistance(config.regroupDistance)
+-                        : config.regroupDistance)
++                        : config.regroupDistance) * this.modeStrategy.profile.formationMultiplier
+             ) {
+                 this.setState("regroup");
+                 this.regroup(myPos, formationTarget);
+@@ -1720,7 +1748,7 @@
+                         distance(myPos, formationTarget) >
+                             (config.mapAi
+                                 ? this.mapNavigator.formationDistance(config.cohesionRadius)
+-                                : config.cohesionRadius)
++                                : config.cohesionRadius) * this.modeStrategy.profile.cohesionMultiplier
+                     ) {
+                         this.setState("regroup");
+                         this.regroup(myPos, formationTarget);
+@@ -2277,6 +2305,15 @@
+         return false;
+     }
+ 
++    private effectiveTeamMode(): TeamMode {
++        if (this.mapName === "duel" || this.duelModeActive) return TeamMode.Solo;
++        if (this.mapName === "faction") return TeamMode.Squad;
++        if (configuredPlaylist?.mapName === this.mapName) return configuredPlaylist.teamMode;
++        if (this.squad.expectedSize === TeamMode.Duo) return TeamMode.Duo;
++        if (this.squad.expectedSize === TeamMode.Squad) return TeamMode.Squad;
++        return TeamMode.Solo;
++    }
++
+     private factionModeActive(): boolean {
+         return (
+             config.factionAi &&
+@@ -2459,15 +2496,16 @@
+         if (roleRescuePriority <= 0.18) return false;
+ 
+         const isMedic = this.currentSpecialRole === "medic";
++        const modeRescue = Math.max(0.5, this.modeStrategy.profile.rescueMultiplier);
+         if (isMedic) {
+-            if (dist > 45 || enemiesNear >= 2 || alliesNear < 1) return false;
++            if (dist > 45 * Math.min(1.22, modeRescue) || enemiesNear >= 2 || alliesNear < 1) return false;
+         } else {
+-            if (dist > 30 || enemiesNear > 0 || this.local.health <= 55) return false;
++            if (dist > 30 * Math.min(1.16, modeRescue) || enemiesNear > 0 || this.local.health <= 55) return false;
+         }
+         const baseRescueFloor = isMedic ? 21 : 29;
+-        const rescueHealthFloor = config.mapAi
++        const rescueHealthFloor = (config.mapAi
+             ? baseRescueFloor / Math.max(0.75, this.mapNavigator.rescueRisk(roleRescuePriority))
+-            : baseRescueFloor;
++            : baseRescueFloor) / Math.max(0.85, Math.min(1.18, modeRescue));
+         if (this.local.health < rescueHealthFloor) return false;
+         if (timestamp - this.lastDamagedAt < (isMedic ? 300 : 420) && enemyDistance < 28) return false;
+         if (enemyDistance < config.reviveEnemyRange && dist > 4.2) return false;
+@@ -3183,9 +3221,9 @@
+                   timestamp,
+               )
+             : 0;
+-        const mapScanRange = config.mapAi
++        const mapScanRange = (config.mapAi
+             ? this.mapNavigator.combatScanRange(this.profile.combatScanRange)
+-            : this.profile.combatScanRange;
++            : this.profile.combatScanRange) * this.modeStrategy.profile.combatScanMultiplier;
+         const maxScreenDistance = Math.hypot(viewport.halfWidth, viewport.halfHeight);
+         const nearbyPlayers = this.spatialGrid.queryRadius(
+             myPos,
+@@ -3239,6 +3277,13 @@
+                 (this.hasPerk(enemyPerks, "explosive_rounds") ? 24 : 0) +
+                 (this.hasPerk(enemyPerks, "windwalk") && dist < 36 ? 13 : 0) +
+                 (this.hasPerk(enemyPerks, "cast_ironskin") ? 8 : 0);
++            const modeBonus = this.modeStrategy.targetScoreModifier({
++                distance: dist,
++                downed: Boolean(data.downed),
++                enemyRole: String(data.role ?? ""),
++                phase: this.currentMapPhase(),
++                currentTarget: object.__id === this.currentEnemyId,
++            });
+             const score =
+                 130 -
+                 dist * 1.18 +
+@@ -3249,7 +3294,8 @@
+                 factionBonus +
+                 ballisticBonus +
+                 specialRoleBonus +
+-                perkThreatBonus -
++                perkThreatBonus +
++                modeBonus -
+                 downedPenalty;
+ 
+             candidates.push({ object, distance: dist, score, visible: true, onScreen: true });
+@@ -4117,6 +4163,15 @@
+                     range,
+                     distanceToEnemy,
+                 );
++                score += this.modeStrategy.weaponScoreModifier({
++                    weaponType: weapon.type,
++                    defType: String(def.type ?? ""),
++                    range,
++                    distance: distanceToEnemy,
++                    explosive: Boolean(def.isLauncher || getBulletDef(weapon.type)?.onHit),
++                    phase: gasPhase,
++                    targetBehindCover,
++                });
+                 if (this.factionModeActive()) {
+                     if (this.factionDoctrine === "marksman" && range >= 70) score += 38;
+                     if (this.factionDoctrine === "vanguard" && range <= 58) score += 26;
+@@ -4416,7 +4471,7 @@
+     }
+ 
+     private chooseLoot(myPos: Vec2, timestamp: number): LootChoice | null {
+-        if (this.duelModeActive) return null;
++        if (this.duelModeActive || !this.modeStrategy.profile.lootEnabled) return null;
+         if (
+             this.currentFactionOrder &&
+             !this.currentFactionOrder.allowLoot &&
+@@ -4437,9 +4492,9 @@
+         }
+ 
+         const candidates: LootChoice[] = [];
+-        const mapLootRange = config.mapAi
++        const mapLootRange = (config.mapAi
+             ? config.lootScanRange * (0.82 + this.mapNavigator.profile.aggressiveLooting * 0.36)
+-            : config.lootScanRange;
++            : config.lootScanRange) * this.modeStrategy.profile.lootRangeMultiplier;
+         for (const object of this.objectPool.values(ObjectType.Loot)) {
+             if (!this.isValidLoot(object)) continue;
+             if ((this.ignoredLootUntil.get(object.__id) ?? 0) > timestamp) continue;
+@@ -4574,6 +4629,13 @@
+                 Number(this.local.inventory[type] ?? 0),
+             );
+         }
++        value += this.modeStrategy.lootScoreModifier({
++            itemType: type,
++            defType: String(def.type ?? ""),
++            inventoryCount: Number(this.local.inventory[type] ?? 0),
++            health: this.local.health,
++            phase: this.currentMapPhase(),
++        });
+         if (object.data.isOld) value -= 3;
+         return value - dist * 1.4;
+     }
+@@ -4638,6 +4700,7 @@
+             desired += Math.max(45, maxClip * 3);
+         }
+         let multiplier = config.mapAi ? this.mapNavigator.ammoReserveMultiplier() : 1;
++        multiplier *= this.modeStrategy.profile.ammoReserveMultiplier;
+         multiplier *= specialRoleProfile(this.currentSpecialRole).ammoMultiplier;
+         if (this.factionModeActive()) {
+             if (this.factionDoctrine === "fire-support") multiplier *= 1.38;
+@@ -4679,7 +4742,7 @@
+         timestamp: number,
+     ): CrateChoice | null {
+         // Duel wooden boxes and rocks are tactical cover, never loot sources.
+-        if (this.duelModeActive) return null;
++        if (this.duelModeActive || !this.modeStrategy.profile.crateLootEnabled) return null;
+         if (this.currentFactionOrder && !this.currentFactionOrder.allowCrates) return null;
+         if (config.mapAi) {
+             if (!this.mapNavigator.shouldBreakCrate(enemyDistance, this.local.health, this.currentMapPhase())) {
+@@ -4698,9 +4761,9 @@
+         }
+ 
+         const candidates: CrateChoice[] = [];
+-        const mapCrateRange = config.mapAi
++        const mapCrateRange = (config.mapAi
+             ? config.crateScanRange * (0.82 + this.mapNavigator.profile.aggressiveLooting * 0.35)
+-            : config.crateScanRange;
++            : config.crateScanRange) * this.modeStrategy.profile.crateRangeMultiplier;
+         for (const object of this.objectPool.values(ObjectType.Obstacle)) {
+             if (!this.isLootCrate(object)) continue;
+             if ((this.ignoredCratesUntil.get(object.__id) ?? 0) > timestamp) continue;
+@@ -4720,8 +4783,9 @@
+                       String(object.data.type ?? ""),
+                   )
+                 : 0;
++            const modeBonus = this.modeStrategy.crateScoreModifier(String(object.data.type ?? ""));
+             const score =
+-                105 - dist * 1.7 + (1 - remainingHealth) * 20 + mapBonus + factionBonus;
++                105 - dist * 1.7 + (1 - remainingHealth) * 20 + mapBonus + factionBonus + modeBonus;
+             candidates.push({ object, distance: dist, score });
+         }
+         candidates.sort((a, b) => b.score - a.score);
+@@ -5424,17 +5488,19 @@
+     }
+ 
+     private situationAggressionMultiplier(phase: MapPhase, aliveCount: number): number {
+-        if (this.currentSpecialRole === "last_man") return phase === "final" ? 1.42 : 1.28;
+-        if (phase === "final") return aliveCount <= 8 ? 1.35 : 1.1;
+-        if (phase === "late" && aliveCount <= 18) return 1.12;
+-        return 1;
++        let base = 1;
++        if (this.currentSpecialRole === "last_man") base = phase === "final" ? 1.42 : 1.28;
++        else if (phase === "final") base = aliveCount <= 8 ? 1.35 : 1.1;
++        else if (phase === "late" && aliveCount <= 18) base = 1.12;
++        return base * this.modeStrategy.aggressionMultiplier(phase, aliveCount);
+     }
+ 
+     private situationalRetreatHealth(phase: MapPhase, aliveCount: number): number {
+-        if (this.currentSpecialRole === "last_man") return 24;
+-        if (phase === "final") return aliveCount <= 8 ? 28 : 34;
+-        if (phase === "late") return Math.min(this.profile.retreatHealth, 38);
+-        return this.profile.retreatHealth;
++        let base = this.profile.retreatHealth;
++        if (this.currentSpecialRole === "last_man") base = 24;
++        else if (phase === "final") base = aliveCount <= 8 ? 28 : 34;
++        else if (phase === "late") base = Math.min(this.profile.retreatHealth, 38);
++        return this.modeStrategy.retreatHealth(base, phase);
+     }
+ 
+     private shouldControlLateRing(myPos: Vec2, phase: MapPhase, enemyDistance: number): boolean {
+@@ -5442,7 +5508,7 @@
+         if (!circle || (phase !== "late" && phase !== "final")) return false;
+         if (enemyDistance < 30 || this.local.health < this.situationalRetreatHealth(phase, this.estimatedAliveCount())) return false;
+         const edgeDistance = circle.radius - distance(myPos, circle.center);
+-        const desired = phase === "final" ? 10 : 16;
++        const desired = (phase === "final" ? 10 : 16) * this.modeStrategy.profile.gasEdgePreference;
+         return edgeDistance > desired + 7 || edgeDistance < Math.max(3, desired - 6);
+     }
+ 
+@@ -5868,7 +5934,7 @@
+     console.log(
+         `[smartBot] server=${config.address} bots=${config.botCount} teamSize=${config.teamSize} ` +
+             `difficulty=${config.difficulty} factionAI=${config.factionAi} concealmentAI=${config.concealmentTactics} ` +
+-            `duel=${config.duelMode}/${config.duelAdrenalinePolicy}`,
++            `duel=${config.duelMode}/${config.duelAdrenalinePolicy} playlist=${configuredPlaylist?.mapName ?? "custom"}/${configuredPlaylist?.teamMode ?? config.teamSize}`,
+     );
+     if (![1, 2, 4].includes(config.teamSize)) {
+         console.warn("[smartBot] BOT_TEAM_SIZE should be 1, 2, or 4");

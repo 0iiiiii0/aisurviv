@@ -1,0 +1,7 @@
+{
+  "heal_requires": [
+    "cover_or_indoor",
+    "no_recent_damage"
+  ],
+  "armed_can_return_fire_without_full_gear": true
+}

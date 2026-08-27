@@ -1,4 +1,3 @@
-import { FactionTeam } from "../../gameConfig.ts";
 import { type DeepPartial, util } from "../../utils/util.ts";
 import type { Vec2 } from "../../utils/v2.ts";
 
@@ -70,7 +69,7 @@ export interface GunDef {
         cycle?: string;
         pull?: string;
         shootLast?: string;
-        shootTeam?: Record<FactionTeam, string>;
+        shootTeam?: Record<string, string>;
         shootAlt?: string;
         fallOff?: number;
         reloadAlt?: string;
@@ -3323,7 +3322,7 @@ export const BaseDefs: Record<string, GunDef> = {
         pistol: true,
         outsideOnly: true,
         ammoSpawnCount: 1,
-        ignoreEndlessAmmo: true,
+        ignoreEndlessAmmo: false,
         maxClip: 1,
         maxReload: 1,
         extendedClip: 1,
@@ -3375,7 +3374,7 @@ export const BaseDefs: Record<string, GunDef> = {
         pistol: true,
         outsideOnly: true,
         ammoSpawnCount: 2,
-        ignoreEndlessAmmo: true,
+        ignoreEndlessAmmo: false,
         maxClip: 2,
         maxReload: 2,
         extendedClip: 2,
@@ -3496,14 +3495,14 @@ export const BaseDefs: Record<string, GunDef> = {
         barrelLength: 3.25,
         barrelOffset: 0,
         recoilTime: 1e10,
-        moveSpread: 4,
+        moveSpread: 7,
         shotSpread: 3,
         bulletCount: 1,
         bulletType: "bullet_invis",
         projType: "potato_smgshot",
         noSplinter: true,
         headshotMult: 2,
-        speed: { equip: 0, attack: 0 },
+        speed: { equip: 0, attack: -6 },
         lootImg: {
             sprite: "loot-weapon-potato-smg.img",
             tint: 0xff00,
@@ -3643,7 +3642,7 @@ export const BaseDefs: Record<string, GunDef> = {
         },
         sound: {
             shoot: "bugle_01",
-            shootTeam: { [FactionTeam.Red]: "bugle_01", [FactionTeam.Blue]: "bugle_02" },
+            shootTeam: { 1: "bugle_01", 2: "bugle_02" },
             shootAlt: "bugle_03",
             reload: "",
             pickup: "stow_weapon_01",
@@ -3678,3 +3677,18 @@ const SkinDefs: Record<string, GunDef> = {
 };
 
 export const GunDefs: Record<string, GunDef> = { ...BaseDefs, ...SkinDefs };
+
+/**
+ * 双枪与单枪视为同一物品：仓库只存单枪，携带两把相同单枪时
+ * 实战自动合成双枪形态（不占用副武器槽位）。
+ */
+export function dualGunOf(base: string): string | null {
+    const dual = `${base}_dual`;
+    return GunDefs[dual] ? dual : null;
+}
+
+export function baseGunOf(type: string): string | null {
+    if (!type.endsWith("_dual")) return null;
+    const base = type.slice(0, -5);
+    return GunDefs[base] ? base : null;
+}

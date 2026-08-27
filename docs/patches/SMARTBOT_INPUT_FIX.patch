@@ -1,0 +1,165 @@
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -94,6 +94,7 @@
+     type ViewportBounds,
+ } from "./bot/combatIntelligence";
+ import { SpatialGrid } from "./bot/SpatialGrid";
++import { sanitizeMouseDistance } from "./bot/inputSafety";
+ import {
+     adrenalineMovementPlan,
+     chooseAdrenalineConsumable as chooseAdrenalineItem,
+@@ -1895,7 +1896,7 @@
+ 
+         const direction = normalize(sub(action.target, myPos));
+         this.output.aimDir = direction;
+-        this.output.mouseLen = clamp(distance(myPos, action.target) * 8, 10, 144);
++        this.output.mouseLen = clamp(distance(myPos, action.target) * 8, 10, net.Constants.MouseMaxDist);
+         this.output.movement = EMPTY_MOVEMENT();
+         this.output.shootStart = true;
+         this.output.shootHold = false;
+@@ -2040,7 +2041,7 @@
+     private pingPosition(myPos: Vec2, target: Vec2, timestamp: number): void {
+         if (timestamp - this.lastTeamPingAt < 5000) return;
+         this.output.aimDir = normalize(sub(target, myPos));
+-        this.output.mouseLen = clamp(distance(myPos, target) * 8, 12, 220);
++        this.output.mouseLen = clamp(distance(myPos, target) * 8, 12, net.Constants.MouseMaxDist);
+         this.addInput(GameConfig.Input.TeamPingSingle);
+         this.lastTeamPingAt = timestamp;
+     }
+@@ -2348,7 +2349,7 @@
+         }
+         const direct = normalize(sub(target, myPos));
+         this.output.aimDir = direct;
+-        this.output.mouseLen = clamp(distance(myPos, target) * 7, 12, 220);
++        this.output.mouseLen = clamp(distance(myPos, target) * 7, 12, net.Constants.MouseMaxDist);
+         if (distance(myPos, target) <= order.holdRadius) {
+             this.output.movement = EMPTY_MOVEMENT();
+             if (order.focusTargetId) {
+@@ -2471,7 +2472,7 @@
+         }
+         if (enemy) this.output.aimDir = normalize(sub(enemy.object.data.pos as Vec2, myPos));
+         else this.output.aimDir = normalize(sub(targetPos, myPos));
+-        this.output.mouseLen = clamp(dist * 8, 8, 120);
++        this.output.mouseLen = clamp(dist * 8, 8, net.Constants.MouseMaxDist);
+ 
+         if (dist > GameConfig.player.reviveRange - 0.65) {
+             let direction = normalize(sub(targetPos, myPos));
+@@ -2915,7 +2916,7 @@
+         const weapon = this.local.weapons[slot];
+         const def = gameDef(weapon?.type ?? "");
+         this.output.aimDir = normalize(sub(attack.aimPos, myPos));
+-        this.output.mouseLen = clamp(attack.distance * 8, 12, 255);
++        this.output.mouseLen = clamp(attack.distance * 8, 12, net.Constants.MouseMaxDist);
+ 
+         const tangent = mul(perpendicular(this.output.aimDir), this.strafeSign * 0.65);
+         if (attack.mode === "blind-fire" && this.local.health > 55) {
+@@ -3320,7 +3321,7 @@
+             ? this.mapNavigator.aimJitter(this.profile.aimJitterRad)
+             : this.profile.aimJitterRad;
+         this.output.aimDir = jitterDirection(directAim, aimJitter * movingPenalty);
+-        this.output.mouseLen = clamp(target.distance * 8, 12, 255);
++        this.output.mouseLen = clamp(target.distance * 8, 12, net.Constants.MouseMaxDist);
+ 
+         const rawIdealRange = mastery?.idealRange ?? this.idealWeaponRange(weaponType);
+         const baseIdealRange = config.mapAi
+@@ -3546,7 +3547,7 @@
+             : evade;
+         this.moveDirection(movement);
+         this.output.aimDir = toSource;
+-        this.output.mouseLen = clamp(distance(myPos, searchPoint) * 8, 12, 255);
++        this.output.mouseLen = clamp(distance(myPos, searchPoint) * 8, 12, net.Constants.MouseMaxDist);
+ 
+         const sourceDistance = distance(myPos, searchPoint);
+         const slot = this.chooseCombatWeapon(sourceDistance, -1, false, 1, 1, 0, true, timestamp);
+@@ -3952,7 +3953,7 @@
+         const weapon = this.local.weapons[slot];
+         const def = gameDef(weapon?.type ?? "");
+         this.output.aimDir = normalize(sub(choice.aimPos, myPos));
+-        this.output.mouseLen = clamp(choice.distance * 8, 12, 255);
++        this.output.mouseLen = clamp(choice.distance * 8, 12, net.Constants.MouseMaxDist);
+         const tangent = mul(perpendicular(this.output.aimDir), this.strafeSign);
+         this.moveDirection(tangent);
+         if (!weapon || def?.type !== "gun") return;
+@@ -4613,7 +4614,7 @@
+         const targetPos = choice.object.data.pos as Vec2;
+         const direction = normalize(sub(targetPos, myPos));
+         this.output.aimDir = direction;
+-        this.output.mouseLen = clamp(choice.distance * 8, 8, 200);
++        this.output.mouseLen = clamp(choice.distance * 8, 8, net.Constants.MouseMaxDist);
+ 
+         if (choice.distance > GameConfig.player.maxInteractionRad - 0.35) {
+             const routeDirection = config.mapAi
+@@ -4720,7 +4721,7 @@
+         const cratePos = choice.object.data.pos as Vec2;
+         const direction = normalize(sub(cratePos, myPos));
+         this.output.aimDir = direction;
+-        this.output.mouseLen = clamp(choice.distance * 8, 8, 160);
++        this.output.mouseLen = clamp(choice.distance * 8, 8, net.Constants.MouseMaxDist);
+         const meleeSlot = GameConfig.WeaponSlot.Melee;
+         this.equipSlot(meleeSlot);
+         const meleeType = this.local.weapons[meleeSlot]?.type ?? "fists";
+@@ -5661,7 +5662,7 @@
+         packet.shootStart = this.output.shootStart;
+         packet.shootHold = this.output.shootHold;
+         packet.toMouseDir = normalize(this.output.aimDir);
+-        packet.toMouseLen = this.output.mouseLen;
++        packet.toMouseLen = sanitizeMouseDistance(this.output.mouseLen);
+         packet.useItem = this.output.useItem;
+         for (const input of this.output.inputs) packet.addInput(input);
+         this.sendMsg(net.MsgType.Input, packet);
+--- a/server/package.json
++++ b/server/package.json
+@@ -13,7 +13,8 @@
+     "test:admin": "node -r ts-node/register src/adminSmokeTest.ts",
+     "test:ipv6": "node -r ts-node/register src/ipv6SmokeTest.ts",
+     "test:potato": "node -r ts-node/register src/potatoSmokeTest.ts",
+-    "bot": "node -r ts-node/register src/smartBot.ts"
++    "bot": "node -r ts-node/register src/smartBot.ts",
++    "test:bot-input": "node -r ts-node/register src/smartBotInputSmokeTest.ts"
+   },
+   "dependencies": {
+     "nanotimer": "^0.3.15",
+--- /dev/null
++++ b/server/src/bot/inputSafety.ts
+@@ -0,0 +1,11 @@
++import { Constants } from "../../../shared/net/net";
++
++/**
++ * InputMsg serializes toMouseLen as a float in [0, MouseMaxDist].
++ * Keep this guard at the packet boundary even when callers already clamp.
++ */
++export function sanitizeMouseDistance(value: unknown): number {
++    const numeric = Number(value);
++    if (!Number.isFinite(numeric)) return 0;
++    return Math.max(0, Math.min(Constants.MouseMaxDist, numeric));
++}
+--- /dev/null
++++ b/server/src/smartBotInputSmokeTest.ts
+@@ -0,0 +1,27 @@
++import assert from "assert/strict";
++
++import { InputMsg, MsgStream, MsgType } from "../../shared/net/net";
++import { sanitizeMouseDistance } from "./bot/inputSafety";
++
++const cases: Array<[unknown, number]> = [
++    [255, 64],
++    [120, 64],
++    [64, 64],
++    [50, 50],
++    [-5, 0],
++    [Number.NaN, 0],
++    [Number.POSITIVE_INFINITY, 0],
++    [undefined, 0],
++];
++
++for (const [input, expected] of cases) {
++    assert.equal(sanitizeMouseDistance(input), expected);
++
++    const msg = new InputMsg();
++    msg.toMouseLen = sanitizeMouseDistance(input);
++    const stream = new MsgStream(new ArrayBuffer(256));
++    stream.serializeMsg(MsgType.Input, msg);
++    assert.ok(stream.stream.byteIndex > 0);
++}
++
++console.log("SmartBot input safety smoke test passed: toMouseLen is always serialized in [0, 64].");

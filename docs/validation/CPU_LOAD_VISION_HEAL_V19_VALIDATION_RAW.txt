@@ -1,0 +1,89 @@
+===== build =====
+
+> build
+> tsc
+
+
+===== test:cpu-load =====
+
+> test:cpu-load
+> node -r ts-node/register src/cpuLoadControlSmokeTest.ts
+
+CPU load control smoke test passed: soft throttle, hard spawn pause, and bounded limits.
+
+===== test:bot-combat-heal =====
+
+> test:bot-combat-heal
+> node -r ts-node/register src/botCombatHealSmokeTest.ts
+
+Bot combat/heal smoke test passed: deterministic firing, current-scope freshness, no out-of-range rooting, and cover-gated healing.
+
+===== test:bot-input =====
+
+> test:bot-input
+> node -r ts-node/register src/smartBotInputSmokeTest.ts
+
+SmartBot input safety smoke test passed: mouse distance and world-space movement mapping are valid.
+
+===== test:aim-control =====
+
+> test:aim-control
+> node -r ts-node/register src/aimControlSmokeTest.ts
+
+Aim control smoke test passed: reload tracking can turn smoothly without one-frame snapping.
+
+===== test:duel-vision =====
+
+> test:duel-vision
+> node -r ts-node/register src/duelVisionSmokeTest.ts
+
+Duel vision/search smoke test passed.
+
+===== test:faction-autofill =====
+
+> test:faction-autofill
+> node -r ts-node/register src/factionAutoFillSmokeTest.ts
+
+[36m[2026-07-25 3:54:03 PM][0m [32mGame #fact[0m | Creating
+[36m[2026-07-25 3:54:03 PM][0m [32mGame #fact[0m | Created in 253 ms
+[36m[2026-07-25 3:54:03 PM][0m [32mGame #fact[0m | Player Blue Bot joined game ID faction-autofill-forced-team
+[36m[2026-07-25 3:54:03 PM][0m [32mGame #fact[0m | Player Red Bot joined game ID faction-autofill-forced-team
+Faction auto-fill smoke test passed: one bot every two seconds, eight-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.
+
+===== test:bot-autofill-config =====
+
+> test:bot-autofill-config
+> node -r ts-node/register src/botAutoFillConfigSmokeTest.ts
+
+Bot auto-fill config smoke test passed: live per-mode cadence, one shared Solo/Duo/Squad AI cap, per-mode targets, and balanced faction total limits.
+
+===== test:all-modes =====
+
+> test:all-modes
+> node -r ts-node/register src/allModesSmokeTest.ts
+
+All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.
+
+===== test:spectator-difficulty =====
+
+> test:spectator-difficulty
+> node -r ts-node/register src/spectatorDifficultySmokeTest.ts
+
+Spectator/free-camera and mixed difficulty smoke test passed.
+
+===== test:room-lifecycle =====
+
+> test:room-lifecycle
+> node -r ts-node/register src/roomLifecycleSmokeTest.ts
+
+Room lifecycle smoke test passed
+
+===== test:admin-auth =====
+
+> test:admin-auth
+> node -r ts-node/register src/adminAuthSmokeTest.ts
+
+Admin auth smoke test passed: scrypt password storage, login sessions, logout, password rotation and session invalidation.
+
+===== client TypeScript =====
+DONE

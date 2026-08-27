@@ -1,0 +1,420 @@
+{
+  "version": "V56",
+  "createdAt": "2026-08-01T02:19:22.888Z",
+  "match": {
+    "gameId": "a5eaa7c87bcd5d4521b5d7bed3c54a8efa026d06",
+    "map": "main",
+    "teamMode": 2,
+    "botCount": 10,
+    "recordedBots": 10
+  },
+  "server": {
+    "observedMs": 183776,
+    "stopped": true,
+    "finalAliveCount": 9,
+    "aliveCountSamples": [
+      {
+        "at": 0,
+        "alive": 10
+      },
+      {
+        "at": 1999,
+        "alive": 10
+      },
+      {
+        "at": 3999,
+        "alive": 10
+      },
+      {
+        "at": 5999,
+        "alive": 10
+      },
+      {
+        "at": 7999,
+        "alive": 10
+      },
+      {
+        "at": 9999,
+        "alive": 10
+      },
+      {
+        "at": 11999,
+        "alive": 10
+      },
+      {
+        "at": 13999,
+        "alive": 10
+      },
+      {
+        "at": 15999,
+        "alive": 10
+      },
+      {
+        "at": 17999,
+        "alive": 10
+      },
+      {
+        "at": 19999,
+        "alive": 10
+      },
+      {
+        "at": 21999,
+        "alive": 10
+      },
+      {
+        "at": 23999,
+        "alive": 10
+      },
+      {
+        "at": 25999,
+        "alive": 10
+      },
+      {
+        "at": 27999,
+        "alive": 10
+      },
+      {
+        "at": 29999,
+        "alive": 10
+      },
+      {
+        "at": 31999,
+        "alive": 10
+      },
+      {
+        "at": 33999,
+        "alive": 10
+      },
+      {
+        "at": 35999,
+        "alive": 10
+      },
+      {
+        "at": 37999,
+        "alive": 10
+      },
+      {
+        "at": 39999,
+        "alive": 10
+      },
+      {
+        "at": 41999,
+        "alive": 10
+      },
+      {
+        "at": 43999,
+        "alive": 10
+      },
+      {
+        "at": 45999,
+        "alive": 10
+      },
+      {
+        "at": 47999,
+        "alive": 10
+      },
+      {
+        "at": 49999,
+        "alive": 10
+      },
+      {
+        "at": 51999,
+        "alive": 10
+      },
+      {
+        "at": 53999,
+        "alive": 10
+      },
+      {
+        "at": 55999,
+        "alive": 10
+      },
+      {
+        "at": 57999,
+        "alive": 10
+      },
+      {
+        "at": 59999,
+        "alive": 10
+      },
+      {
+        "at": 61999,
+        "alive": 10
+      },
+      {
+        "at": 63999,
+        "alive": 10
+      },
+      {
+        "at": 65999,
+        "alive": 10
+      },
+      {
+        "at": 67999,
+        "alive": 10
+      },
+      {
+        "at": 69999,
+        "alive": 10
+      },
+      {
+        "at": 71999,
+        "alive": 10
+      },
+      {
+        "at": 73999,
+        "alive": 10
+      },
+      {
+        "at": 75999,
+        "alive": 10
+      },
+      {
+        "at": 77999,
+        "alive": 10
+      },
+      {
+        "at": 79999,
+        "alive": 9
+      },
+      {
+        "at": 81999,
+        "alive": 9
+      },
+      {
+        "at": 83999,
+        "alive": 9
+      },
+      {
+        "at": 85999,
+        "alive": 9
+      },
+      {
+        "at": 87999,
+        "alive": 9
+      },
+      {
+        "at": 89999,
+        "alive": 9
+      },
+      {
+        "at": 91999,
+        "alive": 9
+      },
+      {
+        "at": 93999,
+        "alive": 9
+      },
+      {
+        "at": 95999,
+        "alive": 9
+      },
+      {
+        "at": 97999,
+        "alive": 9
+      },
+      {
+        "at": 99999,
+        "alive": 9
+      },
+      {
+        "at": 101999,
+        "alive": 9
+      },
+      {
+        "at": 103999,
+        "alive": 9
+      },
+      {
+        "at": 105999,
+        "alive": 9
+      },
+      {
+        "at": 107999,
+        "alive": 9
+      },
+      {
+        "at": 109999,
+        "alive": 9
+      },
+      {
+        "at": 111999,
+        "alive": 9
+      },
+      {
+        "at": 113999,
+        "alive": 9
+      },
+      {
+        "at": 115999,
+        "alive": 9
+      },
+      {
+        "at": 117999,
+        "alive": 9
+      },
+      {
+        "at": 119999,
+        "alive": 9
+      },
+      {
+        "at": 121999,
+        "alive": 9
+      },
+      {
+        "at": 123999,
+        "alive": 9
+      },
+      {
+        "at": 125999,
+        "alive": 9
+      },
+      {
+        "at": 127999,
+        "alive": 9
+      },
+      {
+        "at": 129999,
+        "alive": 9
+      },
+      {
+        "at": 131999,
+        "alive": 9
+      },
+      {
+        "at": 133999,
+        "alive": 9
+      },
+      {
+        "at": 135999,
+        "alive": 9
+      },
+      {
+        "at": 137999,
+        "alive": 9
+      },
+      {
+        "at": 139999,
+        "alive": 9
+      },
+      {
+        "at": 141999,
+        "alive": 9
+      },
+      {
+        "at": 143999,
+        "alive": 9
+      },
+      {
+        "at": 145999,
+        "alive": 9
+      },
+      {
+        "at": 147999,
+        "alive": 9
+      },
+      {
+        "at": 149999,
+        "alive": 9
+      },
+      {
+        "at": 151999,
+        "alive": 9
+      },
+      {
+        "at": 153999,
+        "alive": 9
+      },
+      {
+        "at": 155999,
+        "alive": 9
+      },
+      {
+        "at": 157999,
+        "alive": 9
+      },
+      {
+        "at": 159999,
+        "alive": 9
+      },
+      {
+        "at": 161999,
+        "alive": 9
+      },
+      {
+        "at": 163999,
+        "alive": 9
+      },
+      {
+        "at": 165999,
+        "alive": 9
+      },
+      {
+        "at": 167999,
+        "alive": 9
+      },
+      {
+        "at": 169999,
+        "alive": 9
+      },
+      {
+        "at": 171999,
+        "alive": 9
+      },
+      {
+        "at": 173999,
+        "alive": 9
+      },
+      {
+        "at": 175999,
+        "alive": 9
+      },
+      {
+        "at": 177999,
+        "alive": 9
+      },
+      {
+        "at": 179999,
+        "alive": 9
+      }
+    ]
+  },
+  "search": {
+    "lootStateShare": 0.63,
+    "weaponSearchAbandoned": 0,
+    "weaponSearchAbandonedAvgAgeMs": 0,
+    "resourceTargetAbandoned": {
+      "no-distance-progress": 87,
+      "repeated-path-recovery": 4
+    },
+    "intentProgressAbandoned": 0,
+    "botsThatFoundWeapon": 10,
+    "timeToFirstWeaponMs": 6126
+  },
+  "gas": {
+    "gasStateShare": 0.25,
+    "gasDangerFrameShare": 0.25,
+    "gasEscapesStarted": 14,
+    "gasEscapesEnded": 6
+  },
+  "combat": {
+    "combatStateShare": 0.02,
+    "damageTakenEvents": 28,
+    "damageTakenTotal": 187.45,
+    "visibleThreatInterrupts": 2,
+    "gunfireWallBlocked": 0,
+    "finalVisibleTriggerRestored": 4,
+    "hiddenContactsSelected": 7,
+    "hardCoverFlanks": 20,
+    "kills": 0,
+    "survivors": []
+  },
+  "activity": {
+    "frameCount": 10637,
+    "recordedDurationMs": 188961,
+    "stateChanges": 421,
+    "intentChanges": 960,
+    "pathRecoveries": 29,
+    "botFinished": 0
+  }
+}

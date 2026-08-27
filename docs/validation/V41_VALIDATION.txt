@@ -1,0 +1,43 @@
+V41 VALIDATION REPORT
+=====================
+
+Static and compilation checks
+-----------------------------
+PASS server TypeScript noEmit
+PASS client TypeScript noEmit
+PASS server production TypeScript build
+PASS admin JavaScript syntax check
+PASS V41 launcher/source-build marker test
+
+Feature regression tests
+------------------------
+PASS V41 spectator share: same match, multiple distinct observer tokens, current-match expiry
+PASS V41 spectator interaction: free-camera independence, layer 3, private chat, sanitization, rate limit
+PASS V41 duel room: public duel disabled, no duel autofill, caps, map symmetry/connectivity, per-player weapons
+PASS V41 pure-AI duel: two server-bot credentials and spectator credential
+PASS duel lobby: individual, mirrored and exclusive modes; invalid exclusive update rollback
+PASS duel gameplay: five rounds, gas, flare safety and observer entry
+PASS aim training: both join orders, target role, unlimited health and training stats
+PASS game-process reuse: creating child cannot be reused; createGame waits for child-created acknowledgement
+PASS admin dashboard: room limits, pure-AI duel, modes, announcements and room actions
+PASS all-mode isolation: 47 playlists / 17 maps
+PASS V40 advanced AI combat recovery tests
+PASS HACKER/LEGIT visibility and authority boundary tests
+PASS dual-switch, airstrike and input-safety tests
+
+Production multi-process live verification
+------------------------------------------
+PASS aim_training room created in production processMode=multi
+PASS Moving Target connected before response returned
+PASS API response ready=true with AK-47, distance 80 and infinite magazine enabled
+PASS private human duel created with AK-47+Mosin vs M39+MP220
+PASS contestants received distinct join credentials and loadout indexes
+PASS two viewers used the same share code and received distinct spectator credentials
+PASS public random duel endpoint rejected the duel playlist
+PASS host close invalidated the share code
+PASS admin pure-AI Pro vs Hard room reached aiPlayerCount=2 and serverBotCount=2
+PASS pure-AI share code supported multiple viewers and expired after admin stop
+
+Important packaging note
+------------------------
+The Linux validation environment could type-check the client but could not produce a Windows-native Vite bundle from the packaged Windows optional binaries. The stale client/dist directory was intentionally removed. START_V41.cmd runs current source through Vite. For static production deployment, build on Windows with build-complete.ps1.

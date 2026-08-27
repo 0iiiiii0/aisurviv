@@ -1095,6 +1095,27 @@ const Sounds: Record<string, Record<string, SoundDef>> = {
             path: "audio/sfx/crate_break_02.mp3",
             volume: 1,
         },
+        zombie_rush: {
+            path: "audio/sfx/allhu-akbar.mp3",
+            volume: 1,
+        },
+        zombie_nuke_alarm: {
+            path: "audio/sfx/zombie-nuke-alarm.mp3",
+            volume: 1,
+        },
+        zombie_nuke_evacuation_siren: {
+            path: "audio/sfx/zombie-nuke-evacuation-siren.mp3",
+            volume: 1,
+        },
+        zombie_geiger_click: {
+            path: "audio/sfx/zombie-geiger-click.wav",
+            volume: 1,
+            maxInstances: 3,
+        },
+        zombie_nuke_explosion: {
+            path: "audio/sfx/nuclear_explosion.mp3",
+            volume: 1,
+        },
         tree_break_01: {
             path: "audio/sfx/tree_break_01.mp3",
             volume: 1,

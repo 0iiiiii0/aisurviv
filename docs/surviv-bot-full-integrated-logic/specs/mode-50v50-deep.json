@@ -1,0 +1,15 @@
+{
+  "doctrines": [
+    "push",
+    "hold",
+    "flank",
+    "reserve",
+    "retreat_regroup"
+  ],
+  "rules": [
+    "no_bridge_center_clump",
+    "layered_push",
+    "focus_fire",
+    "multi_ammo_share"
+  ]
+}

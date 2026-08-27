@@ -1,0 +1,14 @@
+{
+  "order": [
+    "mouseLen_clamp",
+    "lethal_gas",
+    "enemy_meleeing_me",
+    "crate_threat_B",
+    "ammo_share",
+    "flare",
+    "safe_heal",
+    "unarmed_gun_hunt",
+    "mode_branch",
+    "engage_or_rotate"
+  ]
+}

@@ -9,6 +9,8 @@ import { randomUUID } from "node:crypto";
 import pkgJson from "../../../package.json" with { type: "json" };
 import { type FindGameResponse, type SiteInfoRes, zFindGameBody } from "../../../shared/types/api.ts";
 import { Config } from "../config.ts";
+import { isFindGameRequestAuthorized } from "../findGameAuthorization.ts";
+import { isPublicPlaylistAvailable } from "../game/gameManager.ts";
 import { GIT_VERSION } from "../utils/gitRevision.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
 import { isBehindProxy } from "../utils/proxyCheck.ts";
@@ -19,6 +21,7 @@ import { server } from "./apiServer.ts";
 import { deleteExpiredSessions, validateSessionToken } from "./auth/index.ts";
 import { rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
 import type { SessionTableSelect, UsersTableSelect } from "./db/schema.ts";
+import { LegacyRouter } from "./routes/legacy/LegacyRouter.ts";
 import { cleanupOldLogs, isBanned } from "./routes/private/ModerationRouter.ts";
 import { PrivateRouter } from "./routes/private/private.ts";
 import { StatsRouter } from "./routes/stats/StatsRouter.ts";
@@ -79,6 +82,10 @@ app.use(
 
 app.route("/api/user/", UserRouter);
 app.route("/api/auth/", AuthRouter);
+// Password-account, stash/shop and equipment-return compatibility endpoints.
+// Mount before StatsRouter so the legacy /leaderboard request can dispatch on
+// its token-shaped body and delegate modern leaderboard bodies with next().
+app.route("/api/", LegacyRouter);
 app.route("/api/", StatsRouter);
 app.route("/private/", PrivateRouter);
 
@@ -141,9 +148,29 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
 
     const body = c.req.valid("json");
 
+    server.refreshPublicConfig();
     const mode = server.modes[body.gameModeIdx];
-    if (!mode || !mode.enabled) {
+    if (!isPublicPlaylistAvailable(mode, body.allowUnlistedMode)) {
         return c.json<FindGameResponse>({ type: "error", error: "mode_disabled" });
+    }
+
+    const requiresLogin = mode.mapName === "extraction"
+        || mode.mapName === "extraction_secret";
+    const legacyAccountAuthorized = isFindGameRequestAuthorized(
+        requiresLogin,
+        body,
+        Config.secrets.SURVEV_API_KEY,
+        server.playerAccounts,
+    );
+    const legacyProfile = server.playerAccounts.profile(body.accountToken);
+    const legacyStashName = legacyProfile
+        ? (legacyProfile.displayName || legacyProfile.username).trim()
+        : "";
+    if (requiresLogin && !user && !legacyAccountAuthorized) {
+        server.logger.warn(
+            `[match-auth] rejected mode=${body.gameModeIdx} tokenPresent=${Boolean(body.accountToken)}`,
+        );
+        return c.json<FindGameResponse>({ type: "error", error: "login_required" }, 401);
     }
 
     if (server.captchaEnabled && !user) {
@@ -165,6 +192,7 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
         {
             joinToken,
             userId: user?.id || null,
+            stashName: legacyStashName || undefined,
             ip,
         },
     ]);
@@ -175,6 +203,7 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
         mapName: mode.mapName,
         teamMode: mode.teamMode,
         autoFill: true,
+        zombieDifficulty: body.zombieDifficulty,
         playerData,
     });
 

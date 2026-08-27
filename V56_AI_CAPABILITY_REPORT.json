@@ -1,0 +1,181 @@
+{
+  "version": "V56",
+  "createdAt": "2026-08-13T14:18:47.740Z",
+  "match": {
+    "gameId": "83fa0fb9f85adb1e46f6e77e049adaa38d114282",
+    "map": "extraction",
+    "teamMode": 1,
+    "botCount": 4,
+    "recordedBots": 5
+  },
+  "server": {
+    "observedMs": 61643,
+    "stopped": false,
+    "finalAliveCount": 5,
+    "aliveCountSamples": [
+      {
+        "at": 0,
+        "alive": 5
+      },
+      {
+        "at": 2001,
+        "alive": 5
+      },
+      {
+        "at": 4002,
+        "alive": 5
+      },
+      {
+        "at": 6008,
+        "alive": 5
+      },
+      {
+        "at": 8013,
+        "alive": 5
+      },
+      {
+        "at": 10016,
+        "alive": 5
+      },
+      {
+        "at": 12018,
+        "alive": 5
+      },
+      {
+        "at": 14018,
+        "alive": 5
+      },
+      {
+        "at": 16023,
+        "alive": 5
+      },
+      {
+        "at": 18023,
+        "alive": 5
+      },
+      {
+        "at": 20025,
+        "alive": 5
+      },
+      {
+        "at": 22026,
+        "alive": 5
+      },
+      {
+        "at": 24026,
+        "alive": 5
+      },
+      {
+        "at": 26034,
+        "alive": 5
+      },
+      {
+        "at": 28034,
+        "alive": 5
+      },
+      {
+        "at": 30040,
+        "alive": 5
+      },
+      {
+        "at": 32041,
+        "alive": 5
+      },
+      {
+        "at": 34044,
+        "alive": 5
+      },
+      {
+        "at": 36043,
+        "alive": 5
+      },
+      {
+        "at": 38043,
+        "alive": 5
+      },
+      {
+        "at": 40044,
+        "alive": 5
+      },
+      {
+        "at": 42046,
+        "alive": 5
+      },
+      {
+        "at": 44049,
+        "alive": 5
+      },
+      {
+        "at": 46049,
+        "alive": 5
+      },
+      {
+        "at": 48054,
+        "alive": 5
+      },
+      {
+        "at": 50057,
+        "alive": 5
+      },
+      {
+        "at": 52058,
+        "alive": 5
+      },
+      {
+        "at": 54063,
+        "alive": 5
+      },
+      {
+        "at": 56075,
+        "alive": 5
+      },
+      {
+        "at": 58075,
+        "alive": 5
+      }
+    ]
+  },
+  "search": {
+    "lootStateShare": 0.01,
+    "weaponSearchAbandoned": 0,
+    "weaponSearchAbandonedAvgAgeMs": 0,
+    "resourceTargetAbandoned": {
+      "repeated-path-recovery": 1
+    },
+    "intentProgressAbandoned": 0,
+    "botsThatFoundWeapon": 5,
+    "timeToFirstWeaponMs": 0
+  },
+  "gas": {
+    "gasStateShare": 0,
+    "gasDangerFrameShare": 0,
+    "gasEscapesStarted": 0,
+    "gasEscapesEnded": 0
+  },
+  "combat": {
+    "combatStateShare": 0.22,
+    "damageTakenEvents": 0,
+    "damageTakenTotal": 0,
+    "visibleThreatInterrupts": 0,
+    "gunfireWallBlocked": 0,
+    "finalVisibleTriggerRestored": 0,
+    "hiddenContactsSelected": 2,
+    "hardCoverFlanks": 0,
+    "kills": 0,
+    "survivors": []
+  },
+  "activity": {
+    "frameCount": 405,
+    "recordedDurationMs": 63106,
+    "stateChanges": 65,
+    "intentChanges": 627,
+    "pathRecoveries": 50,
+    "botFinished": 0
+  },
+  "humanSupport": {
+    "simulatedHuman": true,
+    "startedEvents": 0,
+    "endedEvents": 0,
+    "escortIntentFrames": 0
+  }
+}

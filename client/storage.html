@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang='zh-CN'>
+<head>
+	<meta charset='UTF-8'>
+	<title>搜打撤仓库</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/css/storage.css">
+</head>
+<body>
+	<div id='storage-app'>
+		<header class='storage-header'>
+			<div class='storage-title'>仓库</div>
+			<div class='storage-tabs'>
+				<button type='button' class='storage-tab active' id='storage-tab-stash'>仓库</button>
+				<button type='button' class='storage-tab' id='storage-tab-shop'>商店</button>
+			</div>
+			<div class='storage-coins' id='storage-coins' title='金币：购买/出售物资使用'>0</div>
+			<div class='storage-identity'>
+				<input id='extraction-stash-name' type='text' maxlength='16' readonly
+					placeholder='当前登录玩家' title='仓库身份与登录账号绑定' />
+				<button type='button' class='storage-back clear' id='btn-stash-clear'
+					title='把当前携带的武器/近战/弹药/药品/投掷物/护甲全部放回仓库'>一键放回</button>
+			</div>
+			<button type='button' class='storage-back shop-nav' id='storage-nav-buy'>购买</button>
+			<button type='button' class='storage-back shop-nav' id='storage-nav-sell'>出售</button>
+			<a class='storage-back' id='storage-confirm' href='/'>确认配装</a>
+		</header>
+		<div id='extraction-stash-status' class='extraction-stash-status'></div>
+		<main class='storage-main' id='storage-stash-main'>
+			<section class='storage-stash'>
+				<div class='stash-left'>
+					<div class='stash-avatar-wrap'>
+						<div id='stash-player-canvas' class='stash-player-canvas'>
+							<div id='modal-content-left'
+								style='position: absolute; left: 0; top: 0; width: 280px; height: 230px; opacity: 0; pointer-events: none;'></div>
+						</div>
+					</div>
+					<div class='stash-weapons'>
+						<div class='stash-weapon' id='stash-weapon-0' draggable='false'
+							title='点击放回仓库；拖动可交换 1、2 号武器位置'></div>
+						<div class='stash-weapon' id='stash-weapon-1' draggable='false'
+							title='点击放回仓库；拖动可交换 1、2 号武器位置'></div>
+						<div class='stash-weapon' id='stash-weapon-2' draggable='false'
+							title='点击放回仓库'></div>
+					</div>
+					<div class='stash-left-stats'>
+						<div class='stash-stats-title'>装备</div>
+						<div id='stash-equip-list' class='stash-stat-list'></div>
+						<div class='stash-stats-title'>携带</div>
+						<div class='stash-stat-subtitle'>弹药</div>
+						<div id='stash-ammo-list' class='stash-stat-list'></div>
+						<div class='stash-stat-subtitle'>药品</div>
+						<div id='stash-heal-list' class='stash-stat-list'></div>
+						<div class='stash-stat-subtitle'>投掷物</div>
+						<div id='stash-throw-list' class='stash-stat-list'></div>
+						<div class='stash-stat-subtitle'>能力</div>
+						<div id='stash-perk-list' class='stash-stat-list'></div>
+						<div class='stash-stat-subtitle one-time-perk-label'>一次性能力（仅限一局）</div>
+						<div id='stash-one-time-perk-list' class='stash-stat-list'></div>
+						<div class='stash-stat-subtitle'>带出槽位（空槽可带出局内获得的能力）</div>
+						<div id='stash-perk-slot-list' class='stash-perk-slot-list'></div>
+					</div>
+				</div>
+				<div class='stash-right'>
+					<div class='stash-section'>
+						<h3>枪械 <span class='stash-hint'>左键加一把 / 右键卸一把 / 点击武器槽放回 / 拖动交换 1、2 号位</span></h3>
+						<div id='stash-items-guns' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>近战 <span class='stash-hint'>点击装备 / 右键卸下</span></h3>
+						<div id='stash-items-melee' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>头盔 <span class='stash-hint'>点击装备 / 右键卸下</span></h3>
+						<div id='stash-items-helmets' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>护甲 <span class='stash-hint'>点击装备 / 右键卸下</span></h3>
+						<div id='stash-items-chests' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>背包 <span class='stash-hint'>点击装备 / 右键卸下</span></h3>
+						<div id='stash-items-backpacks' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>倍镜 <span class='stash-hint'>点击装备 / 右键卸下</span></h3>
+						<div id='stash-items-scopes' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>弹药 <span class='stash-hint'>左键携带+1 / 右键携带-1</span></h3>
+						<div id='stash-items-ammo' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>药品 <span class='stash-hint'>左键携带+1 / 右键携带-1</span></h3>
+						<div id='stash-items-consumables' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>投掷物 <span class='stash-hint'>左键携带+1 / 右键携带-1</span></h3>
+						<div id='stash-items-throwables' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>能力 <span class='stash-hint'>点击携带 / 右键放回；与一次性能力合计最多 4 个，同类型不可重复携带</span></h3>
+						<div id='stash-items-perks' class='stash-grid'></div>
+						<div class='perk-fusion-panel'>
+							<div class='perk-fusion-title'>永久技能合成 <span>消耗 2 个永久技能，随机获得 1 个不同的永久技能</span></div>
+							<div class='perk-fusion-controls'>
+								<select id='perk-fusion-material-a' aria-label='第一个永久技能合成材料'></select>
+								<span class='perk-fusion-plus'>+</span>
+								<select id='perk-fusion-material-b' aria-label='第二个永久技能合成材料'></select>
+								<button type='button' id='perk-fusion-submit' class='perk-fusion-submit'>随机合成</button>
+							</div>
+							<div id='perk-fusion-result' class='perk-fusion-result'></div>
+						</div>
+					</div>
+					<div class='stash-section one-time-perk-section'>
+						<h3>一次性能力 <span class='stash-hint'>购买后先入库；手动选择后进局生效并消耗，撤离/阵亡不返还</span></h3>
+						<div id='stash-items-one-time-perks' class='stash-grid'></div>
+					</div>
+				</div>
+			</section>
+		</main>
+		<main id='shop-view' class='storage-main storage-shop' hidden>
+			<section class='storage-shop-panel'>
+				<div class='storage-shop-head'>
+					<div>
+						<h2>商店</h2>
+						<p class='storage-shop-hint'>购买物资直接进入仓库；出售把仓库物资换成金币。
+							S 级以上武器、信号弹、信号枪、AWM 子弹、近战武器只可出售不可购买；
+							身上（已装备/携带）的物资不能出售。新玩家初始金币为 0，
+							先出售物资赚金币再购买。</p>
+						<div class='storage-shop-subtabs'>
+							<button type='button' class='storage-tab active' id='shop-subtab-buy'>购买</button>
+							<button type='button' class='storage-tab' id='shop-subtab-sell'>出售</button>
+						</div>
+					</div>
+					<div class='storage-coins' id='storage-shop-coins'>0</div>
+				</div>
+				<div id='shop-buy-view'>
+					<div id='shop-grid' class='storage-shop-grid'></div>
+				</div>
+				<div id='shop-sell-view' class='storage-shop-sell' hidden>
+					<div id='shop-sell-list' class='storage-shop-sell-list'></div>
+					<div class='storage-shop-sell-bar'>
+						<span id='shop-sell-summary'>已选 0 件 · 预计收入 0 金币</span>
+						<button type='button' id='shop-sell-all' class='shop-btn sell bulk'>批量出售</button>
+					</div>
+				</div>
+			</section>
+		</main>
+	</div>
+	<script type="module" src="/src/storage.ts"></script>
+</body>
+</html>

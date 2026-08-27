@@ -1,5 +1,6 @@
 import { PerkProperties } from "../../../../shared/defs/gameObjects/perkDefs.ts";
 import { GameObjectDefs } from "../../../../shared/defs/register.ts";
+import { GameConfig } from "../../../../shared/gameConfig.ts";
 import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
 import { coldet } from "../../../../shared/utils/coldet.ts";
 import { collider } from "../../../../shared/utils/collider.ts";
@@ -7,7 +8,7 @@ import { math } from "../../../../shared/utils/math.ts";
 import { util } from "../../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
 import type { Game } from "../game.ts";
-import type { DamageParams, GameObject } from "./gameObject.ts";
+import type { DamageParams, GameObject, TrainingShotToken } from "./gameObject.ts";
 import { type Loot } from "./loot.ts";
 import type { Obstacle } from "./obstacle.ts";
 import type { Player } from "./player.ts";
@@ -72,6 +73,25 @@ export class ExplosionBarn {
             return true;
         }) as Array<Player | Obstacle | Loot>;
 
+        for (const obj of objects) {
+            if (
+                obj.__type !== ObjectType.Player
+                || obj.dead
+                || !util.sameLayer(obj.layer, explosion.layer)
+                || !obj.hasPerk("windwalk")
+                || v2.distance(explosion.pos, obj.pos) > 5
+            ) {
+                continue;
+            }
+
+            const sourceIsTeammate = explosion.damageParams.source?.__type === ObjectType.Player
+                && (explosion.damageParams.source.groupId === obj.groupId
+                    || (this.game.map.factionMode
+                        && explosion.damageParams.source.teamId === obj.teamId));
+            if (!sourceIsTeammate) {
+                obj.giveHaste(GameConfig.HasteType.Windwalk, 4);
+            }
+        }
         const damagedObjects = new Map<number, boolean>();
 
         const centerCircle = collider.createCircle(explosion.pos, 0.01);
@@ -174,6 +194,7 @@ export class ExplosionBarn {
                     gameSourceType: explosion.damageParams.gameSourceType!,
                     mapSourceType: explosion.damageParams.mapSourceType,
                     dir: v2.randomUnit(),
+                    trainingShot: explosion.trainingShot,
                 });
             }
         }
@@ -252,10 +273,16 @@ export class ExplosionBarn {
             amount: damage,
             dir: collision.dir,
             isExplosion: true,
+            trainingShot: explosion.trainingShot,
         });
     }
 
     flush() {
+        this.newExplosions.length = 0;
+    }
+
+    clearForArenaRound(): void {
+        this.explosions.length = 0;
         this.newExplosions.length = 0;
     }
 
@@ -273,6 +300,7 @@ export class ExplosionBarn {
             pos,
             layer,
             damageParams,
+            trainingShot: damageParams.trainingShot,
         };
         this.explosions.push(explosion);
         this.newExplosions.push(explosion);
@@ -285,4 +313,5 @@ interface Explosion {
     pos: Vec2;
     layer: number;
     damageParams: Omit<DamageParams, "damage" | "dir">;
+    trainingShot?: TrainingShotToken;
 }

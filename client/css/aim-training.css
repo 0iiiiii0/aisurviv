@@ -1,0 +1,225 @@
+#mode-button-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 4px;
+}
+
+#mode-button-grid > #btns-quick-start,
+#mode-button-grid > #btns-duel-start,
+#mode-button-grid > #extra-mode-buttons {
+    display: contents;
+}
+
+#mode-button-grid > .menu-option,
+#mode-button-grid > #btns-quick-start > .menu-option,
+#mode-button-grid > #btns-duel-start > .menu-option,
+#mode-button-grid > #extra-mode-buttons > .menu-option {
+    min-width: 0;
+    width: 100%;
+    margin-right: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#btn-aim-training {
+    margin-top: 0;
+    border: 1px solid rgba(114, 218, 255, .55);
+    background: linear-gradient(180deg, rgba(31, 115, 151, .92), rgba(17, 68, 96, .96));
+    color: #fff;
+}
+
+.aim-training-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(5, 10, 15, .76);
+    backdrop-filter: blur(5px);
+}
+.aim-training-overlay[hidden] { display: none; }
+.aim-training-dialog {
+    width: min(720px, calc(100vw - 30px));
+    max-height: calc(100vh - 30px);
+    overflow: auto;
+    border: 1px solid rgba(122, 220, 255, .55);
+    border-radius: 14px;
+    background: linear-gradient(150deg, rgba(18, 34, 47, .98), rgba(8, 18, 27, .99));
+    color: #eefaff;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
+}
+.aim-training-header,
+.aim-training-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+}
+.aim-training-header { border-bottom: 1px solid rgba(255,255,255,.12); }
+.aim-training-header h2 { margin: 0; font-size: 23px; }
+.aim-training-header p { margin: 3px 0 0; opacity: .7; font-size: 13px; }
+#aim-training-close {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+}
+.aim-training-body { padding: 18px; }
+.aim-training-weapons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.aim-training-weapon {
+    display: grid;
+    grid-template-columns: 94px 1fr;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 0;
+    padding: 13px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.055);
+}
+.aim-training-weapon img { width: 88px; height: 56px; object-fit: contain; }
+.aim-training-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.aim-training-fields label,
+.aim-training-magazine {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 9px;
+    background: rgba(255,255,255,.05);
+}
+.aim-training-fields select {
+    width: 100%;
+    min-height: 38px;
+    color: #102432;
+}
+.aim-training-fields input[type="range"] {
+    width: 100%;
+    accent-color: #49c7ef;
+}
+.aim-training-magazine { grid-column: 1 / -1; }
+.aim-training-toggle > div,
+.aim-training-magazine > div { display: flex; align-items: center; gap: 9px; }
+.aim-training-note { margin-top: 6px; font-size: 12px; line-height: 1.45; opacity: .75; }
+.aim-training-rules {
+    margin: 16px 0 0;
+    padding: 13px 16px;
+    border-left: 3px solid #65d6ff;
+    background: rgba(42, 150, 190, .12);
+    font-size: 13px;
+    line-height: 1.65;
+}
+.aim-training-footer { border-top: 1px solid rgba(255,255,255,.12); }
+#aim-training-start {
+    min-width: 160px;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 8px;
+    background: #38bde9;
+    color: #06202b;
+    font-weight: 700;
+    cursor: pointer;
+}
+#aim-training-start:disabled { opacity: .45; cursor: default; }
+#aim-training-error { min-height: 22px; padding: 0 18px 14px; color: #ff9f9f; }
+#aim-training-status { font-size: 13px; opacity: .75; }
+
+#ui-aim-training-stats {
+    box-sizing: border-box;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    z-index: 7;
+    width: min(520px, calc(100vw - 420px));
+    min-width: 360px;
+    margin: 0;
+    padding: 7px 12px 8px;
+    border: 1px solid rgba(99, 217, 255, .48);
+    border-radius: 10px;
+    background: rgba(7, 25, 36, .86);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .32);
+    color: #ecfbff;
+    text-shadow: 0 1px 2px #000;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+#ui-aim-training-stats[hidden] { display: none; }
+.aim-training-stat-primary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    text-align: center;
+}
+.aim-training-stat-primary strong { display: block; font-size: 17px; }
+.aim-training-stat-primary small { font-size: 10px; opacity: .67; }
+.aim-training-stat-meta { margin-top: 5px; text-align: center; font-size: 11px; opacity: .8; }
+.aim-training-hud-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 7px;
+    pointer-events: auto;
+}
+.aim-training-hud-actions button {
+    padding: 4px 12px;
+    border: 1px solid rgba(103, 218, 255, .55);
+    border-radius: 6px;
+    background: rgba(23, 92, 119, .9);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+#aim-training-exit {
+    border-color: rgba(255, 151, 151, .55);
+    background: rgba(117, 43, 43, .9);
+}
+
+
+
+/* Empty inventory images are normal for a few frames while the first local
+ * state arrives. Hide the browser's broken-image glyph and reveal the icon as
+ * soon as ui2 assigns a real asset URL. */
+.aim-training-active .ui-weapon-image[src=""],
+.aim-training-active .ui-loot-image[src=""],
+.aim-training-active .ui-armor-image[src=""] {
+    visibility: hidden;
+}
+
+@media (max-width: 1050px) {
+    #ui-aim-training-stats {
+        width: min(470px, calc(100vw - 40px));
+        min-width: 320px;
+    }
+}
+
+@media (max-width: 640px) {
+    .aim-training-weapons { grid-template-columns: 1fr; }
+    .aim-training-fields { grid-template-columns: 1fr; }
+    .aim-training-magazine { grid-column: auto; }
+    .aim-training-weapon { grid-template-columns: 66px 1fr; }
+    .aim-training-weapon img { width: 64px; }
+    #ui-aim-training-stats {
+        top: 4px;
+        width: calc(100vw - 20px);
+        min-width: 0;
+        padding: 6px 8px;
+        transform: translateX(-50%) scale(.9);
+        transform-origin: top center;
+    }
+    .aim-training-stat-primary { gap: 4px; }
+    .aim-training-stat-primary strong { font-size: 15px; }
+    .aim-training-stat-meta { font-size: 10px; }
+}

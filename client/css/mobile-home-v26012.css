@@ -1,0 +1,408 @@
+/* V260.12: surviv.io-inspired mobile home layout.
+ * Portrait remains a single scrollable compatibility layout.
+ * Short landscape phones use the original surviv.io idea: extraction / main / news in three columns.
+ */
+
+/* V260.10 left the legacy portrait news column hidden. Keep announcements reachable. */
+@media (max-width: 850px) and (orientation: portrait),
+  (max-width: 900px) and (min-resolution: 3dppx) and (orientation: portrait) {
+  #right-column {
+    display: block !important;
+  }
+
+  #right-column #news-wrapper,
+  #right-column #news-block {
+    display: block !important;
+  }
+
+  #right-column #news-block {
+    opacity: 1 !important;
+    width: 100%;
+    max-height: none;
+    box-sizing: border-box;
+  }
+}
+
+/* Landscape-first phone home screen, modeled after surviv.io's compact three-column menu. */
+@media (max-width: 1024px) and (max-height: 600px) and (orientation: landscape) {
+  #start-menu-wrapper {
+    padding:
+      max(3px, env(safe-area-inset-top))
+      max(6px, env(safe-area-inset-right))
+      max(5px, env(safe-area-inset-bottom))
+      max(6px, env(safe-area-inset-left));
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  #start-main {
+    min-height: 0;
+    height: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  #start-main-center {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    transform: none !important;
+  }
+
+  #start-row-header {
+    width: min(180px, 30vw);
+    height: clamp(28px, 9vh, 44px);
+    margin: 0 auto 3px;
+    background-size: contain;
+    background-position: center;
+  }
+
+  #start-rotate-reminder {
+    display: none !important;
+  }
+
+  #start-row-top {
+    position: relative;
+    display: grid !important;
+    grid-template-columns:
+      minmax(148px, 0.92fr)
+      minmax(218px, 1.22fr)
+      minmax(148px, 0.92fr);
+    align-items: start;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  #start-row-top > .menu-column {
+    float: none;
+    min-width: 0;
+    margin: 0;
+  }
+
+  #left-column {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    order: initial;
+  }
+
+  #start-menu {
+    grid-column: 2;
+    grid-row: 1;
+    order: initial;
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    max-height: calc(100dvh - 42px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: 6px;
+    box-sizing: border-box;
+    transform: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #right-column {
+    grid-column: 3;
+    grid-row: 1;
+    order: initial;
+    display: block !important;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  #right-column #news-wrapper,
+  #right-column #news-block {
+    display: block !important;
+  }
+
+  #right-column #news-block {
+    opacity: 1 !important;
+    width: 100%;
+    height: auto;
+    max-height: calc(100dvh - 42px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 0;
+    margin: 0;
+    padding: 7px 8px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  #news .news-header {
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+
+  #news [data-date],
+  #news .news-date,
+  #news .news-paragraph {
+    margin-top: 0;
+    margin-bottom: 5px;
+  }
+
+  /* Extraction is a compact dedicated left panel. It is only switched to grid after JS reveals it. */
+  #left-column #extraction-mode-section {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    max-height: calc(100dvh - 42px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: 0;
+    padding: 6px;
+    box-sizing: border-box;
+    transform: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3px;
+    align-content: start;
+  }
+
+  #left-column #extraction-mode-section:not([style*="display: none"]) {
+    display: grid !important;
+  }
+
+  #left-column #btn-leaderboard,
+  #left-column .extraction-mode-title,
+  #left-column #btn-extraction-start,
+  #left-column #btn-extraction-stash,
+  #left-column #extraction-secret-section {
+    grid-column: 1 / -1;
+  }
+
+  #left-column .extraction-mode-title {
+    margin: 0;
+    padding: 1px 0;
+    font-size: 13px;
+    line-height: 17px;
+    text-align: center;
+  }
+
+  #left-column #extraction-secret-section {
+    min-width: 0;
+    margin-top: 1px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  #left-column #extraction-secret-section:not([style*="display: none"]) {
+    display: grid !important;
+  }
+
+  #left-column #extraction-secret-section .extraction-mode-title,
+  #left-column #btn-extraction-secret-start {
+    grid-column: 1 / -1;
+  }
+
+  /* Compact landscape touch controls. Portrait keeps V260.10's larger 42px targets. */
+  #start-menu .menu-option,
+  #left-column .menu-option {
+    min-height: 29px;
+    height: 29px;
+    line-height: 27px;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  #left-column .menu-option {
+    width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  #start-menu .play-button-container {
+    gap: 3px;
+  }
+
+  #player-options,
+  #player-account-panel {
+    gap: 3px;
+  }
+
+  #player-account-panel .player-account-logged-out {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  #player-account-panel .player-account-logged-out > input {
+    width: 100%;
+    min-width: 0;
+    height: 29px;
+    min-height: 29px;
+    margin: 0;
+    padding: 0 5px;
+    box-sizing: border-box;
+    font-size: 12px;
+  }
+
+  #player-account-panel .player-account-logged-out .player-account-actions,
+  #player-account-panel .player-account-logged-out .account-status {
+    grid-column: 1 / -1;
+  }
+
+  #player-account-panel .player-account-actions {
+    display: flex;
+    gap: 3px;
+  }
+
+  #player-account-panel .account-status {
+    min-height: 10px;
+    font-size: 10px;
+    line-height: 10px;
+  }
+
+  #player-account-panel .player-account-logged-in {
+    gap: 3px;
+  }
+
+  #player-account-panel .account-display-name {
+    max-width: 100%;
+    font-size: 11px;
+    line-height: 15px;
+  }
+
+  .server-row {
+    gap: 3px;
+  }
+
+  .server-row select,
+  .server-row #btn-customize {
+    height: 29px;
+    min-height: 29px;
+  }
+
+  .server-row #btn-customize {
+    flex-basis: 34px;
+    width: 34px;
+  }
+
+  #mode-button-grid {
+    gap: 3px;
+    margin-bottom: 0;
+  }
+
+  #btns-spectate-start,
+  .btns-double-row {
+    margin-top: 3px;
+  }
+
+  .btns-double-row {
+    gap: 3px;
+  }
+
+  /* Team/join views replace the main home columns and stay centered. */
+  #team-menu,
+  #team-mobile-link {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+    width: min(440px, 100%);
+    max-height: calc(100dvh - 42px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  #team-menu .menu-option,
+  #team-mobile-link .menu-option,
+  #btn-team-leave,
+  #btn-team-mobile-link-leave {
+    min-height: 32px;
+    height: 32px;
+    line-height: 30px;
+  }
+}
+
+/* Extra compression for 320px-high landscape phones (568x320 class). */
+@media (max-width: 700px) and (max-height: 340px) and (orientation: landscape) {
+  #start-menu-wrapper {
+    padding-top: max(2px, env(safe-area-inset-top));
+    padding-bottom: max(3px, env(safe-area-inset-bottom));
+  }
+
+  #start-row-header {
+    height: 25px;
+    margin-bottom: 2px;
+  }
+
+  #start-row-top {
+    gap: 4px;
+    grid-template-columns:
+      minmax(145px, 0.88fr)
+      minmax(210px, 1.28fr)
+      minmax(145px, 0.88fr);
+  }
+
+  #start-menu,
+  #left-column #extraction-mode-section {
+    padding: 4px;
+  }
+
+  #right-column #news-block {
+    padding: 5px 6px;
+  }
+
+  #start-menu .menu-option,
+  #left-column .menu-option,
+  #player-account-panel .player-account-logged-out > input,
+  .server-row select,
+  .server-row #btn-customize {
+    min-height: 26px;
+    height: 26px;
+    line-height: 24px;
+    font-size: 11px;
+  }
+
+  #left-column .extraction-mode-title {
+    font-size: 12px;
+    line-height: 15px;
+  }
+
+  #news .news-header {
+    font-size: 13px;
+  }
+}
+
+/* Empty status text should not reserve a whole row on landscape phones. */
+@media (max-width: 1024px) and (max-height: 600px) and (orientation: landscape) {
+  #player-account-panel .account-status:empty {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) and (max-height: 340px) and (orientation: landscape) {
+  #start-row-header {
+    height: 20px;
+  }
+
+  #start-menu,
+  #left-column #extraction-mode-section,
+  #right-column #news-block,
+  #team-menu,
+  #team-mobile-link {
+    max-height: calc(100dvh - 26px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}

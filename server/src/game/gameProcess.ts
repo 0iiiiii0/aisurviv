@@ -1,9 +1,11 @@
 import fs from "node:fs";
-import { platform } from "node:os";
+import { freemem, totalmem } from "node:os";
 import path from "node:path";
 import { App, SSLApp, type WebSocket } from "uWebSockets.js";
 import type { GameWsDisconnectReason } from "../../../shared/types/api.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
+import { isLocalNetworkAddress } from "../../../shared/utils/networkAddress.ts";
+import { buildForbiddenContext } from "../bot/forbiddenServerContext.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
@@ -12,11 +14,17 @@ import type { SaveGameBody } from "../utils/types.ts";
 import { uwsHelpers } from "../utils/uwsHelpers.ts";
 import type { Client } from "./client.ts";
 import { Game } from "./game.ts";
+import { GameFaultCircuitBreaker } from "./gameProcessHealth.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 import { ClientSocket } from "./socket.ts";
 
 function sendMsg(msg: ProcessMsg) {
-    process.send!(msg);
+    if (!process.connected || !process.send) return;
+    try {
+        process.send(msg);
+    } catch (error) {
+        procLogger.error("Failed to send parent-process message", error);
+    }
 }
 
 let game: ServerGame | undefined;
@@ -120,15 +128,38 @@ async function sendQuestProgress(userId: string, progress: Array<{ id: string; d
  */
 class ServerGame extends Game {
     override updateData() {
+        const arenaMatch = this.arenaMatch;
         sendMsg({
             type: ProcessMsgType.UpdateData,
             id: this.id,
             teamMode: this.teamMode,
             mapName: this.mapName,
+            mapSeed: this.map.seed,
             canJoin: this.canJoin,
             aliveCount: this.aliveCount,
+            connectedCount: this.connectedCount,
+            humanPlayerCount: this.humanPlayerCount,
+            pendingHumanCount: this.pendingHumanCount,
+            aiPlayerCount: this.aiPlayerCount,
+            spectatorCount: this.spectatorCount,
+            serverBotCount: this.serverBotCount,
+            contestantAdmissionCount: this.contestantAdmissionCount,
+            serverBotTeamCounts: this.serverBotTeamCounts,
+            reservedHumanCount: this.reservedHumanCount,
+            reservedBotCount: this.reservedBotCount,
             startedTime: this.startedTime,
             stopped: this.stopped,
+            over: this.over,
+            privateGame: this.privateGame,
+            pureAiMatch: this.pureAiMatch,
+            zombieDifficulty: this.zombieDifficulty,
+            extractionSecretEnabled: this.extractionSecretEnabled,
+            duelAdrenalineEnabled: this.duelAdrenalineEnabled,
+            arenaRound: arenaMatch?.currentRound,
+            totalRounds: arenaMatch?.totalRounds,
+            arenaScores: arenaMatch
+                ? Object.fromEntries(arenaMatch.scores)
+                : undefined,
             timeRunning: this.timeRunning,
             livingPlayers: this.playerBarn.livingPlayers.map(p => {
                 return {
@@ -204,6 +235,40 @@ class ServerGame extends Game {
 }
 
 let lastMsgTime = Date.now();
+let pausedUntil = 0;
+const updateBreaker = new GameFaultCircuitBreaker();
+const netSyncBreaker = new GameFaultCircuitBreaker();
+
+function runGuarded(
+    stage: "update" | "netSync",
+    breaker: GameFaultCircuitBreaker,
+    callback: () => void,
+): void {
+    if (Date.now() < pausedUntil) return;
+    try {
+        callback();
+        breaker.success();
+    } catch (error) {
+        const decision = breaker.failure();
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
+        pausedUntil = Math.max(pausedUntil, Date.now() + decision.pauseMs);
+        procLogger.error(`${stage} fault: ${message}`, error);
+        sendMsg({
+            type: ProcessMsgType.Fault,
+            gameId: game?.id ?? "unknown",
+            at: Date.now(),
+            stage,
+            message,
+            stack,
+            fatal: decision.fatal,
+            consecutive: decision.consecutive,
+            recent: decision.recent,
+        });
+        if (decision.fatal && game && !game.stopped) game.stop();
+    }
+}
+
 process.on("message", (msg: ProcessMsg) => {
     lastMsgTime = Date.now();
 
@@ -216,17 +281,55 @@ process.on("message", (msg: ProcessMsg) => {
 
     switch (msg.type) {
         case ProcessMsgType.AddJoinToken:
-            game.addJoinTokens(msg.tokens, msg.autoFill);
+            if (msg.legacyToken) {
+                game.addJoinToken(
+                    msg.legacyToken.token,
+                    msg.autoFill,
+                    msg.legacyToken.playerCount,
+                    msg.legacyToken.expiresInMs,
+                    msg.legacyToken.spectator,
+                    msg.legacyToken.serverBot,
+                    msg.legacyToken.serverBotTeamIds,
+                    msg.legacyToken.duelLoadoutIndex,
+                );
+                // A browser can reach the room port faster than this child
+                // consumes IPC, especially in a busy externally-computed
+                // faction match. Confirm installation before the parent
+                // exposes the credential to the browser.
+                sendMsg({
+                    type: ProcessMsgType.JoinTokenAck,
+                    requestId: msg.legacyToken.requestId,
+                });
+            } else {
+                game.addJoinTokens(msg.tokens, msg.autoFill);
+            }
             break;
         case ProcessMsgType.AddSpectateToken:
             game.addSpectateToken(msg.token, msg.data);
+            break;
+        case ProcessMsgType.RemoveJoinToken:
+            game.removeJoinToken(msg.token);
+            break;
+        case ProcessMsgType.ForbiddenContextRequest:
+            if (!game.stopped) {
+                sendMsg({
+                    type: ProcessMsgType.ForbiddenContextResponse,
+                    requestId: msg.requestId,
+                    payload: buildForbiddenContext(
+                        game,
+                        msg.botPlayerId,
+                        msg.sequence,
+                        msg.difficulty,
+                    ),
+                });
+            }
             break;
     }
 });
 
 setInterval(() => {
-    if (Date.now() - lastMsgTime > 10000) {
-        console.log("Game process has not received a message in 10 seconds, exiting");
+    if (Date.now() - lastMsgTime > 45_000) {
+        console.log("Game process has not received a message in 45 seconds, exiting");
         process.exit();
     }
 
@@ -239,26 +342,72 @@ setInterval(() => {
     }
 }, 5000);
 
-let setGameInterval: (cb: () => void, time: number) => void = setInterval;
-if (platform() === "win32") {
-    const NanoTimer = (await import("nanotimer")).default;
-    // setInterval on windows sucks
-    // and doesn't give accurate timings
-    setGameInterval = (cb: () => void, time: number) => {
-        new NanoTimer().setInterval(cb, [], `${time}m`);
-    };
-}
-
-setGameInterval(() => {
-    game?.update();
+setInterval(() => {
+    if (game && !game.stopped) runGuarded("update", updateBreaker, () => game?.update());
 }, 1000 / Config.gameTps);
 
-setGameInterval(() => {
-    game?.netSync();
+setInterval(() => {
+    if (game && !game.stopped) runGuarded("netSync", netSyncBreaker, () => game?.netSync());
 }, 1000 / Config.netSyncTps);
+
+let previousResourceCpu = process.cpuUsage();
+let previousResourceWall = performance.now();
+let cpuPressureSince = 0;
+let memoryPressureSince = 0;
+setInterval(() => {
+    const wallNow = performance.now();
+    const wallElapsedMs = Math.max(1, wallNow - previousResourceWall);
+    const currentCpu = process.cpuUsage();
+    const cpuElapsedMicros = Math.max(
+        0,
+        currentCpu.user - previousResourceCpu.user + currentCpu.system - previousResourceCpu.system,
+    );
+    const cpuPercent = cpuElapsedMicros / 1000 / wallElapsedMs * 100;
+    previousResourceCpu = currentCpu;
+    previousResourceWall = wallNow;
+
+    if (!game || game.stopped) {
+        cpuPressureSince = 0;
+        memoryPressureSince = 0;
+        return;
+    }
+
+    const now = Date.now();
+    const cpuThreshold = Math.max(50, Math.min(100, Number(Config.serverCpuPressurePercent) || 95));
+    if (cpuPercent >= cpuThreshold) {
+        if (!cpuPressureSince) cpuPressureSince = now;
+        const duration = now - cpuPressureSince;
+        if (duration >= Math.max(500, Number(Config.serverCpuPressureDurationMs) || 2_000)) {
+            game.reportServerOverload("cpu", `game process CPU ${cpuPercent.toFixed(1)}% for ${duration}ms`);
+        }
+    } else {
+        cpuPressureSince = 0;
+    }
+
+    const memory = process.memoryUsage();
+    const freeRatio = totalmem() > 0 ? freemem() / totalmem() : 1;
+    const rssMb = memory.rss / (1024 * 1024);
+    const memoryHigh = freeRatio <= Math.max(
+        0.005,
+        Math.min(0.25, Number(Config.serverSystemFreeMemoryRatio) || 0.03),
+    ) || rssMb >= Math.max(256, Number(Config.serverProcessRssLimitMb) || 2_048);
+    if (memoryHigh) {
+        if (!memoryPressureSince) memoryPressureSince = now;
+        const duration = now - memoryPressureSince;
+        if (duration >= Math.max(500, Number(Config.serverMemoryPressureDurationMs) || 2_000)) {
+            game.reportServerOverload(
+                "memory",
+                `rss=${rssMb.toFixed(0)}MB systemFree=${(freeRatio * 100).toFixed(1)}% for ${duration}ms`,
+            );
+        }
+    } else {
+        memoryPressureSince = 0;
+    }
+}, 1_000);
 
 interface GameSocketData {
     ip: string;
+    rateLimitTracked: boolean;
     rateLimit: Record<symbol, number>;
     disconnectReason?: GameWsDisconnectReason;
     clientSocket?: UwsSocket;
@@ -281,6 +430,10 @@ class UwsSocket extends ClientSocket<Client> {
 
     closed(): boolean {
         return this._closed;
+    }
+
+    override bufferedAmount(): number {
+        return this._closed ? 0 : this._socket.getBufferedAmount();
     }
 
     send(data: Uint8Array<ArrayBuffer>): void {
@@ -331,7 +484,13 @@ app.ws<GameSocketData>("/play", {
             return;
         }
 
-        if (gameHTTPRateLimit.isRateLimited(ip) || gameWsRateLimit.isIpRateLimited(ip)) {
+        // Smart-bot workers connect from loopback and can legitimately exceed
+        // the public per-IP connection cap in large/faction rooms.
+        const trustedInternalClient = isLocalNetworkAddress(ip);
+        if (
+            !trustedInternalClient
+            && (gameHTTPRateLimit.isRateLimited(ip) || gameWsRateLimit.isIpRateLimited(ip))
+        ) {
             res.cork(() => {
                 game!.logger.warn("Websocket upgrade closed: Rate limited");
                 res.writeStatus("429 Too Many Requests");
@@ -341,11 +500,11 @@ app.ws<GameSocketData>("/play", {
             return;
         }
 
-        gameWsRateLimit.ipConnected(ip);
+        if (!trustedInternalClient) gameWsRateLimit.ipConnected(ip);
 
         let disconnectReason: GameWsDisconnectReason | undefined = undefined;
 
-        const ipData = await checkIp(ip);
+        const ipData = trustedInternalClient ? undefined : await checkIp(ip);
 
         if (ipData?.banned) {
             disconnectReason = "ip_banned";
@@ -360,6 +519,7 @@ app.ws<GameSocketData>("/play", {
                 {
                     rateLimit: {},
                     ip,
+                    rateLimitTracked: !trustedInternalClient,
                     disconnectReason,
                     clientSocket: undefined as unknown as UwsSocket,
                 },
@@ -402,7 +562,7 @@ app.ws<GameSocketData>("/play", {
 
     close(socket: WebSocket<GameSocketData>) {
         const data = socket.getUserData();
-        gameWsRateLimit.ipDisconnected(data.ip);
+        if (data.rateLimitTracked) gameWsRateLimit.ipDisconnected(data.ip);
         if (data.clientSocket) {
             data.clientSocket._closed = true;
             game?.clientBarn?.handleSocketClose(data.clientSocket);

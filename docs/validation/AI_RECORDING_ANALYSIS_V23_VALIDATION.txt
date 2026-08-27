@@ -1,0 +1,28 @@
+AI recording driven AI optimization V23 validation
+
+Source dataset
+- sessions: 10
+- bots: 68
+- recorder sample interval: 500 ms
+
+Key findings
+- intent changes: 12,312
+- intent changes repeated within 500 ms: 9,406 (76.4%)
+- gas episodes: 3,192
+- gas episodes shorter than 500 ms: 91.6%
+- hidden contacts: 36
+- concealment blind-fire bursts: 11
+- concealment grenade queued events in source recording: 0
+
+Changes
+- gas escape hysteresis and minimum commitment time
+- grenade-range-aware concealment standoff selection
+- multiple concealed-area grenade aim candidates
+- blocked grenade telemetry
+- gas decision telemetry
+- navigation recovery telemetry
+
+Validation
+- server TypeScript build: PASS
+- client TypeScript type check: PASS
+- server smoke tests: 35/35 PASS

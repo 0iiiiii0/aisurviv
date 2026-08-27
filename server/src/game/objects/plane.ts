@@ -25,6 +25,122 @@ type PlaneOptions = MapDef["gameConfig"]["planes"]["timings"][number]["options"]
 
 const MAX_ID = 255;
 
+export function findAirstrikePlaneSpawnAndDirection(
+    targetPos: { x: number; y: number },
+    dir: { x: number; y: number },
+    mapWidth: number,
+    mapHeight: number,
+    offset: number,
+    sideOffset: number,
+): { spawn: { x: number; y: number }; newDir: { x: number; y: number } } {
+    const finiteOr = (value: number, fallback: number): number => Number.isFinite(value) ? value : fallback;
+    const width = Math.max(2, finiteOr(mapWidth, 720));
+    const height = Math.max(2, finiteOr(mapHeight, width));
+    const left = 0.5;
+    const right = width - 0.5;
+    const bottom = 0.5;
+    const top = height - 0.5;
+
+    const rawDir = {
+        x: finiteOr(dir.x, 0),
+        y: finiteOr(dir.y, 0),
+    };
+    const dirMagnitude = Math.hypot(rawDir.x, rawDir.y);
+    const safeDir = dirMagnitude > 1e-6
+        ? { x: rawDir.x / dirMagnitude, y: rawDir.y / dirMagnitude }
+        : { x: 1, y: 0 };
+    const reversedDir = { x: -safeDir.x, y: -safeDir.y };
+
+    const orthogonal = { x: -safeDir.y, y: safeDir.x };
+    const safeSideOffset = finiteOr(sideOffset, 0);
+    const adjustedTarget = {
+        x: math.clamp(
+            finiteOr(targetPos.x, width * 0.5)
+                + orthogonal.x * safeSideOffset,
+            left,
+            right,
+        ),
+        y: math.clamp(
+            finiteOr(targetPos.y, height * 0.5)
+                + orthogonal.y * safeSideOffset,
+            bottom,
+            top,
+        ),
+    };
+
+    const tValues: { t: number; x: number; y: number }[] = [];
+    const epsilon = 1e-7;
+    const acceptT = (value: number): boolean => Number.isFinite(value) && value >= -epsilon;
+
+    // Intersection with left edge (x = left)
+    if (Math.abs(reversedDir.x) > 1e-5) {
+        const t = (left - adjustedTarget.x) / reversedDir.x;
+        const y = adjustedTarget.y + t * reversedDir.y;
+        if (acceptT(t) && y >= bottom - epsilon && y <= top + epsilon) {
+            tValues.push({ t: Math.max(0, t), x: left, y: math.clamp(y, bottom, top) });
+        }
+    }
+
+    // Intersection with right edge (x = right)
+    if (Math.abs(reversedDir.x) > 1e-5) {
+        const t = (right - adjustedTarget.x) / reversedDir.x;
+        const y = adjustedTarget.y + t * reversedDir.y;
+        if (acceptT(t) && y >= bottom - epsilon && y <= top + epsilon) {
+            tValues.push({ t: Math.max(0, t), x: right, y: math.clamp(y, bottom, top) });
+        }
+    }
+
+    // Intersection with bottom edge (y = bottom)
+    if (Math.abs(reversedDir.y) > 1e-5) {
+        const t = (bottom - adjustedTarget.y) / reversedDir.y;
+        const x = adjustedTarget.x + t * reversedDir.x;
+        if (acceptT(t) && x >= left - epsilon && x <= right + epsilon) {
+            tValues.push({ t: Math.max(0, t), x: math.clamp(x, left, right), y: bottom });
+        }
+    }
+
+    // Intersection with top edge (y = top)
+    if (Math.abs(reversedDir.y) > 1e-5) {
+        const t = (top - adjustedTarget.y) / reversedDir.y;
+        const x = adjustedTarget.x + t * reversedDir.x;
+        if (acceptT(t) && x >= left - epsilon && x <= right + epsilon) {
+            tValues.push({ t: Math.max(0, t), x: math.clamp(x, left, right), y: top });
+        }
+    }
+
+    let closest = tValues[0];
+    for (let index = 1; index < tValues.length; index++) {
+        if (!closest || tValues[index].t < closest.t) closest = tValues[index];
+    }
+    // The target is clamped inside the rectangle and safeDir is normalized, so
+    // an intersection should always exist. Keep a finite fallback anyway: this
+    // is server-crash protection for malformed custom maps and injected values.
+    closest ??= {
+        t: 0,
+        x: safeDir.x >= 0 ? left : right,
+        y: math.clamp(adjustedTarget.y, bottom, top),
+    };
+
+    let spawn = { x: closest.x, y: closest.y };
+
+    const safeOffset = Math.max(0, finiteOr(offset, 0));
+    spawn = {
+        x: spawn.x + reversedDir.x * safeOffset,
+        y: spawn.y + reversedDir.y * safeOffset,
+    };
+
+    const newDirVector = { x: adjustedTarget.x - spawn.x, y: adjustedTarget.y - spawn.y };
+    const magnitude = Math.sqrt(newDirVector.x ** 2 + newDirVector.y ** 2);
+    const newDir = magnitude > 1e-6 && Number.isFinite(magnitude)
+        ? {
+            x: newDirVector.x / magnitude,
+            y: newDirVector.y / magnitude,
+        }
+        : safeDir;
+
+    return { spawn, newDir };
+}
+
 export class PlaneBarn {
     planes: Plane[] = [];
 
@@ -53,6 +169,16 @@ export class PlaneBarn {
             v2.create(-256, -256),
             v2.create(game.map.width + 256, game.map.height + 256),
         );
+    }
+
+    clearForArenaRound(): void {
+        this.planes.length = 0;
+        this.scheduledPlanes.length = 0;
+        this.newAirstrikeZones.length = 0;
+        this.airstrikeZones.length = 0;
+        this.freeIds.length = 0;
+        this.idNext = 1;
+        this.sentHelp = false;
     }
     update(dt: number) {
         for (let i = 0; i < this.planes.length; i++) {
@@ -118,6 +244,7 @@ export class PlaneBarn {
                             timeBeforeStart,
                             airstrikeInterval,
                         );
+
                         break;
                     }
                 }
@@ -315,7 +442,6 @@ export class PlaneBarn {
         type ||= util.weightedRandom(this.game.map.mapDef.gameConfig.planes.crates).name;
 
         const def = MapObjectDefs.typeToDef(type, "obstacle");
-
         let collided = true;
         let airdropPos = v2.copy(pos);
 

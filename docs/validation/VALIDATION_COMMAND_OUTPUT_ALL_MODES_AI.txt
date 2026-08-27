@@ -1,0 +1,70 @@
+=== build ===
+
+> build
+> tsc
+
+=== all modes ===
+
+> test:all-modes
+> node -r ts-node/register src/allModesSmokeTest.ts
+
+All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.
+=== input safety ===
+
+> test:bot-input
+> node -r ts-node/register src/smartBotInputSmokeTest.ts
+
+SmartBot input safety smoke test passed: toMouseLen is always serialized in [0, 64].
+=== duel vision ===
+
+> test:duel-vision
+> node -r ts-node/register src/duelVisionSmokeTest.ts
+
+Duel vision/search smoke test passed.
+=== duel ===
+
+> test:duel
+> node -r ts-node/register src/duelSmokeTest.ts
+
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Created in 15 ms
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Player Red joined game ID duel-smoke-test
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Player Blue joined game ID duel-smoke-test
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Spectator Admin Spectator joined game ID duel-smoke-test
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Created in 2 ms
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Player No Boost joined game ID duel-no-adrenaline-smoke-test
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Game Ended
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Created in 2 ms
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Player Flare Red joined game ID duel-flare-smoke-test
+[36m[2026-07-24 2:45:55 AM][0m [32mGame #duel[0m | Player Flare Blue joined game ID duel-flare-smoke-test
+Duel smoke test passed: 176x136, 3 players, five rounds, final score 3:2; round-bound airstrikes are cleared; single and dual flare guns are safe.
+[36m[2026-07-24 2:45:56 AM][0m [32mGame #duel[0m | Game Ended
+=== duel lobby ===
+
+> test:duel-lobby
+> node -r ts-node/register src/duelLobbySmokeTest.ts
+
+Duel lobby smoke test passed: human invite, AI opponent, customization, start and return flow.
+=== admin ===
+
+> test:admin
+> node -r ts-node/register src/adminSmokeTest.ts
+
+Admin smoke test passed: modes, announcement, duel weapons, status, create room and stop room.
+
+=== real process: Normal solo ===
+Admin add-ai response: {"gameId":"985724dc5a3094ccf0ae370fcb2b31134a2a1dfc","difficulty":"normal","mapName":"main","teamMode":1}
+Player AI-normal joined; after 20+ seconds: playerCount=1, aliveCount=1.
+
+=== real process: Cobalt squad ===
+Admin add-ai response: {"gameId":"06a047be55bb74c1be6c847729f7fbb1d76bdfe3","difficulty":"normal","mapName":"cobalt","teamMode":4}
+Player AI-normal joined; remained online.
+
+=== real process: Faction/50v50 ===
+Admin add-ai response: {"gameId":"974e4bcc9a92ab9e872783651a85f309a372f328","difficulty":"normal","mapName":"faction","teamMode":4}
+Player AI-normal joined; remained online.
+
+Final concurrent status: playerCount=3; main/cobalt/faction each aliveCount=1.
+No smartBot WARNING, writeFloat range assertion, or AI process exit occurred.

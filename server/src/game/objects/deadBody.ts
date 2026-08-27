@@ -16,6 +16,13 @@ export class DeadBodyBarn {
         }
     }
 
+    clearForArenaRound(): void {
+        for (const deadBody of this.deadBodies) {
+            if (!deadBody.destroyed) deadBody.destroy();
+        }
+        this.deadBodies.length = 0;
+    }
+
     addDeadBody(pos: Vec2, playerId: number, layer: number, dir: Vec2) {
         const deadBody = new DeadBody(this.game, pos, playerId, layer, dir);
         this.deadBodies.push(deadBody);

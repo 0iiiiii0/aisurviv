@@ -58,6 +58,7 @@ const BindDefs = {
     [GameInput.Fullscreen]: def("Full Screen", inputKey(Key.L)),
     [GameInput.HideUI]: def("Hide UI", null),
     [GameInput.TeamPingSingle]: def("Team Ping Menu", null),
+    [GameInput.Sandevistan]: def("Sandevistan (斯安威斯坦)", mouseButton(MouseButton.Middle)),
 };
 
 export class InputBinds {
@@ -112,13 +113,22 @@ export class InputBinds {
         const stream = new BitStream(arrayBuf);
         const version = stream.readUint8();
         this.clearAllBinds();
+        let parsedCount = 0;
         for (let idx = 0; stream.length - stream.index >= 10;) {
             const bind = idx++;
+            parsedCount = bind + 1;
             const type = stream.readBits(2);
             const code = stream.readUint8();
             if (bind >= 0 && bind < GameInput.Count && type != InputType.None) {
                 this.setBind(bind, type != 0 ? new InputValue(type, code) : null);
             }
+        }
+        // Old saved layouts are shorter than the current catalogue. Fill any
+        // bindings added by newer builds (e.g. Sandevistan -> middle mouse)
+        // with their defaults so they work without a manual reset.
+        for (let i = parsedCount; i < GameInput.Count; i++) {
+            const def = BindDefs[i as keyof typeof BindDefs]?.defaultValue;
+            if (def) this.setBind(i, def);
         }
         if (version < 1) {
             this.upgradeBinds(version);

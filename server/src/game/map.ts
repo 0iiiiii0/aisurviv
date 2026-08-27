@@ -1,8 +1,6 @@
 import { styleText } from "node:util";
 import { type MapDef, MapDefs } from "../../../shared/defs/mapDefs.ts";
-import type { BuildingDef } from "../../../shared/defs/mapObjects/buildings/buildingDefs.ts";
-import type { ObstacleDef } from "../../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
-import type { StructureDef } from "../../../shared/defs/mapObjects/structureDefs.ts";
+import type { BuildingDef, ObstacleDef, StructureDef } from "../../../shared/defs/mapObjectsTyping.ts";
 import { MapObjectDefs } from "../../../shared/defs/register.ts";
 import { GameConfig, MapId, TeamMode } from "../../../shared/gameConfig.ts";
 import * as net from "../../../shared/net/net.ts";
@@ -263,6 +261,9 @@ export class GameMap {
         const time = `${Math.round(now - old!)}ms`.padEnd(6);
         this.game.logger.debug(styleText(["green"], time), msg);
     }
+    arenaObstacles: Obstacle[] = [];
+    /** Obstacles with pending door/button actions advanced with worldDt. */
+    timedObstacles: Set<Obstacle> = new Set();
 
     constructor(game: Game) {
         this.game = game;
@@ -273,6 +274,55 @@ export class GameMap {
 
         assert(mapDef, `Invalid map name: ${game.config.mapName}`);
 
+        if (game.config.maxPlayersOverride !== undefined && !mapDef.gameMode.factionMode) {
+            mapDef.gameMode.maxPlayers = Math.max(
+                1,
+                Math.floor(game.config.maxPlayersOverride),
+            );
+        }
+
+        const arenaLoadout = mapDef.arena?.startingLoadout;
+        if (arenaLoadout) {
+            if (game.config.duelWeapons) {
+                arenaLoadout.weapons = game.config.duelWeapons.map((type) => ({ type }));
+            }
+            const adrenalineEnabled = game.config.duelAdrenalineEnabled !== false;
+            if (game.config.duelBoost !== undefined) {
+                arenaLoadout.boost = adrenalineEnabled ? game.config.duelBoost : 0;
+            }
+            if (!adrenalineEnabled) {
+                arenaLoadout.boost = 0;
+                arenaLoadout.inventory ??= {};
+                arenaLoadout.inventory.soda = 0;
+                arenaLoadout.inventory.painkiller = 0;
+            }
+            if (game.config.duelHelmetLevel !== undefined) {
+                const level = game.config.duelHelmetLevel;
+                if (level === 0) delete arenaLoadout.helmet;
+                else arenaLoadout.helmet = `helmet0${level}`;
+            }
+            if (game.config.duelChestLevel !== undefined) {
+                const level = game.config.duelChestLevel;
+                if (level === 0) delete arenaLoadout.chest;
+                else arenaLoadout.chest = `chest0${level}`;
+            }
+            if (game.config.duelScope !== undefined) {
+                arenaLoadout.scope = game.config.duelScope;
+            }
+            if (game.config.duelThrowables) {
+                arenaLoadout.inventory ??= {};
+                for (const [type, count] of Object.entries(game.config.duelThrowables)) {
+                    arenaLoadout.inventory[type] = count;
+                }
+            }
+            if (game.config.aimTrainingWeapon) {
+                arenaLoadout.weapons = [
+                    { type: game.config.aimTrainingWeapon },
+                    { type: game.config.aimTrainingWeapon1 || "mk12" },
+                ];
+            }
+        }
+
         this.mapId = mapDef.mapId;
 
         const scale = (this.scale = game.teamMode > TeamMode.Duo ? "large" : "small");
@@ -280,6 +330,16 @@ export class GameMap {
         const mapConfig = mapDef.mapGen.map;
         this.width = mapConfig.baseWidth * mapConfig.scale[scale] + mapConfig.extension;
         this.height = mapConfig.baseHeight * mapConfig.scale[scale] + mapConfig.extension;
+
+        if (game.config.mapName === "aim_training" && mapDef.arena) {
+            const distance = Math.max(12, Math.min(160, Number(game.config.aimTrainingDistance) || 60));
+            const playerX = 24;
+            const targetX = Math.min(this.width - 24, playerX + distance);
+            mapDef.arena.playerSpawns = [
+                v2.create(playerX / this.width, 0.5),
+                v2.create(targetX / this.width, 0.5),
+            ];
+        }
 
         this.bounds = collider.createAabb(
             v2.create(0, 0),
@@ -318,6 +378,8 @@ export class GameMap {
         this.dynamicBuildings = [];
         this.structures = [];
         this.bridges = [];
+        this.arenaObstacles = [];
+        this.timedObstacles.clear();
         this.riverDescs = [];
         this.lakeObjs = [];
         this.grid = new MapGrid(this.width, this.height);
@@ -422,7 +484,19 @@ export class GameMap {
         }
     }
 
+    registerTimedObstacle(obstacle: Obstacle): void {
+        this.timedObstacles.add(obstacle);
+    }
+
+    unregisterTimedObstacle(obstacle: Obstacle): void {
+        this.timedObstacles.delete(obstacle);
+    }
+
     update(dt: number) {
+        for (const obstacle of Array.from(this.timedObstacles)) {
+            obstacle.updateDoorActions(dt);
+        }
+
         for (let i = 0; i < this.dynamicObstacles.length; i++) {
             this.dynamicObstacles[i].update(dt);
         }
@@ -1094,6 +1168,30 @@ export class GameMap {
         }
         this.timerEnd("Generating density spawns");
 
+        if (this.mapDef.arena) {
+            for (const object of this.mapDef.arena.objects) {
+                const pos = v2.mulElems(object.pos, v2.create(this.width, this.height));
+                const generated = this.genAuto(
+                    object.type,
+                    pos,
+                    0,
+                    object.ori,
+                    object.scale,
+                );
+                if (generated?.__type === ObjectType.Obstacle) {
+                    generated.suppressLoot = true;
+                    this.arenaObstacles.push(generated);
+                }
+            }
+
+            for (const loot of this.mapDef.arena.loot) {
+                const pos = v2.mulElems(loot.pos, v2.create(this.width, this.height));
+                this.game.lootBarn.addLoot(loot.type, pos, 0, loot.count, {
+                    source: "map",
+                });
+            }
+        }
+
         return true;
     }
 
@@ -1120,6 +1218,12 @@ export class GameMap {
         const multiplier = this.shoreArea / 250000;
         const count = Math.round(density * multiplier);
         this.genFromMapDef(type, count);
+    }
+
+    resetArenaObstacles(): void {
+        for (const obstacle of this.arenaObstacles) {
+            obstacle.resetForArenaRound();
+        }
     }
 
     genFromMapDef(type: string, count: number): void {
@@ -1430,6 +1534,105 @@ export class GameMap {
             }
         }
 
+        return true;
+    }
+
+    /**
+     * 在中心点附近（环形搜索）找一个可生成、不在水上的位置。
+     * 用于把 Boss 等放到地标附近的可达空地。
+     */
+    findSpawnableNear(
+        type: string,
+        center: Vec2,
+        maxRadius: number,
+        layer = 0,
+    ): Vec2 | null {
+        for (let radius = 0; radius <= maxRadius; radius += 4) {
+            const samples = radius === 0 ? 1 : Math.max(8, Math.ceil((radius / 4) * 8));
+            for (let s = 0; s < samples; s++) {
+                const angle = (s / samples) * Math.PI * 2 + radius * 0.618;
+                const pos = v2.create(
+                    Math.max(
+                        2,
+                        Math.min(
+                            this.width - 2,
+                            center.x + Math.cos(angle) * radius,
+                        ),
+                    ),
+                    Math.max(
+                        2,
+                        Math.min(
+                            this.height - 2,
+                            center.y + Math.sin(angle) * radius,
+                        ),
+                    ),
+                );
+                if (this.isOnWater(pos, layer)) continue;
+                if (!this.canSpawn(type, pos, 0)) continue;
+                return pos;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Player-sized, ground-path collision probe used by seeded objective
+     * placement. Unlike canSpawn(), this models a walking player rather than
+     * the larger marker object and can therefore be used for reachability.
+     */
+    isPlayerWalkableAt(pos: Vec2, layer = 0, radius = 0.7): boolean {
+        if (
+            pos.x < radius + 2
+            || pos.y < radius + 2
+            || pos.x > this.width - radius - 2
+            || pos.y > this.height - radius - 2
+            || this.isOnWater(pos, layer)
+        ) {
+            return false;
+        }
+        const circle = collider.createCircle(pos, radius);
+        for (const obj of this.game.grid.intersectCollider(circle)) {
+            if (!util.sameLayer(obj.layer, layer)) continue;
+            if (
+                obj.__type === ObjectType.Obstacle
+                && obj.collidable
+                && !obj.dead
+                && coldet.test(obj.collider, circle)
+            ) {
+                return false;
+            }
+            if (obj.__type === ObjectType.Building) {
+                for (const bound of obj.mapObstacleBounds) {
+                    if (coldet.test(bound, circle)) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    hasPlayerWalkPath(
+        from: Vec2,
+        to: Vec2,
+        layer = 0,
+        radius = 0.7,
+    ): boolean {
+        const distance = v2.distance(from, to);
+        const steps = Math.max(1, Math.ceil(distance / 0.6));
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            if (
+                !this.isPlayerWalkableAt(
+                    v2.create(
+                        from.x + (to.x - from.x) * t,
+                        from.y + (to.y - from.y) * t,
+                    ),
+                    layer,
+                    radius,
+                )
+            ) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -1920,7 +2123,7 @@ export class GameMap {
         return obstacle;
     }
 
-    genOutfitObstacle(type: string, player: Player, scale?: number) {
+    genOutfitObstacle(type: string, player: Player) {
         const def = MapObjectDefs.typeToDef(type, "obstacle");
 
         const obstacle = new Obstacle(
@@ -1929,7 +2132,7 @@ export class GameMap {
             type,
             player.layer,
             0,
-            scale ?? def.scale.createMax,
+            def.scale.createMax,
             undefined,
             undefined,
             true,
@@ -2156,9 +2359,28 @@ export class GameMap {
         }
     }
 
+    getAimTrainingSpawnPos(trainingTarget: boolean): Vec2 {
+        const arenaSpawns = this.mapDef.arena?.playerSpawns;
+        if (!arenaSpawns?.length) return v2.copy(this.center);
+        const spawn = arenaSpawns[Math.min(trainingTarget ? 1 : 0, arenaSpawns.length - 1)];
+        return v2.mulElems(spawn, v2.create(this.width, this.height));
+    }
+
     getSpawnPos(group?: Group, team?: Team): Vec2 {
         if (Config.debug.spawnMode === "fixed") {
             return v2.copy(Config.debug.spawnPos ?? this.center);
+        }
+
+        const arenaSpawns = this.mapDef.arena?.playerSpawns;
+        if (!group?.players[0] && arenaSpawns?.length) {
+            const spawnIdx = math.min(
+                this.game.playerBarn.livingPlayers.length,
+                arenaSpawns.length - 1,
+            );
+            return v2.mulElems(
+                arenaSpawns[spawnIdx],
+                v2.create(this.width, this.height),
+            );
         }
 
         let getPos: () => Vec2;
@@ -2207,7 +2429,10 @@ export class GameMap {
             () => {
                 v2.set(pos, getPos());
 
-                if (!this.canPlayerSpawn(pos)) {
+                if (
+                    !this.canPlayerSpawn(pos)
+                    || this.extractionSpawnNearHuman(pos)
+                ) {
                     return false;
                 }
 
@@ -2289,6 +2514,21 @@ export class GameMap {
         return true;
     }
 
+    /**
+     * 搜打撤补员：补充的 AI 不能刷在真人视野里。出生点与任意存活真人
+     * 保持至少 120 距离（约 4 个屏幕宽度），否则重试。
+     */
+    private extractionSpawnNearHuman(pos: Vec2): boolean {
+        if (!this.mapDef.gameMode.extractionMode) return false;
+        for (const player of this.game.playerBarn.livingPlayers) {
+            if (player.serverBot || player.spectatorOnly) continue;
+            const dx = pos.x - player.pos.x;
+            const dy = pos.y - player.pos.y;
+            if (dx * dx + dy * dy < 120 * 120) return true;
+        }
+        return false;
+    }
+
     clampToMapBounds(pos: Vec2, rad = 0) {
         v2.set(
             pos,
@@ -2298,6 +2538,29 @@ export class GameMap {
                 v2.create(this.width - rad, this.height - rad),
             ),
         );
+    }
+
+    /**
+     * Permanent roofs absorb iron bombs. Destructible ceilings keep the
+     * original surviv.io behaviour, while buildings whose ceiling can never be
+     * opened protect players and loot below them from airstrike projectiles.
+     */
+    isProtectedFromAirstrike(pos: Vec2, layer: number, rad = 0.05): boolean {
+        const area = collider.createCircle(pos, Math.max(0.01, rad));
+        for (const object of this.game.grid.intersectCollider(area)) {
+            if (object.__type !== ObjectType.Building) continue;
+            if (
+                object.ceilingDead
+                || object.wallsToDestroy !== Infinity
+                || !util.sameLayer(object.layer, layer)
+            ) {
+                continue;
+            }
+            for (const region of object.zoomRegions) {
+                if (region.zoomIn && coldet.test(area, region.zoomIn)) return true;
+            }
+        }
+        return false;
     }
 
     getGroundSurface(pos: Vec2, layer: number) {

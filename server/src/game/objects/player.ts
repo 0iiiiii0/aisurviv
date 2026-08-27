@@ -1,3 +1,5 @@
+import { isDuelMapName } from "../../../../shared/defs/duelMapNames.ts";
+import { PERK_CARRY_OUT_MAX, perkCarryOutCap } from "../../../../shared/defs/extractionDefs.ts";
 import { type GameObjectDef, type LootDef, WeaponTypeToDefs } from "../../../../shared/defs/gameObjectDefs.ts";
 import { EmotesDefs } from "../../../../shared/defs/gameObjects/emoteDefs.ts";
 import {
@@ -8,13 +10,21 @@ import {
     type HealDef,
     type HelmetDef,
     SCOPE_LEVELS,
+    type ScopeDef,
 } from "../../../../shared/defs/gameObjects/gearDefs.ts";
-import type { GunDef } from "../../../../shared/defs/gameObjects/gunDefs.ts";
-import type { MeleeDef } from "../../../../shared/defs/gameObjects/meleeDefs.ts";
+import { baseGunOf, dualGunOf, type GunDef } from "../../../../shared/defs/gameObjects/gunDefs.ts";
+import { type MeleeDef, MeleeDefs } from "../../../../shared/defs/gameObjects/meleeDefs.ts";
+import type { OutfitDef } from "../../../../shared/defs/gameObjects/outfitDefs.ts";
 import { PerkProperties } from "../../../../shared/defs/gameObjects/perkDefs.ts";
+import type { RoleDef } from "../../../../shared/defs/gameObjects/roleDefs.ts";
 import type { ThrowableDef } from "../../../../shared/defs/gameObjects/throwableDefs.ts";
 import { UnlockDefs } from "../../../../shared/defs/gameObjects/unlockDefs.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../../../shared/defs/register.ts";
+import {
+    ZOMBIE_DIFFICULTY_PRESETS,
+    ZOMBIE_MISSION_CARRY_SPEED_MULT,
+    ZOMBIE_RUSH_SPEED_MULT,
+} from "../../../../shared/defs/zombieDefs.ts";
 import {
     type Action,
     type Anim,
@@ -26,12 +36,17 @@ import {
 } from "../../../../shared/gameConfig.ts";
 import * as net from "../../../../shared/net/net.ts";
 import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
+import { getBagCapacity } from "../../../../shared/utils/bagCapacity.ts";
 import { type Circle, coldet } from "../../../../shared/utils/coldet.ts";
 import { collider } from "../../../../shared/utils/collider.ts";
 import { math } from "../../../../shared/utils/math.ts";
 import { assert, util } from "../../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
+import { aimTrainingReturnDecision, type AimTrainingSettings, healthAfterTrainingDamage } from "../../aimTraining.ts";
+import { activeReviverFor } from "../../bot/reviveCoordination.ts";
 import { Config } from "../../config.ts";
+import { isSecretEligibleWeapon } from "../../duelWeapons.ts";
+import { stashCategoryFor, stashManager } from "../../stash/stashManager.ts";
 import { validateUserName } from "../../utils/badWords.ts";
 import { IDAllocator } from "../../utils/IDAllocator.ts";
 import { Client } from "../client.ts";
@@ -39,10 +54,18 @@ import type { Game, JoinTokenData } from "../game.ts";
 import { Group, Team } from "../group.ts";
 import { InventoryManager } from "../inventoryManager.ts";
 import { QuestManager } from "../questManager.ts";
+import { ownsReviveTarget } from "../revivePolicy.ts";
 import { NoOpSocket } from "../socket.ts";
-import { WeaponManager } from "../weaponManager.ts";
+import { advanceSpudEffect, applySpudHit, type SpudEffectState } from "../spudEffect.ts";
+import {
+    ammoGiftEmoteForType,
+    isAmmoGiftEmote,
+    isAmmoRequestEmote,
+    shouldDeliverTeamEmote,
+} from "../teamEmoteVisibility.ts";
+import { throwableList, WeaponManager } from "../weaponManager.ts";
 import type { Building } from "./building.ts";
-import { BaseGameObject, type DamageParams, type GameObject } from "./gameObject.ts";
+import { BaseGameObject, type DamageParams, type GameObject, type TrainingShotToken } from "./gameObject.ts";
 import type { Loot } from "./loot.ts";
 import type { MapIndicator } from "./mapIndicator.ts";
 import type { Obstacle } from "./obstacle.ts";
@@ -68,6 +91,68 @@ interface Emote {
 
 type FabricateThrowable = keyof typeof PerkProperties["fabricate"]["weights"];
 
+/** 绝密模式：AI 死亡时可额外掉落的合法能力池。 */
+export const SECRET_DROP_PERKS = [
+    "endless_ammo",
+    "ap_rounds",
+    "steelskin",
+    "small_arms",
+    "firepower",
+    "combat_stims",
+    "splinter",
+    "lifeline",
+    "gotw",
+    "windwalk",
+    "flak_jacket",
+    "broken_arrow",
+    "self_revive",
+    "field_medic",
+    "takedown",
+    "chambered",
+    "targeting",
+    "explosive",
+    "leadership",
+    "rare_potato",
+    "aoe_heal",
+    "tree_climbing",
+    "hunted",
+    "martyrdom",
+    "bonus_45",
+    "fabricate",
+    "bonus_9mm",
+    "bonus_assault",
+    "inspiration",
+    // 0.3.12 新增能力补入绝密掉落池（测试要求池覆盖全部有效能力）
+    "assume_leadership",
+    "pirate",
+    "amped_explosives",
+    "high_velocity",
+    "final_bugle",
+    "halloween_mystery",
+    "trick_nothing",
+    "trick_size",
+    "trick_m9",
+    "trick_chatty",
+    "trick_drain",
+    "treat_9mm",
+    "treat_12g",
+    "treat_556",
+    "treat_762",
+    "treat_super",
+    "turkey_shoot",
+];
+
+/** Boss death loot is reserved for its highest-damage human contributor. */
+export const BOSS_LOOT_PROTECTION_MS = 15_000;
+
+function lowerLevelGearType(category: string, level: number): string | null {
+    const targetLevel = level - 1;
+    if (targetLevel < 1) return null;
+    const candidate = `${category}0${targetLevel}`;
+    const def = GameObjectDefs.typeToDefSafe(candidate);
+    return def?.type === category ? candidate : null;
+}
+
 const boostHeals: Array<{ maxBoost: number; heal: number }> = [];
 {
     const boostBreakPoints = GameConfig.player.boostBreakpoints;
@@ -90,6 +175,7 @@ export class PlayerBarn {
     killedPlayers: Player[] = [];
     groupIdAllocator = new IDAllocator(255);
     aliveCountDirty = false;
+    socketIdToPlayer = new Map<string, Player>();
 
     emotes: Emote[] = [];
 
@@ -97,6 +183,7 @@ export class PlayerBarn {
     killLeader?: Player;
 
     aoeHealPlayers: Player[] = [];
+    medics: Player[] = [];
 
     scheduledRoles: Array<{
         role: string;
@@ -135,16 +222,85 @@ export class PlayerBarn {
         this.playerStatusRate = net.getPlayerStatusUpdateRate(this.game.map.factionMode);
     }
 
+    randomPlayer(player?: Player): Player | undefined {
+        const candidates = this.livingPlayers.filter(
+            (candidate) =>
+                candidate !== player
+                && !candidate.dead
+                && !candidate.disconnected
+                && !candidate.spectatorOnly,
+        );
+        return candidates.length > 0
+            ? candidates[util.randomInt(0, candidates.length - 1)]
+            : undefined;
+    }
+
     addPlayer(
         client: Client,
         joinMsg: net.JoinMsg,
         joinData: JoinTokenData,
     ) {
-        const result = this.getGroupAndTeam(joinData.groupData);
+        const customJoinData = joinData as JoinTokenData & {
+            serverBot?: boolean;
+            spectator?: boolean;
+            spectatorOnly?: boolean;
+            trainingTarget?: boolean;
+            serverBotTeamIds?: number[];
+            duelLoadoutIndex?: number;
+            stashName?: string;
+            socketId?: string;
+        };
+        const serverBot = customJoinData.serverBot ?? joinMsg.bot;
+        const spectatorOnly = customJoinData.spectatorOnly ?? customJoinData.spectator ?? false;
+        const joinName = validateUserName(joinMsg.name).validName;
+        const joinStash = customJoinData.stashName?.trim()
+            || joinMsg.loadoutPriv.trim()
+            || joinName;
+
+        // A new Client owns all network state. Rebind a disconnected contestant
+        // to it before allocating a group or applying a loadout so reconnects do
+        // not reserve another slot, duplicate the body, or deduct stash twice.
+        const existing = joinMsg.matchPriv
+            ? this.players.find((candidate) => {
+                if (
+                    candidate.matchPriv !== joinMsg.matchPriv
+                    || candidate.dead
+                    || candidate.spectatorOnly
+                    || !candidate.disconnected
+                ) {
+                    return false;
+                }
+                if (serverBot) return candidate.serverBot;
+                if (candidate.serverBot) return false;
+                return joinMsg.loadoutPriv.trim()
+                    ? candidate.stashName === joinStash
+                    : candidate.name === joinName;
+            })
+            : undefined;
+        if (existing) {
+            const previousClient = existing.client;
+            previousClient.player = undefined;
+            if (!previousClient.socket.closed()) previousClient.disconnect();
+            existing.client = client;
+            client.player = existing;
+            existing.disconnectAt = 0;
+            existing.group?.checkPlayers();
+            existing.setGroupStatuses();
+            this.game.updateData();
+            return existing;
+        }
+
+        const forcedTeamId = serverBot ? customJoinData.serverBotTeamIds?.[0] : undefined;
+        const forcedTeam = forcedTeamId === undefined
+            ? undefined
+            : this.teams.find((candidate) => candidate.id === forcedTeamId);
+        const result = spectatorOnly
+            ? undefined
+            : this.getGroupAndTeam(joinData.groupData, serverBot, forcedTeam);
         const group = result?.group;
         // solo 50v50 just chooses the smallest team everytime no matter what
         const team = this.game.map.factionMode && !this.game.isTeamMode
-            ? this.getSmallestTeam()
+            ? forcedTeam ?? this.getSmallestTeam()
             : result?.team;
 
         let pos: Vec2;
@@ -162,7 +318,7 @@ export class PlayerBarn {
             layer = 0;
         }
 
-        const originalName = validateUserName(joinMsg.name).validName;
+        const originalName = joinName;
         let finalName = originalName;
 
         if (Config.uniqueInGameNames) {
@@ -189,13 +345,54 @@ export class PlayerBarn {
             joinMsg.bot,
             joinMsg.isMobile,
             joinData.quests,
+            customJoinData.duelLoadoutIndex,
         );
+
+        player.serverBot = serverBot;
+        player.spectatorOnly = spectatorOnly;
+        player.trainingTarget = customJoinData.trainingTarget ?? false;
+        player.accountAuthenticated = client.userId !== null
+            || Boolean(customJoinData.stashName?.trim())
+            || joinMsg.loadoutPriv.trim().length > 0;
+        player.stashName = joinStash || finalName;
+        player.duelLoadoutIndex = customJoinData.duelLoadoutIndex;
+        player.matchPriv = joinMsg.matchPriv;
+        player.socketId = customJoinData.socketId ?? "";
+        if (player.socketId) this.socketIdToPlayer.set(player.socketId, player);
+
+        if (spectatorOnly) {
+            player.setLoadout(
+                joinData.loadout ? joinData.loadout : joinMsg.loadout,
+                !joinData.loadout,
+            );
+            player.groupId = player.teamId = this.groupIdAllocator.getNextId();
+            player.dead = true;
+            player.health = 0;
+            this.newPlayers.push(player);
+            this.game.objectRegister.register(player);
+            this.players.push(player);
+            player.spectating = this.livingPlayers.find(
+                (candidate) => !candidate.dead && !candidate.disconnected && !candidate.spectatorOnly,
+            );
+            this.game.updateData();
+            return player;
+        }
 
         this.activatePlayer(player, group, team);
         player.setLoadout(
             joinData.loadout ? joinData.loadout : joinMsg.loadout,
             !joinData.loadout,
         );
+
+        for (const observer of this.players) {
+            if (
+                observer !== player
+                && observer.spectatorOnly
+                && observer.spectating === undefined
+            ) {
+                observer.spectating = player;
+            }
+        }
 
         return player;
     }
@@ -204,9 +401,11 @@ export class PlayerBarn {
         if (team && group) {
             team.addPlayer(player);
             group.addPlayer(player);
+            if (group.reservedSlots > 0) group.reservedSlots--;
             player.setGroupStatuses();
         } else if (!team && group) {
             group.addPlayer(player);
+            if (group.reservedSlots > 0) group.reservedSlots--;
             player.teamId = player.groupId;
             player.setGroupStatuses();
         } else if (team && !group) {
@@ -234,6 +433,8 @@ export class PlayerBarn {
         this.livingPlayers.sort((a, b) => a.teamId - b.teamId);
 
         this.aliveCountDirty = true;
+
+        this.game.onArenaPlayerJoined(player.__id);
 
         this.game.updateData();
     }
@@ -276,10 +477,45 @@ export class PlayerBarn {
         return player;
     }
 
-    update(dt: number) {
+    spawnInternalAimTrainingTarget(): Player | undefined {
+        if (this.game.mapName !== "aim_training") return undefined;
+
+        const existing = this.players.find(
+            (candidate) => candidate.internalTrainingTarget && !candidate.disconnected,
+        );
+        if (existing) return existing;
+
+        const aimMap = this.game.map as typeof this.game.map & {
+            getAimTrainingSpawnPos?: (target: boolean) => Vec2;
+        };
+        const player = this.addTestPlayer({
+            pos: aimMap.getAimTrainingSpawnPos?.(true)
+                ?? v2.create(this.game.map.width / 2, this.game.map.height / 2),
+            name: "Moving Target",
+        });
+        player.serverBot = true;
+        player.trainingTarget = true;
+        player.internalTrainingTarget = true;
+
+        const settings = (this.game as Game & { aimTrainingSettings?: AimTrainingSettings })
+            .aimTrainingSettings;
+        player.boost = math.clamp(settings?.targetBoost ?? 0, 0, 100);
+        player.weaponManager.setWeapon(GameConfig.WeaponSlot.Primary, "", 0);
+        player.weaponManager.setWeapon(GameConfig.WeaponSlot.Secondary, "", 0);
+        player.weaponManager.setWeapon(GameConfig.WeaponSlot.Throwable, "", 0);
+        player.weaponManager.setCurWeapIndex(
+            GameConfig.WeaponSlot.Melee,
+            true,
+        );
+        player.applyAimTrainingTargetSettings();
+        player.dir = v2.create(-1, 0);
+        return player;
+    }
+
+    update(playerDt: number, worldDt = playerDt, realDt = playerDt) {
         let sendWinEmotes = false;
         if (this.game.over && !this.sentWinEmotes) {
-            this.sendWinEmoteTicker -= dt;
+            this.sendWinEmoteTicker -= playerDt;
             if (this.sendWinEmoteTicker <= 0) {
                 sendWinEmotes = true;
                 this.sentWinEmotes = true;
@@ -287,19 +523,15 @@ export class PlayerBarn {
         }
 
         if (this.game.isTeamMode || this.game.map.factionMode) {
-            this.playerStatusTicker += dt;
+            this.playerStatusTicker += playerDt;
         }
 
         for (let i = 0; i < this.players.length; i++) {
             const player = this.players[i];
-            player.update(dt);
+            player.update(player.sandevistanActive ? playerDt : worldDt, realDt);
 
             if (!player.dead && sendWinEmotes) {
                 player.emoteFromSlot(EmoteSlot.Win);
-            }
-
-            if (this.game.over && !player.dead && !player.sentgameOverMsg) {
-                player.addGameOverMsg();
             }
         }
 
@@ -314,7 +546,7 @@ export class PlayerBarn {
         // update scheduled roles
         for (let i = this.scheduledRoles.length - 1; i >= 0; i--) {
             const scheduledRole = this.scheduledRoles[i];
-            scheduledRole.time -= dt;
+            scheduledRole.time -= playerDt;
             if (scheduledRole.time <= 0) {
                 this.scheduledRoles.splice(i, 1);
 
@@ -369,7 +601,51 @@ export class PlayerBarn {
         }
     }
 
+    /**
+     * 绝密模式配装资格：配装中至少一把 A/S/S+ 武器且仓库实有
+     * （双持按 2 把基准枪）。服务端强制校验，组队模式无法绕过。
+     */
+    private hasSecretEligibleLoadout(stashKey: string): boolean {
+        try {
+            const stash = stashManager.getStash(stashKey);
+            const guns = stash.loadout?.guns ?? [];
+            const owned = stash.items?.guns ?? {};
+            return guns.some((gun) => {
+                if (!gun || !isSecretEligibleWeapon(gun)) return false;
+                const dual = gun.endsWith("_dual");
+                const base = dual ? gun.slice(0, -5) : gun;
+                return Number(owned[base] ?? 0) >= (dual ? 2 : 1);
+            });
+        } catch {
+            // stash 异常（锁竞争/数据损坏）：不拦截（进局时 grantLoadout 会兜底）。
+            return true;
+        }
+    }
+
     removePlayer(player: Player) {
+        if (player.extractionLoadoutGranted) {
+            try {
+                if (player.timeAlive > 0) {
+                    stashManager.clearPendingGrant(player.stashName || player.name);
+                } else {
+                    const recovered = stashManager.recoverPendingGrant(
+                        player.stashName || player.name,
+                    );
+                    if (recovered) {
+                        this.game.logger.warn(
+                            `[stash] refunded loadout for "${player.name}" before match entry`,
+                        );
+                    }
+                }
+            } catch (error) {
+                this.game.logger.warn(
+                    `[stash] pending grant cleanup failed for ${player.name}: ${String(error)}`,
+                );
+            }
+        }
+
+        const removedTrainingTarget = this.game.mapName === "aim_training" && player.trainingTarget;
+        if (player.socketId) this.socketIdToPlayer.delete(player.socketId);
         util.removeFrom(this.players, player);
 
         if (util.removeFrom(this.livingPlayers, player)) {
@@ -398,6 +674,14 @@ export class PlayerBarn {
         }
 
         player.obstacleOutfit?.destroy();
+
+        if (removedTrainingTarget) {
+            for (const candidate of this.players) {
+                if (!candidate.serverBot && !candidate.spectatorOnly) {
+                    candidate.trainingStatsDirty = true;
+                }
+            }
+        }
 
         this.game.checkGameOver();
         this.game.updateData();
@@ -481,7 +765,11 @@ export class PlayerBarn {
         return team;
     }
 
-    getGroupAndTeam(groupData: JoinTokenData["groupData"]):
+    getGroupAndTeam(
+        groupData: JoinTokenData["groupData"],
+        serverBot = false,
+        forcedTeam?: Team,
+    ):
         | {
             group?: Group;
             team?: Team;
@@ -491,18 +779,36 @@ export class PlayerBarn {
         if (!this.game.isTeamMode) return undefined;
 
         let group = this.groupsByHash.get(groupData.groupHashToJoin);
-        let team = this.game.map.factionMode ? this.getSmallestTeam() : undefined;
+        let team = forcedTeam ?? (this.game.map.factionMode ? this.getSmallestTeam() : undefined);
+
+        if (
+            group
+            && team
+            && group.players.length > 0
+            && group.players[0].teamId !== team.id
+        ) {
+            group = undefined;
+        }
 
         if (!group && groupData.autoFill) {
             const groups = team ? team.getGroups() : this.groups;
-            group = groups.find((group) => {
-                return group.autoFill && group.canJoin(groupData.playerCount);
+            group = groups.find((candidate) => {
+                if (
+                    this.game.map.mapDef.gameMode.extractionMode
+                    || this.game.map.mapDef.gameMode.zombieMode
+                ) {
+                    const compatibleRoster = serverBot
+                        ? candidate.players.every((player) => player.serverBot)
+                        : candidate.players.every((player) => !player.serverBot);
+                    if (!compatibleRoster) return false;
+                }
+                return candidate.autoFill && candidate.canJoin(serverBot ? 1 : groupData.playerCount);
             });
         }
 
-        // second condition should never happen
-        // but keeping it just in case
-        // since more than 4 players in a group crashes the client
+        // More than teamMode players in one group crashes the client. A party
+        // reservation should make the second condition unreachable for normal
+        // team-menu joins, but keep the guard for stale/legacy tokens.
         if (!group || group.players.length >= this.game.teamMode) {
             group = this.addGroup(groupData.autoFill);
         }
@@ -523,6 +829,37 @@ export class PlayerBarn {
         }
 
         return { group, team };
+    }
+
+    /** Compatibility entry point used by extraction auto-fill producers/tests. */
+    findFreeGroup(
+        joinData:
+            | JoinTokenData
+            | (Partial<JoinTokenData> & {
+                autoFill: boolean;
+                playerCount: number;
+                groupHashToJoin: string;
+                serverBot?: boolean;
+            }),
+        team?: Team,
+    ): Group {
+        const data = joinData as Partial<JoinTokenData> & {
+            groupData?: JoinTokenData["groupData"];
+            autoFill?: boolean;
+            playerCount?: number;
+            groupHashToJoin?: string;
+            serverBot?: boolean;
+        };
+        const groupData = data.groupData ?? {
+            autoFill: data.autoFill ?? false,
+            playerCount: Math.max(1, data.playerCount ?? 1),
+            groupHashToJoin: data.groupHashToJoin ?? "",
+        };
+        const result = this.getGroupAndTeam(groupData, data.serverBot ?? false, team);
+        if (!result?.group) return this.addGroup(groupData.autoFill);
+
+        if (!data.groupData) data.groupHashToJoin = groupData.groupHashToJoin;
+        return result.group;
     }
 
     addGroup(autoFill: boolean) {
@@ -563,8 +900,157 @@ export class PlayerBarn {
     }
 }
 
+function rotateVectorToward(
+    current: Vec2,
+    target: Vec2,
+    radiansPerSecond: number,
+    dt: number,
+): Vec2 {
+    const cur = v2.normalizeSafe(current);
+    const tgt = v2.normalizeSafe(target);
+    const dot = Math.max(-1, Math.min(1, cur.x * tgt.x + cur.y * tgt.y));
+    let delta = Math.acos(dot);
+    if (cur.x * tgt.y - cur.y * tgt.x < 0) delta = -delta;
+    const maxStep = Math.max(0.0001, Math.abs(radiansPerSecond) * Math.max(0, dt));
+    if (Math.abs(delta) <= maxStep) return v2.copy(tgt);
+    return v2.rotate(cur, delta > 0 ? maxStep : -maxStep);
+}
+
+const STANDARD_PERK_SLOT_COUNT = 4;
+
+/**
+ * 普通模式沿用原版 4 个能力槽；搜打撤/绝密局内槽位由带出槽位锁定。
+ * 替换只允许发生在局内拾取的能力上，带入能力必须保留到撤离结算。
+ */
+export function perkPickupPlan(
+    perks: ReadonlyArray<{
+        type: string;
+        droppable?: boolean;
+        replaceOnDeath?: string;
+        isBroughtIn?: boolean;
+    }>,
+    extractionMode: boolean,
+    carryOutCap?: number,
+): { limit: number; replaceType?: string } {
+    const configuredLimit = Number(carryOutCap);
+    const limit = extractionMode
+        ? Math.max(
+            1,
+            Math.min(
+                Number.isFinite(configuredLimit)
+                    ? Math.floor(configuredLimit)
+                    : PERK_CARRY_OUT_MAX,
+                PERK_CARRY_OUT_MAX,
+            ),
+        )
+        : STANDARD_PERK_SLOT_COUNT;
+    const canReplaceNow = !extractionMode || perks.length >= limit;
+    const replaceType = canReplaceNow
+        ? perks.find(
+            (perk) =>
+                (perk.droppable || perk.replaceOnDeath === "halloween_mystery")
+                && !(extractionMode && perk.isBroughtIn),
+        )?.type
+        : undefined;
+    return { limit, replaceType };
+}
+
 export class Player extends BaseGameObject {
     override readonly __type = ObjectType.Player;
+
+    /** Custom-mode identity/state layered on top of the upstream Client object. */
+    spectatorOnly = false;
+    serverBot = false;
+    accountAuthenticated = false;
+    extracted = false;
+    extractionLoadoutGranted = false;
+    broughtInPerks: string[] = [];
+    perkCarryOutCap = 0;
+    broughtAmmo: Record<string, number> = {};
+    perkProducedThrowables: Record<string, number> = {};
+    duelLoadoutIndex?: number;
+    matchPriv = "";
+    stashName = "";
+    disconnectAt = 0;
+    socketId = "";
+
+    spudEffect: SpudEffectState = {
+        scaleBonus: 0,
+        decayDelay: 0,
+        speedPenaltyPerScale: 0,
+    };
+    spudDecayPerSecond = 0.12;
+    sandevistanActive = false;
+    sandevistanRemaining = 0;
+    sandevistanCooldown = 0;
+    strobeStrikeLockedUntil = 0;
+    aiDesiredDir: Vec2 | null = null;
+
+    secretDropPerk = "";
+    secretNonDropPerk = "";
+    isBoss = false;
+    bossHealthBuffer = 0;
+    readonly bossDamageContributions = new Map<number, number>();
+    bossWornPerk = "";
+    bossDropItems: Array<{ type: string; count: number; weight: number }> = [];
+    bossWeaponsList: Array<{ type: string; count: number }> = [];
+    bossPatrolCenter: Vec2 = v2.create(0, 0);
+    bossPatrolRadius = 24;
+    bossPatrolTarget: Vec2 = v2.create(0, 0);
+    bossPatrolTimer = 0;
+    bossTarget: Player | null = null;
+    bossReturnTimer = 0;
+    bossSpeedMultiplier = 1;
+    bossNextShotAt = 0;
+    bossLastStuckPos: Vec2 = v2.create(0, 0);
+    bossStuckSince = 0;
+    bossUnstuckDir: Vec2 = v2.create(1, 0);
+    bossUnstuckUntil = 0;
+    bossStuckCount = 0;
+    bossStationaryUntil = 0;
+    bossNoLosSince = 0;
+    bossTargetNoLosUntil = 0;
+    bossNoLosTargetId = 0;
+    bossRetreating = false;
+    bossHitChaseUntil = 0;
+    /** Secret-extraction bosses permanently ignore patrol/chase range after taking damage. */
+    bossRangeUnlocked = false;
+    bossMinion = false;
+    bossFlankSign = 1;
+    bossFlankNextAt = 0;
+    bossMoveDir: Vec2 = v2.create(0, 0);
+    bossHasLosNow = false;
+    bossDecision = "";
+    bossTargetDist = 0;
+
+    zombieSelfDestruct = false;
+    zombieRushing = false;
+    zombieLosUntil = 0;
+    zombieHasLos = false;
+    zombieAttackCooldownUntil = 0;
+    zombieDoorInteractUntil = 0;
+    zombieDirtyTickCounter = 0;
+    zombieMissionCarriedElement = -1;
+
+    spawnProtectionUntil = 0;
+    static readonly lateJoinProtectionDurationMs = 5000;
+
+    trainingTarget = false;
+    internalTrainingTarget = false;
+    private internalTrainingDirection = v2.create(0, 1);
+    private internalTrainingDirectionTicker = 0;
+    private internalTrainingIdleTicker = 0;
+    private internalTrainingObservedShots = 0;
+    private internalTrainingReturning = false;
+    private internalTrainingRespawnTicker = 0;
+    trainingShotsFired = 0;
+    trainingHits = 0;
+    trainingDamageDealt = 0;
+    trainingStatsDirty = true;
+    private trainingStatsEpoch = 0;
+    private trainingDodgeDirection = v2.create(0, 1);
+    private trainingDodgeUntil = 0;
+    private trainingDodgeSide: -1 | 1 = 1;
 
     bounds = collider.createAabbExtents(
         v2.create(0, 0),
@@ -619,9 +1105,9 @@ export class Player extends BaseGameObject {
     groupStatusDirty = false;
 
     setGroupStatuses() {
-        if (!this.game.isTeamMode) return;
+        if (!this.game.isTeamMode || !this.group) return;
 
-        const teammates = this.group!.players;
+        const teammates = this.group.players;
         for (const t of teammates) {
             t.groupStatusDirty = true;
         }
@@ -729,6 +1215,15 @@ export class Player extends BaseGameObject {
 
     spectators = new Set<Client>();
 
+    /** Client-controlled observer camera. The active player remains a normal
+     * spectate target so HUD/object decoding continues to work. */
+    freeCameraActive = false;
+    freeCameraPos: Vec2 = v2.create(0, 0);
+    freeCameraViewRadius = 64;
+    freeCameraLayer = 0;
+    spectatePlayersOnly = false;
+    private lastSpectatorChatAt = 0;
+
     outfit = "outfitBase";
 
     setOutfit(outfit: string) {
@@ -745,7 +1240,7 @@ export class Player extends BaseGameObject {
         this.obstacleOutfit = undefined;
 
         if (def.obstacleType) {
-            this.obstacleOutfit = this.game.map.genOutfitObstacle(def.obstacleType, this, def.baseScale);
+            this.obstacleOutfit = this.game.map.genOutfitObstacle(def.obstacleType, this);
         }
         this.setDirty();
     }
@@ -832,6 +1327,7 @@ export class Player extends BaseGameObject {
 
     // "Gabby Ghost" perk random emojis
     chattyTicker = 0;
+    fabricateTicker = 0;
 
     mapIndicator?: MapIndicator;
 
@@ -979,7 +1475,7 @@ export class Player extends BaseGameObject {
                 newOutfit = newOutfit(clampedTeamId);
             }
             if (newOutfit) {
-                if (!oldOutfit.noDropOnDeath && !oldOutfit.noDrop && this.outfit !== this.loadout.outfit) {
+                if (!oldOutfit.noDropOnDeath && !oldOutfit.noDrop) {
                     this.dropLoot(this.outfit);
                 }
                 this.setOutfit(newOutfit);
@@ -997,9 +1493,6 @@ export class Player extends BaseGameObject {
 
                 this.helmet = roleHelmet;
                 this.hasRoleHelmet = true;
-            } else if (this.hasRoleHelmet) {
-                this.helmet = "";
-                this.hasRoleHelmet = false;
             }
 
             if (roleDef.defaultItems.chest) {
@@ -1074,10 +1567,6 @@ export class Player extends BaseGameObject {
     removeRole(): void {
         if (!this.role) return;
         this.role = "";
-        if (this.hasRoleHelmet) {
-            this.hasRoleHelmet = false;
-            this.helmet = "";
-        }
 
         this.mapIndicator?.kill();
         for (let i = 0; i < this.perks.length; i++) {
@@ -1094,8 +1583,12 @@ export class Player extends BaseGameObject {
         if (this.isKillLeader) return;
 
         this.isKillLeader = true;
-        if (this.game.playerBarn.killLeader) {
-            this.game.playerBarn.killLeader.isKillLeader = false;
+        const previousLeader = this.game.playerBarn.killLeader;
+        if (previousLeader && previousLeader !== this) {
+            previousLeader.isKillLeader = false;
+            if (previousLeader.role === "the_hunted") {
+                previousLeader.removeRole();
+            }
         }
 
         this.game.playerBarn.killLeader = this;
@@ -1128,6 +1621,8 @@ export class Player extends BaseGameObject {
         droppable: boolean;
         replaceOnDeath?: string;
         isFromRole?: boolean;
+        isBroughtIn?: boolean;
+        isOneTime?: boolean;
     }> = [];
 
     get perks(): ReadonlyArray<Player["_perks"][0]> {
@@ -1264,6 +1759,76 @@ export class Player extends BaseGameObject {
     get disconnected() {
         return this.client.disconnected;
     }
+    set disconnected(value: boolean) {
+        if (this.client.disconnected === value) return;
+        this.client.disconnected = value;
+        this.setGroupStatuses();
+    }
+
+    /**
+     * Compatibility surface for the customized game loop. Spectator ownership
+     * moved to Client in 0.3.12, so Player only validates and delegates it.
+     */
+    get spectating(): Player | undefined {
+        return this.client.spectating;
+    }
+
+    set spectating(player: Player | undefined) {
+        if (player === this || player?.disconnected || player?.spectatorOnly) {
+            player = undefined;
+        }
+        this.client.spectating = player;
+    }
+
+    get startedSpectating(): boolean {
+        return this.client.startedSpectating;
+    }
+
+    set startedSpectating(value: boolean) {
+        this.client.startedSpectating = value;
+    }
+
+    /** Custom server modules historically sent immediate messages via Player. */
+    sendMsg(type: net.MsgType, msg: net.AbstractMsg, bytes = 128): void {
+        this.client.sendInstantMsg(type, msg, bytes);
+    }
+
+    sendData(buffer: ArrayBuffer | Uint8Array): void {
+        if (this.internalTrainingTarget) return;
+        this.client.sendData(new Uint8Array(buffer));
+    }
+
+    sendMsgs(): void {
+        this.client.sendMsgs();
+    }
+
+    get isBot(): boolean {
+        return this.serverBot || this.bot;
+    }
+
+    get spawnProtectionActive(): boolean {
+        return this.spawnProtectionUntil > Date.now();
+    }
+
+    grantLateJoinProtection(): void {
+        if (
+            this.serverBot
+            || this.spectatorOnly
+            || this.game.map.mapDef.gameMode.zombieMode
+            || (!this.game.map.mapDef.gameMode.extractionMode
+                && !isDuelMapName(this.game.mapName))
+        ) {
+            return;
+        }
+        this.spawnProtectionUntil = Date.now() + Player.lateJoinProtectionDurationMs;
+        this.setDirty();
+    }
+
+    cancelSpawnProtection(): void {
+        if (this.spawnProtectionUntil === 0) return;
+        this.spawnProtectionUntil = 0;
+        this.setDirty();
+    }
 
     name: string;
     isMobile: boolean;
@@ -1344,6 +1909,7 @@ export class Player extends BaseGameObject {
         isBot: boolean,
         isMobile: boolean,
         questIds?: string[],
+        duelLoadoutIndex?: number,
     ) {
         super(game, pos);
 
@@ -1352,6 +1918,7 @@ export class Player extends BaseGameObject {
         this.client = client;
         this.isMobile = isMobile;
         this.bot = Config.debug.allowBots && isBot;
+        this.duelLoadoutIndex = duelLoadoutIndex;
 
         this.questManager.quests = (questIds ?? []).map((id) => ({
             id,
@@ -1421,10 +1988,519 @@ export class Player extends BaseGameObject {
         }
 
         this.weaponManager.showNextThrowable();
+        this.applyArenaStartingLoadout();
         this.recalculateScale();
     }
 
-    update(dt: number): void {
+    private applyArenaStartingLoadout(): void {
+        const loadout = this.game.map.mapDef.arena?.startingLoadout;
+        if (!loadout) return;
+
+        const duelLoadouts = (this.game.config as typeof this.game.config & {
+            duelPlayerLoadouts?: ReadonlyArray<{
+                weapons: readonly string[];
+                throwables?: Record<string, number>;
+            }>;
+        }).duelPlayerLoadouts;
+        const selected = isDuelMapName(this.game.mapName) && this.duelLoadoutIndex !== undefined
+            ? duelLoadouts?.[this.duelLoadoutIndex]
+            : undefined;
+        const weapons: Array<{ type: string; ammo?: number }> = selected
+            ? selected.weapons.map((type) => ({ type }))
+            : [...loadout.weapons];
+
+        for (let i = 0; i < weapons.length && i < GameConfig.WeaponSlot.Count; i++) {
+            const weapon = weapons[i];
+            const def = GameObjectDefs.typeToDefSafe(weapon.type);
+            assert(def, `Invalid arena weapon ${weapon.type}`);
+            assert(
+                def.type === GameConfig.WeaponType[i],
+                `Invalid arena weapon slot ${i}: ${weapon.type}`,
+            );
+            const ammo = weapon.ammo ?? (def.type === "gun" ? def.maxClip : 0);
+            this.weaponManager.setWeapon(i, weapon.type, ammo);
+        }
+
+        if (loadout.backpack) {
+            assert(GameObjectDefs.typeToDefSafe(loadout.backpack)?.type === "backpack");
+            this.backpack = loadout.backpack;
+        }
+        if (loadout.helmet) {
+            assert(GameObjectDefs.typeToDefSafe(loadout.helmet)?.type === "helmet");
+            this.helmet = loadout.helmet;
+        }
+        if (loadout.chest) {
+            assert(GameObjectDefs.typeToDefSafe(loadout.chest)?.type === "chest");
+            this.chest = loadout.chest;
+        }
+        if (loadout.scope) {
+            assert(GameObjectDefs.typeToDefSafe(loadout.scope)?.type === "scope");
+            if (this.invManager.isValid(this.scope)) this.invManager.set(this.scope, 0);
+            this.scope = loadout.scope;
+            if (this.invManager.isValid(this.scope)) this.invManager.set(this.scope, 1);
+            this.zoom = this.scopeZoomRadius[this.scope];
+        }
+        for (const [item, count] of Object.entries(loadout.inventory ?? {})) {
+            assert(GameObjectDefs.typeExists(item), `Invalid arena inventory item ${item}`);
+            if (this.invManager.isValid(item)) this.invManager.set(item, count);
+        }
+        for (const [item, count] of Object.entries(selected?.throwables ?? {})) {
+            assert(GameObjectDefs.typeExists(item), `Invalid arena inventory item ${item}`);
+            if (this.invManager.isValid(item)) this.invManager.set(item, count);
+        }
+        this.weaponManager.showNextThrowable();
+        for (const perk of loadout.perks ?? []) {
+            assert(GameObjectDefs.typeToDefSafe(perk)?.type === "perk", `Invalid arena perk ${perk}`);
+            if (!this.hasPerk(perk)) this.addPerk(perk, false);
+        }
+
+        if (loadout.boost !== undefined) this.boost = loadout.boost;
+        const activeSlot = loadout.activeWeaponSlot ?? GameConfig.WeaponSlot.Primary;
+        this.weaponManager.setCurWeapIndex(activeSlot, true);
+        this.weapons[activeSlot].cooldown = 0;
+        this.inventoryDirty = true;
+        this.weapsDirty = true;
+        this.setDirty();
+    }
+
+    private get waitingForArenaPlayers(): boolean {
+        return Boolean((this.game as Game & { arenaPlayersLocked?: boolean }).arenaPlayersLocked);
+    }
+
+    applyExtractionLoadout(loadout: {
+        weapons?: Array<{ type: string; ammo?: number }>;
+        melee?: string;
+        backpack?: string;
+        helmet?: string;
+        chest?: string;
+        scope?: string;
+        inventory?: Record<string, number>;
+        perks?: string[];
+        oneTimePerks?: string[];
+        perkCarryOutCap?: number;
+    }): void {
+        const weapons = loadout.weapons ?? [];
+        this.weaponManager.setWeapon(GameConfig.WeaponSlot.Primary, "", 0);
+        this.weaponManager.setWeapon(GameConfig.WeaponSlot.Secondary, "", 0);
+
+        const first = weapons[0]?.type ?? "";
+        const second = weapons[1]?.type ?? "";
+        const dualType = first && first === second && !first.endsWith("_dual")
+            ? dualGunOf(first)
+            : null;
+        if (dualType) {
+            const def = GameObjectDefs.typeToDefSafe(first) as GunDef | undefined;
+            if (def?.type === "gun") {
+                this.weaponManager.setWeapon(
+                    GameConfig.WeaponSlot.Primary,
+                    dualType,
+                    weapons[0]?.ammo ?? def.maxClip,
+                );
+            }
+        } else {
+            for (let i = 0; i < weapons.length && i < 2; i++) {
+                const weapon = weapons[i];
+                const def = GameObjectDefs.typeToDefSafe(weapon?.type ?? "") as
+                    | GunDef
+                    | undefined;
+                if (def?.type !== "gun") continue;
+                const baseDef = GameObjectDefs.typeToDefSafe(
+                    baseGunOf(weapon.type) ?? weapon.type,
+                ) as
+                    | GunDef
+                    | undefined;
+                this.weaponManager.setWeapon(
+                    i,
+                    weapon.type,
+                    weapon.ammo ?? baseDef?.maxClip ?? def.maxClip,
+                );
+            }
+        }
+
+        if (loadout.melee && GameObjectDefs.typeToDefSafe(loadout.melee)?.type === "melee") {
+            this.weaponManager.setWeapon(GameConfig.WeaponSlot.Melee, loadout.melee, 0);
+        }
+        if (loadout.backpack && GameObjectDefs.typeToDefSafe(loadout.backpack)?.type === "backpack") {
+            this.backpack = loadout.backpack;
+        }
+        if (loadout.helmet && GameObjectDefs.typeToDefSafe(loadout.helmet)?.type === "helmet") {
+            this.helmet = loadout.helmet;
+        }
+        if (loadout.chest && GameObjectDefs.typeToDefSafe(loadout.chest)?.type === "chest") {
+            this.chest = loadout.chest;
+        }
+        if (loadout.scope && GameObjectDefs.typeToDefSafe(loadout.scope)?.type === "scope") {
+            if (this.invManager.isValid(this.scope)) this.invManager.set(this.scope, 0);
+            this.scope = loadout.scope;
+            if (this.invManager.isValid(this.scope)) this.invManager.set(this.scope, 1);
+            this.zoom = this.scopeZoomRadius[this.scope];
+        }
+
+        this.broughtAmmo = {};
+        for (const [item, rawCount] of Object.entries(loadout.inventory ?? {})) {
+            if (!this.invManager.isValid(item)) continue;
+            const count = Math.max(0, Math.floor(Number(rawCount) || 0));
+            this.invManager.set(item, count);
+            if (stashCategoryFor(item) === "ammo") this.broughtAmmo[item] = count;
+        }
+
+        const oneTime = new Set(
+            (loadout.oneTimePerks ?? []).filter(
+                (type) => GameObjectDefs.typeToDefSafe(type)?.type === "perk",
+            ),
+        );
+        const selectedPerks = [...(loadout.perks ?? []), ...oneTime];
+        this.broughtInPerks = [];
+        const seen = new Set<string>();
+        for (const type of selectedPerks) {
+            if (seen.has(type) || GameObjectDefs.typeToDefSafe(type)?.type !== "perk") continue;
+            seen.add(type);
+            this.broughtInPerks.push(type);
+            if (!this.hasPerk(type)) this.addPerk(type, true);
+            const entry = this._perks.find((perk) => perk.type === type);
+            if (entry) {
+                entry.isBroughtIn = true;
+                entry.isOneTime = oneTime.has(type);
+            }
+        }
+
+        if (
+            this.broughtInPerks.includes("inspiration")
+            && !this.weapons[GameConfig.WeaponSlot.Secondary]?.type
+        ) {
+            this.weaponManager.setWeapon(GameConfig.WeaponSlot.Secondary, "bugle", 1);
+        }
+        this.perkCarryOutCap = loadout.perkCarryOutCap ?? perkCarryOutCap(this.broughtInPerks.length);
+        this.weaponManager.showNextThrowable();
+        const activeSlot = this.weapons[0]?.type
+            ? GameConfig.WeaponSlot.Primary
+            : GameConfig.WeaponSlot.Secondary;
+        this.weaponManager.setCurWeapIndex(activeSlot, true);
+        if (this.weapons[activeSlot]) this.weapons[activeSlot].cooldown = 0;
+        this.inventoryDirty = true;
+        this.weapsDirty = true;
+        this.setDirty();
+    }
+
+    perksToCarryOut(): string[] {
+        const cap = Math.max(0, Math.floor(this.perkCarryOutCap) || 0);
+        const effectiveCap = cap > 0
+            ? cap
+            : Math.min(this.broughtInPerks.length, PERK_CARRY_OUT_MAX);
+        const result: string[] = [];
+        const seen = new Set<string>();
+        for (const type of this.broughtInPerks) {
+            if (!type || seen.has(type)) continue;
+            seen.add(type);
+            if (this._perks.find((perk) => perk.type === type)?.isOneTime) continue;
+            result.push(type);
+            if (result.length >= effectiveCap) break;
+        }
+        return result;
+    }
+
+    carryOutInventory(): Record<string, number> {
+        const result: Record<string, number> = {};
+        const hasEndlessAmmo = this.hasPerk("endless_ammo");
+        for (const [type, rawCount] of Object.entries(this.inventory)) {
+            const count = Math.max(0, Math.floor(Number(rawCount) || 0));
+            if (count <= 0) continue;
+            const category = stashCategoryFor(type);
+            if (category === "ammo" && hasEndlessAmmo && type !== "flare") {
+                const carry = Math.min(count, Math.max(0, this.broughtAmmo[type] ?? 0));
+                if (carry > 0) result[type] = carry;
+            } else if (category === "throwables") {
+                const carry = count - Math.max(0, this.perkProducedThrowables[type] ?? 0);
+                if (carry > 0) result[type] = carry;
+            } else {
+                result[type] = count;
+            }
+        }
+        return result;
+    }
+
+    applySecretAiKit(): void {
+        if (!this.hasPerk("endless_ammo")) this.addPerk("endless_ammo", false);
+        this.secretDropPerk = util.randomItem(SECRET_DROP_PERKS);
+        if (!this.hasPerk(this.secretDropPerk)) this.addPerk(this.secretDropPerk, false);
+        const candidates = SECRET_DROP_PERKS.filter((type) => type !== this.secretDropPerk);
+        this.secretNonDropPerk = util.randomItem(candidates);
+        if (!this.hasPerk(this.secretNonDropPerk)) {
+            this.addPerk(this.secretNonDropPerk, false);
+        }
+        this.boost = 100;
+        if (!this.weapons[GameConfig.WeaponSlot.Primary]?.type) {
+            this.weaponManager.setWeapon(GameConfig.WeaponSlot.Primary, "m249", 100);
+            if (this.invManager.isValid("556mm")) {
+                this.invManager.set("556mm", Math.max(this.invManager.get("556mm"), 200));
+            }
+        }
+        if (!this.weapons[GameConfig.WeaponSlot.Throwable]?.type) {
+            this.weaponManager.setWeapon(GameConfig.WeaponSlot.Throwable, "mirv", 8);
+        }
+        this.inventoryDirty = true;
+        this.weapsDirty = true;
+        this.setDirty();
+    }
+
+    applyExtractionInfiniteKit(): void {
+        if (!this.hasPerk("endless_ammo")) this.addPerk("endless_ammo", false);
+        for (const item of ["bandage", "healthkit", "soda", "painkiller"] as const) {
+            this.invManager.set(item, GameConfig.inventoryInfiniteCount);
+        }
+        this.inventoryDirty = true;
+    }
+
+    resetForArenaRound(pos: Vec2): void {
+        this.dead = false;
+        this.downed = false;
+        this.killedBy = undefined;
+        this.downedBy = undefined;
+        this.client.spectating = undefined;
+        this.health = GameConfig.player.health;
+        this.boost = 0;
+        this.actionType = GameConfig.Action.None;
+        this.actionSeq++;
+        this.animType = GameConfig.Anim.None;
+        this.animSeq++;
+        this.hasteType = GameConfig.HasteType.None;
+        this.hasteSeq++;
+        if (!this.isBoss) {
+            this.shootStart = false;
+            this.shootHold = false;
+            this.moveLeft = false;
+            this.moveRight = false;
+            this.moveUp = false;
+            this.moveDown = false;
+        }
+        this.touchMoveActive = false;
+        this.reloadAgain = false;
+        this.recoilTicker = 0;
+        this.shotSlowdownTimer = 0;
+        this.freeSwitchTimer = 0;
+        this.frozen = false;
+        this.frozenTicker = 0;
+        this.spudEffect = { scaleBonus: 0, decayDelay: 0, speedPenaltyPerScale: 0 };
+        this.spudDecayPerSecond = 0.12;
+        this.recalculateScale();
+        this.layer = 0;
+        this.aimLayer = 0;
+        this.weaponManager.resetForArenaRound();
+        this.cancelAction();
+        for (const item of Object.keys(this.invManager.items) as InventoryItem[]) {
+            this.invManager.set(item, item === "1xscope" ? 1 : 0);
+        }
+        v2.set(this.pos, pos);
+        this.posOld = v2.copy(pos);
+        this.game.grid.updateObject(this);
+        this.applyArenaStartingLoadout();
+        this.healthDirty = true;
+        this.boostDirty = true;
+        this.inventoryDirty = true;
+        this.weapsDirty = true;
+        this.setDirty();
+    }
+
+    recordTrainingShot(sourceType = ""): TrainingShotToken | undefined {
+        if (this.game.mapName !== "aim_training" || this.serverBot) return undefined;
+        this.trainingShotsFired++;
+        this.trainingStatsDirty = true;
+        return {
+            shooterId: this.__id,
+            epoch: this.trainingStatsEpoch,
+            sourceType,
+            hitRecorded: false,
+        };
+    }
+
+    recordTrainingHit(damage: number, shot?: TrainingShotToken): void {
+        if (this.game.mapName !== "aim_training" || this.serverBot) return;
+        if (!shot || shot.shooterId !== this.__id || shot.epoch !== this.trainingStatsEpoch) {
+            return;
+        }
+        if (!shot.hitRecorded) {
+            shot.hitRecorded = true;
+            this.trainingHits++;
+        }
+        this.trainingDamageDealt += Math.max(0, damage);
+        this.trainingStatsDirty = true;
+    }
+
+    resetTrainingStats(): void {
+        if (this.game.mapName !== "aim_training" || this.serverBot) return;
+        this.trainingShotsFired = 0;
+        this.trainingHits = 0;
+        this.trainingDamageDealt = 0;
+        this.trainingStatsEpoch++;
+        this.trainingStatsDirty = true;
+    }
+
+    applyAimTrainingLoadout(settings: AimTrainingSettings): void {
+        if (this.game.mapName !== "aim_training" || this.serverBot) return;
+        const weapons = [settings.weapon0, settings.weapon1] as const;
+        const slots = [GameConfig.WeaponSlot.Primary, GameConfig.WeaponSlot.Secondary] as const;
+        for (let index = 0; index < slots.length; index++) {
+            const type = weapons[index];
+            const def = GameObjectDefs.typeToDefSafe(type) as GunDef | undefined;
+            if (def?.type !== "gun") continue;
+            this.weaponManager.setWeapon(slots[index], type, def.maxClip);
+            if (this.invManager.isValid(def.ammo)) {
+                this.invManager.set(def.ammo, Math.max(this.invManager.get(def.ammo), 300));
+            }
+        }
+        for (const throwable of throwableList) {
+            if (this.invManager.isValid(throwable)) this.invManager.set(throwable, 0);
+        }
+        const throwableDef = GameObjectDefs.typeToDefSafe(settings.throwable) as
+            | ThrowableDef
+            | undefined;
+        if (throwableDef?.type === "throwable" && this.invManager.isValid(settings.throwable)) {
+            this.invManager.set(settings.throwable, 12);
+            this.weaponManager.setWeapon(
+                GameConfig.WeaponSlot.Throwable,
+                settings.throwable,
+                0,
+            );
+        }
+        this.weaponManager.setCurWeapIndex(
+            GameConfig.WeaponSlot.Primary,
+            true,
+        );
+        this.weaponManager.scheduledReload = false;
+        this.cancelAction();
+        this.inventoryDirty = true;
+        this.weapsDirty = true;
+        this.setDirty();
+    }
+
+    applyAimTrainingTargetSettings(): void {
+        if (!this.internalTrainingTarget) return;
+        const settings = (this.game as Game & { aimTrainingSettings?: AimTrainingSettings })
+            .aimTrainingSettings;
+        if (!settings) return;
+        this.helmet = settings.helmetLevel > 0 ? `helmet0${settings.helmetLevel}` : "";
+        this.chest = settings.chestLevel > 0 ? `chest0${settings.chestLevel}` : "";
+        this.boost = settings.targetBoost;
+        this.boostDirty = true;
+        if (!settings.normalHealth && this.dead) this.respawnInternalTrainingTarget();
+        this.setDirty();
+    }
+
+    private respawnInternalTrainingTarget(): void {
+        if (!this.internalTrainingTarget) return;
+        const settings = (this.game as Game & { aimTrainingSettings?: AimTrainingSettings })
+            .aimTrainingSettings;
+        const trainee = this.game.playerBarn.players.find(
+            (candidate) =>
+                !candidate.serverBot
+                && !candidate.spectatorOnly
+                && !candidate.disconnected,
+        );
+        this.dead = false;
+        this.downed = false;
+        this.health = GameConfig.player.health;
+        this.boost = settings?.targetBoost ?? 0;
+        this.internalTrainingRespawnTicker = 0;
+        if (trainee) {
+            const distance = settings?.distance ?? 18;
+            this.pos.x = math.clamp(trainee.pos.x + distance, 18, this.game.map.width - 18);
+            this.pos.y = math.clamp(trainee.pos.y, 18, this.game.map.height - 18);
+            this.posOld = v2.copy(this.pos);
+            this.game.grid.updateObject(this);
+        }
+        this.resetInternalTrainingMovement();
+        this.healthDirty = true;
+        this.boostDirty = true;
+        this.setDirty();
+    }
+
+    resetInternalTrainingMovement(): void {
+        if (!this.internalTrainingTarget) return;
+        this.internalTrainingDirection = v2.create(0, 1);
+        this.internalTrainingDirectionTicker = 0;
+        this.internalTrainingIdleTicker = 0;
+        this.internalTrainingReturning = false;
+        this.trainingDodgeUntil = 0;
+        const trainee = this.game.playerBarn.players.find(
+            (candidate) =>
+                candidate !== this
+                && !candidate.serverBot
+                && !candidate.spectatorOnly
+                && !candidate.disconnected,
+        );
+        this.internalTrainingObservedShots = trainee?.trainingShotsFired ?? 0;
+    }
+
+    private trainingBulletDodgeDirection(now: number): Vec2 | undefined {
+        const center = v2.create(this.game.map.width / 2, this.game.map.height / 2);
+        const minX = 18;
+        const maxX = this.game.map.width - 18;
+        const minY = this.game.map.height * 0.22;
+        const maxY = this.game.map.height * 0.78;
+        let threat: { dir: Vec2; rel: Vec2; time: number } | undefined;
+
+        for (const bullet of this.game.bulletBarn.bullets) {
+            if (!bullet.alive || bullet.playerId === this.__id || bullet.layer !== this.layer) {
+                continue;
+            }
+            const rel = v2.sub(this.pos, bullet.pos);
+            const forward = v2.dot(rel, bullet.dir);
+            if (forward <= 0 || forward > 48) continue;
+            const lateral = Math.abs(rel.x * bullet.dir.y - rel.y * bullet.dir.x);
+            if (lateral > this.rad + 4) continue;
+            const time = forward / Math.max(0.01, bullet.speed);
+            if (!threat || time < threat.time) {
+                threat = { dir: v2.copy(bullet.dir), rel: v2.copy(rel), time };
+            }
+        }
+        if (!threat) return undefined;
+
+        if (now < this.trainingDodgeUntil) {
+            const lateralSigned = threat.rel.x * threat.dir.y - threat.rel.y * threat.dir.x;
+            if (
+                lateralSigned * this.trainingDodgeSide > 0
+                && Math.abs(lateralSigned) < this.rad + 2
+            ) {
+                this.trainingDodgeSide = -this.trainingDodgeSide as -1 | 1;
+                this.trainingDodgeDirection = v2.mul(
+                    v2.create(-threat.dir.y, threat.dir.x),
+                    this.trainingDodgeSide,
+                );
+                this.trainingDodgeUntil = now + 300;
+            }
+            return v2.copy(this.trainingDodgeDirection);
+        }
+
+        const lateralSigned = threat.rel.x * threat.dir.y - threat.rel.y * threat.dir.x;
+        let side: -1 | 1 = lateralSigned >= 0 ? -1 : 1;
+        const perpendicular = v2.create(-threat.dir.y, threat.dir.x);
+        let direction = v2.mul(perpendicular, side);
+        if (v2.dot(direction, v2.sub(center, this.pos)) < 0) {
+            side = -side as -1 | 1;
+            direction = v2.mul(perpendicular, side);
+        }
+        if (
+            (direction.x < 0 && this.pos.x <= minX)
+            || (direction.x > 0 && this.pos.x >= maxX)
+            || (direction.y < 0 && this.pos.y <= minY)
+            || (direction.y > 0 && this.pos.y >= maxY)
+        ) {
+            side = -side as -1 | 1;
+            direction = v2.mul(perpendicular, side);
+        }
+        this.trainingDodgeSide = side;
+        this.trainingDodgeDirection = direction;
+        this.trainingDodgeUntil = now + Math.max(260, Math.min(460, Math.round(threat.time * 1800)));
+        return v2.copy(direction);
+    }
+
+    update(dt: number, realDt = dt): void {
+        if (this.internalTrainingTarget && this.dead) {
+            this.internalTrainingRespawnTicker -= dt;
+            if (this.internalTrainingRespawnTicker <= 0) {
+                this.respawnInternalTrainingTarget();
+            }
+        }
         if (this.dead) {
             if (!this.sentDeathEmote) {
                 this.sendDeathEmoteTicker -= dt;
@@ -1436,7 +2512,135 @@ export class Player extends BaseGameObject {
             return;
         }
 
+        if (this.internalTrainingTarget) {
+            const settings = (this.game as Game & { aimTrainingSettings?: AimTrainingSettings })
+                .aimTrainingSettings;
+            if (settings) {
+                const minX = 18;
+                const maxX = this.game.map.width - 18;
+                const minY = this.game.map.height * 0.22;
+                const maxY = this.game.map.height * 0.78;
+                this.internalTrainingDirectionTicker -= dt;
+
+                const trainee = this.game.playerBarn.players.find(
+                    (candidate) =>
+                        candidate !== this
+                        && !candidate.serverBot
+                        && !candidate.spectatorOnly
+                        && !candidate.disconnected,
+                );
+                if (trainee?.trainingShotsFired !== this.internalTrainingObservedShots) {
+                    this.internalTrainingObservedShots = trainee?.trainingShotsFired ?? 0;
+                    this.internalTrainingIdleTicker = 0;
+                    this.internalTrainingReturning = false;
+                } else {
+                    this.internalTrainingIdleTicker += dt;
+                }
+
+                const dodgeNow = Date.now();
+                const dodgeDirection = settings.dodgeBullets
+                    ? this.trainingBulletDodgeDirection(dodgeNow)
+                    : undefined;
+                const returnDecision = settings.dodgeBullets && trainee
+                    ? aimTrainingReturnDecision({
+                        targetPos: this.pos,
+                        traineePos: trainee.pos,
+                        configuredDistance: settings.distance,
+                        idleSeconds: this.internalTrainingIdleTicker,
+                        wasReturning: this.internalTrainingReturning,
+                        minX,
+                        maxX,
+                        minY,
+                        maxY,
+                    })
+                    : undefined;
+                this.internalTrainingReturning = returnDecision?.returning ?? false;
+
+                if (dodgeDirection) {
+                    this.internalTrainingDirection = dodgeDirection;
+                    this.internalTrainingDirectionTicker = Math.max(
+                        this.internalTrainingDirectionTicker,
+                        Math.max(0.22, (this.trainingDodgeUntil - dodgeNow) / 1000),
+                    );
+                } else if (returnDecision?.direction) {
+                    this.internalTrainingDirection = returnDecision.direction;
+                    this.internalTrainingDirectionTicker = 0;
+                } else if (settings.omnidirectionalRandomMovement) {
+                    if (this.internalTrainingDirectionTicker <= 0) {
+                        const angle = util.random(-Math.PI, Math.PI);
+                        this.internalTrainingDirection = v2.create(
+                            Math.cos(angle),
+                            Math.sin(angle),
+                        );
+                        this.internalTrainingDirectionTicker = util.random(0.45, 1.35);
+                    }
+                } else if (settings.verticalRandomMovement) {
+                    if (this.internalTrainingDirectionTicker <= 0) {
+                        this.internalTrainingDirection = v2.create(
+                            0,
+                            Math.random() < 0.5 ? -1 : 1,
+                        );
+                        this.internalTrainingDirectionTicker = util.random(0.55, 1.65);
+                    }
+                } else {
+                    this.internalTrainingDirection = v2.create(0, 0);
+                }
+
+                if (this.pos.x <= minX) {
+                    this.internalTrainingDirection.x = Math.abs(this.internalTrainingDirection.x);
+                }
+                if (this.pos.x >= maxX) {
+                    this.internalTrainingDirection.x = -Math.abs(this.internalTrainingDirection.x);
+                }
+                if (this.pos.y <= minY) {
+                    this.internalTrainingDirection.y = Math.abs(this.internalTrainingDirection.y);
+                }
+                if (this.pos.y >= maxY) {
+                    this.internalTrainingDirection.y = -Math.abs(this.internalTrainingDirection.y);
+                }
+
+                this.moveLeft = this.internalTrainingDirection.x < -0.18;
+                this.moveRight = this.internalTrainingDirection.x > 0.18;
+                this.moveUp = this.internalTrainingDirection.y > 0.18;
+                this.moveDown = this.internalTrainingDirection.y < -0.18;
+                this.touchMoveActive = false;
+                this.shootStart = false;
+                this.shootHold = false;
+                this.dir = v2.create(-1, 0);
+            }
+        }
+
+        if (this.waitingForArenaPlayers) {
+            this.moveLeft = false;
+            this.moveRight = false;
+            this.moveUp = false;
+            this.moveDown = false;
+            this.touchMoveActive = false;
+            this.shootStart = false;
+            this.shootHold = false;
+            return;
+        }
+
         this.timeAlive += dt;
+
+        if (this.spawnProtectionUntil > 0) {
+            if (Date.now() >= this.spawnProtectionUntil) {
+                this.cancelSpawnProtection();
+            } else if (
+                !this.serverBot
+                && (this.moveLeft
+                    || this.moveRight
+                    || this.moveUp
+                    || this.moveDown
+                    || this.touchMoveActive
+                    || this.shootStart
+                    || this.shootHold
+                    || this.actionType !== GameConfig.Action.None
+                    || this.weaponManager.cookingThrowable)
+            ) {
+                this.cancelSpawnProtection();
+            }
+        }
 
         if (this.game.map.factionMode && this.timeUntilHidden > 0) {
             this.timeUntilHidden -= dt;
@@ -1490,10 +2694,23 @@ export class Player extends BaseGameObject {
         //
         // Boost logic
         //
-        if (!this.downed) {
+        const aimSettings = (this.game as Game & { aimTrainingSettings?: AimTrainingSettings })
+            .aimTrainingSettings;
+        if (this.trainingTarget && aimSettings) {
+            if (!aimSettings.normalHealth) this.health = GameConfig.player.health;
+            this.boost = math.clamp(aimSettings.targetBoost, 0, 100);
+        } else if (!this.downed) {
             this.boost = math.clamp(this.boost, this.minBoost, 100);
 
             if (this.boost > 0) {
+                const secretImmortalBoost = this.serverBot
+                    && Boolean(
+                        (this.game as Game & { extractionSecretEnabled?: boolean })
+                            .extractionSecretEnabled,
+                    );
+                const hasLifeline = this.hasPerk("lifeline");
+                if (secretImmortalBoost && !hasLifeline) this.boost = 100;
+
                 let healAmount = boostHeals.findLast((b, i) => {
                     const prev = boostHeals[i - 1]?.maxBoost ?? 0;
                     return this.boost >= prev && this.boost <= b.maxBoost;
@@ -1501,8 +2718,12 @@ export class Player extends BaseGameObject {
 
                 this.health += healAmount!.heal * dt;
 
-                if (this.boost > this.minBoost) {
-                    if (this.hasPerk("lifeline")) {
+                if (
+                    this.boost > this.minBoost
+                    && !this.hasPerk("leadership")
+                    && !(secretImmortalBoost && !hasLifeline)
+                ) {
+                    if (hasLifeline) {
                         this.boost -= GameConfig.player.boostDecay
                             * PerkProperties.lifeline.decayMult
                             * dt;
@@ -1678,6 +2899,11 @@ export class Player extends BaseGameObject {
                 } else if (
                     this.actionType === GameConfig.Action.Revive
                     && this.playerBeingRevived
+                    && ownsReviveTarget({
+                        actorId: this.__id,
+                        targetId: this.playerBeingRevived.__id,
+                        targetRevivedById: this.playerBeingRevived.revivedBy?.__id ?? 0,
+                    })
                 ) {
                     this.applyActionFunc((target: Player) => {
                         if (!target.downed) return;
@@ -1697,7 +2923,7 @@ export class Player extends BaseGameObject {
                 }
 
                 // Prevent cancelAction from being called by revived players at the end of revive
-                if (!this.revivedBy || this.playerBeingRevived == this.revivedBy) {
+                if (!this.revivedBy || this.playerBeingRevived === this.revivedBy) {
                     this.cancelAction();
                 }
 
@@ -1739,6 +2965,35 @@ export class Player extends BaseGameObject {
             }
         }
 
+        // World time dilation: AI turns toward its commanded aim at the slowed
+        // world cadence (dt is already worldDt for non-casters).
+        if (this.aiDesiredDir && this.serverBot && this.game.sandevistanTimeScale() < 1) {
+            const next = rotateVectorToward(
+                this.dir,
+                this.aiDesiredDir,
+                GameConfig.player.aiTurnRateRadians,
+                dt,
+            );
+            if (!v2.eq(next, this.dir)) {
+                this.setPartDirty();
+                this.dirOld = v2.copy(this.dir);
+                this.dir = next;
+            }
+        }
+
+        if (this.spudEffect.scaleBonus > 0) {
+            const previousBonus = this.spudEffect.scaleBonus;
+            this.spudEffect = advanceSpudEffect(
+                this.spudEffect,
+                dt,
+                this.spudDecayPerSecond,
+            );
+            if (Math.abs(previousBonus - this.spudEffect.scaleBonus) >= 0.001) {
+                this.recalculateScale();
+                this.setDirty();
+            }
+        }
+
         //
         // Haste logic
         //
@@ -1751,6 +3006,25 @@ export class Player extends BaseGameObject {
                 this.hasteSeq++;
                 this.setDirty();
             }
+        }
+
+        // Sandevistan implant: the caster's own actions advance at the
+        // configured player clock, but the effect duration always ticks on
+        // the real clock so duration stays in real seconds.
+        if (this.sandevistanActive) {
+            this.sandevistanRemaining -= realDt;
+            if (this.sandevistanRemaining <= 0) {
+                this.sandevistanActive = false;
+                this.sandevistanRemaining = 0;
+                this.sandevistanCooldown = GameConfig.player.sandevistan.cooldown;
+                this.recalculateSpeed();
+                this.setDirty();
+            }
+        } else if (this.sandevistanCooldown > 0) {
+            this.sandevistanCooldown = Math.max(
+                0,
+                this.sandevistanCooldown - dt,
+            );
         }
 
         //
@@ -2272,7 +3546,20 @@ export class Player extends BaseGameObject {
         this.game.map.clampToMapBounds(this.pos, this.rad);
 
         if (!v2.eq(this.pos, this.posOld)) {
-            this.setPartDirty();
+            // 僵尸模式：僵尸位置广播节流（每 3 tick 同步一次）。
+            // 40-80 个僵尸每 tick 全量广播会压垮网络带宽，导致整局卡顿
+            // （所有单位看起来都停住不动）。碰撞网格仍然每 tick 更新，
+            // 只降低网络同步频率。
+            const zombieThrottle = this.serverBot
+                && Boolean(this.game.map.mapDef.gameMode.zombieMode);
+            if (zombieThrottle) {
+                this.zombieDirtyTickCounter += 1;
+                if (this.zombieDirtyTickCounter % 3 === 0) {
+                    this.setPartDirty();
+                }
+            } else {
+                this.setPartDirty();
+            }
             this.game.grid.updateObject(this);
 
             //
@@ -2376,11 +3663,133 @@ export class Player extends BaseGameObject {
      */
     lastDamagedBy: Player | undefined;
 
+    spectate(spectateMsg: net.SpectateMsg): void {
+        if (spectateMsg.specPlayersOnlySet) {
+            this.spectatePlayersOnly = spectateMsg.specPlayersOnly;
+        }
+
+        const allSpectatablePlayers = this.game.modeManager.getSpectatablePlayers(this);
+        const humanPlayers = allSpectatablePlayers.filter((candidate) => !candidate.serverBot);
+        const spectatablePlayers = this.spectatePlayersOnly && humanPlayers.length > 0
+            ? humanPlayers
+            : allSpectatablePlayers;
+
+        if (spectateMsg.specFreeToggle) {
+            this.freeCameraActive = !this.freeCameraActive;
+            if (this.freeCameraActive) {
+                this.freeCameraPos = spectateMsg.specFreeActive
+                    ? {
+                        x: math.clamp(spectateMsg.freeCameraPos.x, 0, this.game.map.width),
+                        y: math.clamp(spectateMsg.freeCameraPos.y, 0, this.game.map.height),
+                    }
+                    : v2.copy(this.game.map.center);
+                this.freeCameraViewRadius = math.clamp(
+                    spectateMsg.freeCameraViewRadius || 96,
+                    12,
+                    180,
+                );
+                this.freeCameraLayer = math.clamp(spectateMsg.freeCameraLayer, 0, 3);
+            }
+        }
+        if (this.freeCameraActive && spectateMsg.specFreeActive) {
+            this.freeCameraPos = {
+                x: math.clamp(spectateMsg.freeCameraPos.x, 0, this.game.map.width),
+                y: math.clamp(spectateMsg.freeCameraPos.y, 0, this.game.map.height),
+            };
+            this.freeCameraViewRadius = math.clamp(
+                spectateMsg.freeCameraViewRadius,
+                12,
+                180,
+            );
+            this.freeCameraLayer = math.clamp(spectateMsg.freeCameraLayer, 0, 3);
+        }
+
+        const begin = spectateMsg.specBegin || spectateMsg.action === 1;
+        const next = spectateMsg.specNext || spectateMsg.action === 2;
+        const previous = spectateMsg.specPrev || spectateMsg.action === 3;
+        let playerToSpectate = spectateMsg.specPlayersOnlySet
+                && this.spectatePlayersOnly
+                && !this.freeCameraActive
+                && this.spectating?.serverBot
+            ? spectatablePlayers[0]
+            : undefined;
+
+        if (spectatablePlayers.length === 0) {
+            this.spectating = undefined;
+            return;
+        }
+
+        if (begin) {
+            const groupAlive = this.game.isTeamMode && Boolean(this.group?.livingPlayers.length);
+            if (groupAlive) {
+                playerToSpectate = spectatablePlayers.find((candidate) => !candidate.serverBot)
+                    ?? spectatablePlayers[0];
+            } else {
+                const aliveKiller = this.getAliveKiller();
+                const preferredHuman = spectatablePlayers.find(
+                    (candidate) => !candidate.serverBot,
+                );
+                playerToSpectate = aliveKiller
+                        && spectatablePlayers.includes(aliveKiller)
+                        && (!aliveKiller.serverBot || !preferredHuman)
+                    ? aliveKiller
+                    : preferredHuman ?? spectatablePlayers[0];
+            }
+        } else if (next || previous) {
+            const currentIndex = spectatablePlayers.indexOf(this.spectating!);
+            const baseIndex = currentIndex >= 0 ? currentIndex : next ? -1 : 0;
+            playerToSpectate = util.wrappedArrayIndex(
+                spectatablePlayers,
+                baseIndex + (next ? 1 : -1),
+            );
+        }
+
+        if (playerToSpectate) {
+            this.freeCameraActive = false;
+            this.spectating = playerToSpectate;
+        }
+    }
+
+    sendSpectatorChat(msg: net.SpectatorChatMsg): void {
+        const isSpectating = this.spectatorOnly || (this.dead && this.spectating !== undefined);
+        if (!isSpectating || msg.delivered) return;
+
+        const now = Date.now();
+        if (now - this.lastSpectatorChatAt < 900) return;
+        this.lastSpectatorChatAt = now;
+
+        const target = this.spectating;
+        if (!target || target.disconnected || target.spectatorOnly) return;
+        const text = msg.text
+            .split("")
+            .map((character) => {
+                const code = character.charCodeAt(0);
+                return code <= 0x1f || code === 0x7f ? " " : character;
+            })
+            .join("")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 120);
+        if (!text) return;
+
+        const delivered = new net.SpectatorChatMsg();
+        delivered.delivered = true;
+        delivered.sender = this.name.slice(0, 16) || "观众";
+        delivered.text = text;
+        target.sendMsg(net.MsgType.SpectatorChat, delivered, 512);
+        this.sendMsg(net.MsgType.SpectatorChat, delivered, 512);
+    }
+
     damage(params: DamageParams) {
         if (this.debug.godMode) return;
         if (this._health < 0) this._health = 0;
         if (this.dead) return;
+        if (this.spawnProtectionActive) return;
         if (this.downed && this.downedDamageTicker > 0) return;
+        if (this.game.arenaPlayersLocked) return;
+        if (this.game.mapName === "aim_training" && !this.trainingTarget && !this.serverBot) {
+            return;
+        }
         // cobalt players on role picker menu
         if (this.game.map.perkMode && !this.role) return;
 
@@ -2390,7 +3799,12 @@ export class Player extends BaseGameObject {
 
         // teammates can't deal damage to each other
         if (playerSource && params.source !== this) {
-            if (playerSource.teamId === this.teamId && !this.disconnected) {
+            const friendly = (playerSource.groupId === this.groupId && !this.disconnected)
+                || (this.game.map.factionMode && playerSource.teamId === this.teamId)
+                || (this.game.extractionSecretEnabled
+                    && playerSource.serverBot
+                    && this.serverBot);
+            if (friendly) {
                 // Combat Stimulants Healing
                 const gameSourceDef = GameObjectDefs.typeToDefSafe(params.gameSourceType ?? "");
                 if (
@@ -2459,7 +3873,11 @@ export class Player extends BaseGameObject {
             }
         }
 
-        if (this._health - finalDamage < 0) {
+        const trainingSettings = (this.game as Game & {
+            aimTrainingSettings?: AimTrainingSettings;
+        }).aimTrainingSettings;
+        const immortalTrainingTarget = this.trainingTarget && trainingSettings?.normalHealth === false;
+        if (!immortalTrainingTarget && this._health - finalDamage < 0) {
             if (this.hasPerk("lifeline")) {
                 // Checks to see if the perk can mitigate the damage
                 const excessDamage = finalDamage - this._health + 1; // Amount to mitigate to survive on 1 health.
@@ -2480,6 +3898,13 @@ export class Player extends BaseGameObject {
         }
 
         this.damageTaken += finalDamage;
+        if (
+            this.isBoss
+            && this.game.mapName === "extraction_secret"
+            && finalDamage > 0
+        ) {
+            this.bossRangeUnlocked = true;
+        }
         if (playerSource && params.source !== this) {
             if (playerSource.groupId !== this.groupId) {
                 playerSource.damageDealt += finalDamage;
@@ -2489,15 +3914,84 @@ export class Player extends BaseGameObject {
                 });
             }
             this.lastDamagedBy = playerSource;
+
+            if (
+                this.isBoss
+                && finalDamage > 0
+                && !playerSource.serverBot
+                && !playerSource.spectatorOnly
+            ) {
+                this.bossDamageContributions.set(
+                    playerSource.__id,
+                    (this.bossDamageContributions.get(playerSource.__id) ?? 0) + finalDamage,
+                );
+            }
+            if (this.trainingTarget) {
+                playerSource.recordTrainingHit(finalDamage, params.trainingShot);
+            }
+            if (
+                this.isBoss
+                && !this.dead
+                && !playerSource.dead
+                && !playerSource.spectatorOnly
+                && util.sameLayer(this.layer, playerSource.layer)
+                && v2.distance(this.pos, playerSource.pos) <= 200
+            ) {
+                const retaliationAt = Date.now();
+                const retaliationDistance = v2.distance(this.pos, playerSource.pos);
+                this.bossTarget = playerSource;
+                this.bossTargetNoLosUntil = 0;
+                this.bossNoLosSince = 0;
+                this.bossHitChaseUntil = retaliationAt + 6000;
+                this.bossStationaryUntil = 0;
+                this.bossUnstuckUntil = 0;
+                this.bossReturnTimer = 0;
+                this.bossPatrolTimer = 0;
+                this.bossStuckCount = 0;
+                this.bossStuckSince = retaliationAt;
+                this.bossLastStuckPos = v2.copy(this.pos);
+                this.game.bossRecorder?.recordEvent(this.game.id, {
+                    type: "boss_retaliation_targeted",
+                    at: retaliationAt,
+                    bossId: this.__id,
+                    bossName: this.name,
+                    attackerId: playerSource.__id,
+                    attackerName: playerSource.name,
+                    distance: Math.round(retaliationDistance * 10) / 10,
+                    damage: Math.round(finalDamage * 10) / 10,
+                    chaseUntil: this.bossHitChaseUntil,
+                });
+            }
         }
 
-        this.health -= finalDamage;
+        // 搜打撤 Boss：额外血条先吸收伤害（maxHealth 配置），耗尽后才扣真血。
+        if (this.isBoss && this.bossHealthBuffer > 0 && finalDamage > 0) {
+            const absorbed = Math.min(this.bossHealthBuffer, finalDamage);
+            this.bossHealthBuffer -= absorbed;
+            finalDamage -= absorbed;
+            this.setDirty();
+        }
+
+        this.health = healthAfterTrainingDamage(
+            immortalTrainingTarget,
+            this.health,
+            finalDamage,
+        );
 
         if (this.game.isTeamMode) {
             this.setGroupStatuses();
         }
 
         if (this._health === 0) {
+            if (this.internalTrainingTarget) {
+                this.dead = true;
+                this.internalTrainingRespawnTicker = 1.15;
+                this.shootStart = false;
+                this.shootHold = false;
+                this.healthDirty = true;
+                this.setDirty();
+                return;
+            }
             if (!this.downed && this.hasPerk("self_revive")) {
                 this.down(params);
             } else {
@@ -2506,15 +4000,10 @@ export class Player extends BaseGameObject {
         }
     }
 
-    sentgameOverMsg = false;
     /**
      * adds gameover message to "this.msgsToSend" for the player and all their spectators
      */
-    addGameOverMsg(): void {
-        if (this.sentgameOverMsg) return;
-
-        const winningTeamId = this.game.winningTeamId;
-
+    addGameOverMsg(winningTeamId: number = 0): void {
         this.questManager.flushProgress(winningTeamId);
 
         const aliveCount = this.game.modeManager.aliveCount();
@@ -2525,8 +4014,6 @@ export class Player extends BaseGameObject {
             statsMsg.playerStats = this;
             this.client.sendMsg(net.MsgType.PlayerStats, statsMsg);
         } else {
-            this.sentgameOverMsg = true;
-
             const gameOverMsg = new net.GameOverMsg();
 
             const statsArr: net.PlayerStatsMsg["playerStats"][] = this.game.modeManager.getGameoverPlayers(this);
@@ -2604,8 +4091,123 @@ export class Player extends BaseGameObject {
     killedBy: Player | undefined;
     killedIds: number[] = [];
 
+    reassignSpectators(): void {
+        if (this.spectators.size === 0) return;
+
+        for (const spectatorClient of Array.from(this.spectators)) {
+            const observer = spectatorClient.player;
+            if (!observer) {
+                spectatorClient.spectating = undefined;
+                continue;
+            }
+
+            const spectatablePlayers = this.game.modeManager.getSpectatablePlayers(observer);
+            const preferredHuman = spectatablePlayers.find(
+                (candidate) => !candidate.serverBot,
+            );
+            const killer = this.killedBy;
+            const preferred = killer
+                    && killer !== this
+                    && spectatablePlayers.includes(killer)
+                    && (!killer.serverBot || !preferredHuman)
+                ? killer
+                : preferredHuman;
+            spectatorClient.spectating = preferred ?? spectatablePlayers[0];
+        }
+    }
+
+    /**
+     * 搜打撤撤离专用生命周期：原子提交仓库（由 extractionSystem 先完成），
+     * 再从这里移出存活列表并广播撤离消息。与 kill() 不同，撤离
+     * 不产生尸体、不掉落装备、不触发殉爆/死亡统计/死亡表情等副作用，
+     * 因此已入库物资不会被复制到地面。
+     */
+    extractFromMatch(): void {
+        if (this.dead) return;
+        this.dead = true;
+        this.extracted = true;
+        this.boost = 0;
+        this.actionType = GameConfig.Action.None;
+        this.actionSeq++;
+        this.hasteType = GameConfig.HasteType.None;
+        this.hasteSeq++;
+        this.animType = GameConfig.Anim.None;
+        this.animSeq++;
+        this.setDirty();
+        this.shootHold = false;
+
+        this.game.playerBarn.aliveCountDirty = true;
+        const idx = this.game.playerBarn.livingPlayers.indexOf(this);
+        if (idx >= 0) {
+            this.game.playerBarn.livingPlayers.splice(idx, 1);
+        }
+        this.group?.checkPlayers();
+        if (this.team) {
+            const teamIdx = this.team.livingPlayers.indexOf(this);
+            if (teamIdx >= 0) this.team.livingPlayers.splice(teamIdx, 1);
+        }
+
+        // 撤离消息（kill feed 显示「已撤离」）。
+        const killMsg = new net.KillMsg();
+        killMsg.damageType = GameConfig.DamageType.Extraction;
+        killMsg.targetId = this.__id;
+        killMsg.killed = true;
+        this.game.broadcastMsg(net.MsgType.Kill, killMsg);
+
+        this.reassignSpectators();
+        // 同步父进程快照（生产多进程）：撤离后真人/AI 数量立即刷新，
+        // 后台不再显示撤离前的旧人数。
+        this.game.updateData();
+    }
+
     kill(params: DamageParams): void {
         if (this.dead) return;
+        // 阵亡即对局结算：清除崩溃恢复用的待结算配装（装备掉落不再归还）。
+        // stash 异常不能打死房间进程：只记日志（待结算配装残留会在下次
+        // 服务器重启时由 recoverPendingGrants 归还，玩家不丢东西）。
+        // 仅搜打撤模式：本局检测到服务端引发的卡顿 → 玩家阵亡（撤离失败）
+        // 也算服务端责任，归还本局带入的全部装备；其他模式一律不归还。
+        if (this.extractionLoadoutGranted) {
+            try {
+                const extractionMode = this.game.map?.mapDef?.gameMode?.extractionMode === true;
+                if (
+                    extractionMode
+                    && this.game.serverLagCompensationActive()
+                    && !this.spectatorOnly
+                ) {
+                    const lagRefund = stashManager.recoverPendingGrantForServerLag(
+                        this.stashName || this.name,
+                        this.game.id,
+                        this.game.mapName,
+                    );
+                    if (lagRefund.refunded) {
+                        this.game.logger.warn(
+                            `[server-overload] refunded brought-in loadout for "${this.name}" and blocked manual return requests (reasons=${this.game.serverLagReasonSummary()}, extraction failed)`,
+                        );
+                    }
+                } else {
+                    if (extractionMode && !this.spectatorOnly) {
+                        stashManager.archivePendingGrantForReturnRequest(
+                            this.stashName || this.name,
+                            this.game.id,
+                            this.game.mapName,
+                        );
+                    } else {
+                        stashManager.clearPendingGrant(
+                            this.stashName || this.name,
+                        );
+                    }
+                }
+            } catch (error) {
+                this.game.logger.warn(
+                    `[stash] failed to settle pending grant on kill for ${this.name}:`,
+                );
+                console.error(error);
+            }
+        }
+        // Clear both sides of any revive before changing actionType to None.
+        // Otherwise the surviving reviver can retain a stale target pointer.
+        this.cancelAction();
         if (this.downed) this.downed = false;
         this.dead = true;
         this.killedIndex = this.game.playerBarn.nextKilledNumber++;
@@ -2626,6 +4228,20 @@ export class Player extends BaseGameObject {
         this.boostDirty = true;
         this.inventoryDirty = true;
         this.setDirty();
+
+        // 绝密 AI 死亡诊断：记录击杀来源/伤害类型/位置，便于定位
+        // “幸存者 1 秒死亡”到底是真人、AI、毒圈、空袭还是时间到。
+        if (this.serverBot && this.game.extractionSecretEnabled) {
+            const src = params.source;
+            this.game.logger.info(
+                `[secret-ai] "${this.name}" died; killer=${
+                    src && "name" in src ? String((src as { name?: string }).name ?? "?") : String(src?.__id ?? "?")
+                }`
+                    + ` type=${params.damageType} amount=${params.amount ?? 0}`
+                    + ` pos=(${this.pos.x.toFixed(1)},${this.pos.y.toFixed(1)})`
+                    + ` time=${this.game.startedTime.toFixed(1)}s`,
+            );
+        }
 
         this.shootHold = false;
 
@@ -2756,11 +4372,14 @@ export class Player extends BaseGameObject {
             killMsg.killerKills = killCreditSource.kills;
         }
 
-        if (params.damageType !== GameConfig.DamageType.Bleeding && params.source?.__type === ObjectType.Player) {
+        if (params.damageType === GameConfig.DamageType.Player && params.source?.__type === ObjectType.Player) {
             killMsg.killerId = params.source.__id;
         }
 
-        if (this.hasPerk("final_bugle")) {
+        if (
+            params.damageType !== GameConfig.DamageType.Nuclear
+            && this.hasPerk("final_bugle")
+        ) {
             this.initLastBreath();
         }
 
@@ -2833,6 +4452,10 @@ export class Player extends BaseGameObject {
             }
 
             const newKillLeader = this.game.playerBarn.getPlayerWithHighestKills();
+            // Upstream behaviour: every map promotes the kill leader at the same
+            // kill-streak threshold (3), not just Savannah.
+            const huntedMode = this.game.map.sniperMode;
+            const minimumKills = GameConfig.player.killLeaderMinKills;
             if (
                 killLeader !== newKillLeader
                 && killCreditSource
@@ -2858,6 +4481,19 @@ export class Player extends BaseGameObject {
             }
         }
 
+        if (this.game.handleArenaRoundDeath(this)) {
+            util.removeFrom(this.game.playerBarn.killedPlayers, this);
+            this.reassignSpectators();
+            this.game.updateData();
+            return;
+        }
+
+        this.reassignSpectators();
+
+        const bossLootStartIndex = this.isBoss
+            ? this.game.lootBarn.loots.length
+            : -1;
+
         this.game.deadBodyBarn.addDeadBody(this.pos, this.__id, this.layer, params.dir);
 
         //
@@ -2870,6 +4506,79 @@ export class Player extends BaseGameObject {
         //
         // drop loot
         //
+
+        const topBossContributorId = this.isBoss
+            ? [...this.bossDamageContributions.entries()].sort(
+                ([playerIdA, damageA], [playerIdB, damageB]) => damageB - damageA || playerIdA - playerIdB,
+            )[0]?.[0]
+            : undefined;
+        // Do not transfer the reward to the runner-up when the actual winner has
+        // left or died. In that case the drop becomes public immediately.
+        const bossLootOwner = topBossContributorId
+            ? this.game.playerBarn.players.find(
+                (candidate) =>
+                    candidate.__id === topBossContributorId
+                    && !candidate.dead
+                    && !candidate.disconnected
+                    && !candidate.spectatorOnly
+                    && !candidate.serverBot
+                    && !candidate.extracted,
+            )
+            : undefined;
+
+        // 搜打撤 Boss：死亡时按配置掉落武器（必掉）+ 掉落表（按权重）+ 佩戴天赋（必掉）。
+        if (this.isBoss) {
+            const dropPos = this.pos;
+            // 已装备的武器会走普通死亡掉落，这里只补掉未装备的配置武器。
+            const equippedTypes = new Set(
+                [
+                    this.weapons[GameConfig.WeaponSlot.Primary]?.type,
+                    this.weapons[GameConfig.WeaponSlot.Secondary]?.type,
+                ].filter(Boolean),
+            );
+            // 掉落表不能重复掉 Boss 已装备/已配置的物品：
+            // 武器、护甲、outfit、倍镜、佩戴天赋都走各自的普通掉落，掉落表只掉额外物品。
+            const wornGearTypes = new Set(
+                [
+                    this.helmet,
+                    this.chest,
+                    this.backpack,
+                    this.scope,
+                    this.outfit,
+                ].filter(Boolean),
+            );
+            const droppedTypes = new Set<string>();
+            for (const weapon of this.bossWeaponsList) {
+                if (!weapon || !weapon.type) continue;
+                if (equippedTypes.has(weapon.type)) continue;
+                if (droppedTypes.has(weapon.type)) continue;
+                this.game.lootBarn.addLoot(
+                    weapon.type,
+                    dropPos,
+                    this.layer,
+                    Math.max(1, Math.floor(Number(weapon.count) || 1)),
+                );
+                droppedTypes.add(weapon.type);
+            }
+            for (const entry of this.bossDropItems) {
+                if (!entry || !entry.type) continue;
+                if (equippedTypes.has(entry.type)) continue;
+                if (wornGearTypes.has(entry.type)) continue;
+                if (entry.type === this.bossWornPerk) continue;
+                if (droppedTypes.has(entry.type)) continue;
+                if (Math.random() * 100 >= entry.weight) continue;
+                this.game.lootBarn.addLoot(
+                    entry.type,
+                    dropPos,
+                    this.layer,
+                    Math.max(1, Math.floor(Number(entry.count) || 1)),
+                );
+                droppedTypes.add(entry.type);
+            }
+            if (this.bossWornPerk && !droppedTypes.has(this.bossWornPerk)) {
+                this.game.lootBarn.addLoot(this.bossWornPerk, dropPos, this.layer, 1);
+            }
+        }
 
         for (let i = 0; i < GameConfig.WeaponSlot.Count; i++) {
             const weap = this.weapons[i];
@@ -2902,6 +4611,7 @@ export class Player extends BaseGameObject {
             }
 
             const amount = this.invManager.get(item);
+            if (amount >= GameConfig.inventoryInfiniteCount) continue;
             if (amount > 0) {
                 this.game.lootBarn.addLoot(item, this.pos, this.layer, amount, {
                     pushSpeed: util.random(7.5, 11),
@@ -2915,7 +4625,12 @@ export class Player extends BaseGameObject {
             if (!type) continue;
             const def = GameObjectDefs.typeToDef(type) as HelmetDef | ChestDef | BackpackDef;
             if (!!(def as ChestDef).noDrop || def.level < 1) continue;
-            this.game.lootBarn.addLoot(type, this.pos, this.layer, 1, {
+            const dropType = this.serverBot
+                    && this.game.extractionSecretEnabled
+                    && def.level >= 2
+                ? (lowerLevelGearType(def.type, def.level) ?? type)
+                : type;
+            this.game.lootBarn.addLoot(dropType, this.pos, this.layer, 1, {
                 pushSpeed: util.random(7.5, 11),
                 dir: v2.randomUnit(),
             });
@@ -2942,10 +4657,57 @@ export class Player extends BaseGameObject {
                     {
                         pushSpeed: util.random(7.5, 11),
                         dir: v2.randomUnit(),
+                        oneTimePerk: perk.isOneTime === true,
                     },
                 );
             }
         }
+
+        if (
+            this.serverBot
+            && this.game.extractionSecretEnabled
+            && Math.random() < 1 / 5
+        ) {
+            this.game.lootBarn.addLoot(
+                this.secretDropPerk
+                    || SECRET_DROP_PERKS[
+                        util.randomInt(0, SECRET_DROP_PERKS.length - 1)
+                    ],
+                this.pos,
+                this.layer,
+                1,
+            );
+        }
+
+        if (this.serverBot && this.game.map.mapDef.gameMode.extractionMode) {
+            for (const entry of Config.extractionAiDropItems ?? []) {
+                if (!entry?.type || Math.random() * 100 >= (entry.weight ?? 0)) continue;
+                this.game.lootBarn.addLoot(
+                    entry.type,
+                    this.pos,
+                    this.layer,
+                    Math.max(1, Math.floor(Number(entry.count) || 1)),
+                );
+            }
+        }
+
+        if (bossLootOwner && bossLootStartIndex >= 0) {
+            const expiresAt = Date.now() + BOSS_LOOT_PROTECTION_MS;
+            let protectedLootCount = 0;
+            for (const loot of this.game.lootBarn.loots.slice(bossLootStartIndex)) {
+                if (loot.destroyed) continue;
+                loot.ownerId = bossLootOwner.__id;
+                loot.ownerExpiresAt = expiresAt;
+                loot.setDirty();
+                protectedLootCount++;
+            }
+            const contribution = this.bossDamageContributions.get(bossLootOwner.__id) ?? 0;
+            this.game.logger.info(
+                `[boss-loot] reserved ${protectedLootCount} drops for ${bossLootOwner.name} `
+                    + `(damage=${contribution.toFixed(1)}, duration=${BOSS_LOOT_PROTECTION_MS}ms)`,
+            );
+        }
+        this.bossDamageContributions.clear();
         this._perks.length = 0;
         this._perkTypes.length = 0;
 
@@ -3039,6 +4801,27 @@ export class Player extends BaseGameObject {
         return false;
     }
 
+    private getActiveReviverFor(target: Player): Player | undefined {
+        const match = activeReviverFor(
+            this.game.playerBarn.livingPlayers.map((candidate) => ({
+                id: candidate.__id,
+                dead: candidate.dead,
+                disconnected: candidate.disconnected,
+                actionType: candidate.actionType,
+                actionTargetId: candidate.action.targetId,
+                reviveTargetId: candidate.playerBeingRevived?.__id ?? 0,
+            })),
+            this.__id,
+            target.__id,
+            GameConfig.Action.Revive,
+        );
+        return match
+            ? this.game.playerBarn.livingPlayers.find(
+                (candidate) => candidate.__id === match.id,
+            )
+            : undefined;
+    }
+
     /** returns player to revive if can revive */
     getPlayerToRevive(): Player | undefined {
         if (this.actionType != GameConfig.Action.None) return undefined; // action in progress already
@@ -3067,6 +4850,13 @@ export class Player extends BaseGameObject {
             if (!util.sameLayer(this.layer, teammate.layer)) {
                 continue;
             }
+            // Revive is server-authoritative and exclusive. Without this guard,
+            // several AI clients can repeatedly call doAction() on the same downed
+            // player, resetting the target's revive timer and making the rescue take
+            // longer instead of faster.
+            if (this.getActiveReviverFor(teammate)) {
+                continue;
+            }
             const dist = v2.distance(this.pos, teammate.pos);
             if (dist <= GameConfig.player.reviveRange && dist < closestDist) {
                 playerToRevive = teammate;
@@ -3079,6 +4869,7 @@ export class Player extends BaseGameObject {
 
     revive(playerToRevive: Player | undefined) {
         if (!playerToRevive) return;
+        if (this.getActiveReviverFor(playerToRevive)) return;
 
         this.playerBeingRevived = playerToRevive;
         playerToRevive.revivedBy = this;
@@ -3168,8 +4959,17 @@ export class Player extends BaseGameObject {
 
     applyActionFunc(actionFunc: (target: Player) => void): void {
         const hasAoeHeal = this.hasPerk("aoe_heal");
+        const ownsRevive = this.actionType !== GameConfig.Action.Revive
+            || Boolean(
+                this.playerBeingRevived
+                    && ownsReviveTarget({
+                        actorId: this.__id,
+                        targetId: this.playerBeingRevived.__id,
+                        targetRevivedById: this.playerBeingRevived.revivedBy?.__id ?? 0,
+                    }),
+            );
 
-        if (hasAoeHeal) {
+        if (hasAoeHeal && ownsRevive) {
             let aoePlayers = this.getAOEPlayers();
 
             // aoe doesnt heal/give boost to downed players
@@ -3181,7 +4981,7 @@ export class Player extends BaseGameObject {
                 const aoePlayer = aoePlayers[i];
                 actionFunc(aoePlayer);
             }
-        } else {
+        } else if (ownsRevive) {
             const target = this.actionType === GameConfig.Action.Revive && this.playerBeingRevived
                 ? this.playerBeingRevived
                 : this;
@@ -3274,6 +5074,9 @@ export class Player extends BaseGameObject {
             const input = msg.inputs[i];
             if (!this.shouldAcceptInput(input)) continue;
             switch (input) {
+                case GameConfig.Input.Sandevistan:
+                    this.activateSandevistan();
+                    break;
                 case GameConfig.Input.StowWeapons:
                 case GameConfig.Input.EquipMelee:
                     this.weaponManager.setCurWeapIndex(GameConfig.WeaponSlot.Melee);
@@ -3339,6 +5142,9 @@ export class Player extends BaseGameObject {
                     }
                     break;
                 case GameConfig.Input.Interact: {
+                    if (this.game.zombieMode?.tryInteractMission(this)) {
+                        break;
+                    }
                     const loot = this.getClosestLoot();
                     const obstacles = this.getInteractableObstacles();
                     const playerToRevive = this.getPlayerToRevive();
@@ -3603,6 +5409,13 @@ export class Player extends BaseGameObject {
     pickupLoot(obj: Loot) {
         if (obj.destroyed) return;
 
+        // 馈赠/战利品归属保护：保留期内的物资只有归属者能拾取；
+        // 保留到期后恢复公共物资。防止队友馈赠的医疗包被路人抢走。
+        if (obj.ownerId !== 0 && obj.ownerExpiresAt !== undefined && obj.ownerExpiresAt <= Date.now()) {
+            obj.ownerId = 0;
+        }
+        if (obj.ownerId !== 0 && obj.ownerId !== this.__id) return;
+
         const def = GameObjectDefs.typeToDef(obj.type);
         if (
             (this.actionType == GameConfig.Action.UseItem && def.type != "gun")
@@ -3615,6 +5428,7 @@ export class Player extends BaseGameObject {
         this.pickupTicker = 0.1;
         let amountLeft = 0;
         let lootToAdd = obj.type;
+        let lootToAddOneTimePerk = obj.oneTimePerk === true;
         const pickupMsg = new net.PickupMsg();
         pickupMsg.item = obj.type;
         pickupMsg.type = net.PickupMsgType.Success;
@@ -3832,7 +5646,7 @@ export class Player extends BaseGameObject {
 
                 pickupMsg.item = type;
 
-                if (this.hasPerk(obj.type)) {
+                if (this.hasPerk(type)) {
                     amountLeft = 1;
                     pickupMsg.type = net.PickupMsgType.AlreadyEquipped;
                     break;
@@ -3843,13 +5657,18 @@ export class Player extends BaseGameObject {
                     this.game.playerBarn.addEmote(emoteType, this.__id);
                 }
 
-                const perkSlotType = this.perks.find(
-                    (p) => p.droppable || p.replaceOnDeath === "halloween_mystery",
-                )?.type;
+                const extractionMode = Boolean(
+                    this.game.map.mapDef.gameMode.extractionMode,
+                );
+                const perkPickup = perkPickupPlan(
+                    this.perks,
+                    extractionMode,
+                    extractionMode ? this.perkCarryOutCap : undefined,
+                );
+                const perkSlotType = perkPickup.replaceType;
 
-                // The client can only show 4 perks in the UI.
-                // If the player already has 4 or more perks, they cannot pick up a new one.
-                if (!perkSlotType && this.perks.length >= 4) {
+                // 普通模式最多 4 个；搜打撤/绝密先填满 7 个，满槽后才替换可掉落能力。
+                if (!perkSlotType && this.perks.length >= perkPickup.limit) {
                     amountLeft = 1;
                     pickupMsg.type = net.PickupMsgType.MaxPerks;
                     break;
@@ -3857,7 +5676,14 @@ export class Player extends BaseGameObject {
                 if (perkSlotType) {
                     amountLeft = 1;
                     lootToAdd = isMistery ? "" : perkSlotType;
+                    lootToAddOneTimePerk = this.perks.find((perk) => perk.type === perkSlotType)
+                        ?.isOneTime === true;
                     this.removePerk(perkSlotType);
+                    // 搜打撤：被替换掉的旧能力从“可带出”集合移除。
+                    if (extractionMode) {
+                        const oldIdx = this.broughtInPerks.indexOf(perkSlotType);
+                        if (oldIdx >= 0) this.broughtInPerks.splice(oldIdx, 1);
+                    }
                     this.addPerk(
                         type,
                         !isMistery,
@@ -3869,6 +5695,23 @@ export class Player extends BaseGameObject {
                         !isMistery,
                         isMistery ? "halloween_mystery" : undefined,
                     );
+                }
+                // 一次性技能掉落（被其他玩家拾取）：只能局内使用，撤离不带回。
+                const pickedEntry = this.perks[this.perks.length - 1];
+                if (
+                    pickedEntry
+                    && (obj as unknown as { oneTimePerk?: boolean }).oneTimePerk
+                ) {
+                    pickedEntry.isOneTime = true;
+                }
+                // 搜打撤：局内拾取的能力（含绝密 AI 掉落的能力）记入
+                // broughtInPerks，撤离时才能带出；已经带入的同类不重复记录。
+                if (
+                    extractionMode
+                    && !isMistery
+                    && !this.broughtInPerks.includes(type)
+                ) {
+                    this.broughtInPerks.push(type);
                 }
                 this.setDirty();
                 break;
@@ -3885,6 +5728,7 @@ export class Player extends BaseGameObject {
                 pushSpeed: util.random(4, 4.5),
                 dir: v2.neg(this.dir),
                 noSideAmmo: true,
+                oneTimePerk: lootToAddOneTimePerk,
             });
         }
 
@@ -3951,16 +5795,20 @@ export class Player extends BaseGameObject {
 
         if (oldWeaponDef.noPotatoSwap) return;
         const weaponDefs = WeaponTypeToDefs[oldWeaponDef.type];
-
         // necessary for type safety since Object.entries() is not type safe and just returns "any"
-        const enumerableDefs = Object.entries(weaponDefs) as [string, GunDef | ThrowableDef | MeleeDef][];
-        const hasRarePotato = this.hasPerk("rare_potato");
-        const weaponChoices = enumerableDefs.filter(([type, def]) => {
-            if (def.noPotatoSwap) return false;
-            if (!this.game.map.factionMode && type === "tomato") return false;
-            if (hasRarePotato && def.quality !== PerkProperties.rare_potato.quality) return false;
-            return true;
-        });
+        const enumerableDefs = Object.entries(weaponDefs) as [
+            string,
+            GunDef | ThrowableDef | MeleeDef,
+        ][];
+
+        const filterCb: ([_type, def]: [
+            string,
+            GunDef | ThrowableDef | MeleeDef,
+        ]) => boolean = this.hasPerk("rare_potato")
+            ? ([_type, def]) => !def.noPotatoSwap && def.quality == PerkProperties.rare_potato.quality
+            : ([_type, def]) => !def.noPotatoSwap;
+
+        const weaponChoices = enumerableDefs.filter(filterCb);
         const [chosenWeaponType, chosenWeaponDef] = util.randomItem(weaponChoices);
 
         let index;
@@ -4044,13 +5892,25 @@ export class Player extends BaseGameObject {
         this.game.playerBarn.addEmote("emote_loot", this.__id, chosenWeaponType);
     }
 
-    dropLoot(type: string, count = 1, useCountForAmmo?: boolean) {
+    dropLoot(
+        type: string,
+        count = 1,
+        useCountForAmmo?: boolean,
+        ownerId = 0,
+        ownerDurationMs = 0,
+        oneTimePerk = false,
+    ) {
         this.mobileDropTicker = 3;
         this.game.lootBarn.addLoot(type, this.pos, this.layer, count, {
             useCountForAmmo,
             pushSpeed: util.random(7.5, 11),
             dir: v2.neg(this.dir),
             source: "player",
+            ownerId: ownerId || undefined,
+            ownerExpiresAt: ownerId && ownerDurationMs
+                ? Date.now() + ownerDurationMs
+                : undefined,
+            oneTimePerk,
         });
     }
 
@@ -4062,6 +5922,7 @@ export class Player extends BaseGameObject {
 
         if (armorDef.type == "helmet" && armorDef.role && this.role == armorDef.role) {
             this.removeRole();
+            this.hasRoleHelmet = false;
         }
 
         if (armorDef.type == "helmet" && armorDef.perk && this.hasPerk(armorDef.perk)) {
@@ -4084,14 +5945,32 @@ export class Player extends BaseGameObject {
         return true;
     }
 
-    splitUpLoot(item: string, amount: number) {
+    splitUpLoot(item: string, amount: number, ownerId = 0, ownerDurationMs = 0) {
         const dropCount = Math.floor(amount / 60);
         for (let i = 0; i < dropCount; i++) {
-            this.dropLoot(item, 60);
+            this.dropLoot(item, 60, undefined, ownerId, ownerDurationMs);
         }
         if (amount % 60 !== 0) {
-            this.dropLoot(item, amount % 60);
+            this.dropLoot(item, amount % 60, undefined, ownerId, ownerDurationMs);
         }
+    }
+
+    /** Only server-controlled bots may reserve a supply drop for a living teammate. */
+    private resolveServerBotDropRecipient(recipientId: number): number {
+        if (!this.serverBot || recipientId <= 0) return 0;
+        const recipient = this.game.playerBarn.players.find(
+            (candidate) =>
+                candidate.__id === recipientId
+                && !candidate.dead
+                && !candidate.disconnected
+                && !candidate.spectatorOnly,
+        );
+        if (!recipient) return 0;
+        const sameGroup = this.groupId !== 0 && recipient.groupId === this.groupId;
+        const sameFaction = this.game.map.factionMode
+            && this.teamId !== 0
+            && recipient.teamId === this.teamId;
+        return sameGroup || sameFaction ? recipient.__id : 0;
     }
 
     dropItem(dropMsg: net.DropItemMsg): void {
@@ -4122,8 +6001,24 @@ export class Player extends BaseGameObject {
                     (p) => p.droppable && p.type === dropMsg.item,
                 )?.type;
                 if (perkSlotType && perkSlotType === dropMsg.item) {
-                    this.dropLoot(dropMsg.item);
+                    const perkEntry = this.perks.find(
+                        (perk) => perk.type === dropMsg.item,
+                    );
+                    this.dropLoot(
+                        dropMsg.item,
+                        1,
+                        undefined,
+                        0,
+                        0,
+                        perkEntry?.isOneTime === true,
+                    );
                     this.removePerk(dropMsg.item);
+                    // 搜打撤/绝密：手动丢掉的能力不再计入可带出集合；
+                    // 但带出槽位总数已在进局时锁定，不会因丢掉而增加。
+                    if (this.game.map.mapDef.gameMode.extractionMode) {
+                        const dropIdx = this.broughtInPerks.indexOf(dropMsg.item);
+                        if (dropIdx >= 0) this.broughtInPerks.splice(dropIdx, 1);
+                    }
                     this.setDirty();
                 }
                 break;
@@ -4131,7 +6026,7 @@ export class Player extends BaseGameObject {
         }
 
         if (this.invManager.isValid(dropMsg.item)) {
-            this.dropInventoryItem(dropMsg.item);
+            this.dropInventoryItem(dropMsg.item, dropMsg.recipientId);
         }
 
         const reloading = this.isReloading();
@@ -4142,7 +6037,7 @@ export class Player extends BaseGameObject {
         }
     }
 
-    dropInventoryItem(item: InventoryItem) {
+    dropInventoryItem(item: InventoryItem, requestedRecipientId = 0) {
         if (!this.invManager.has(item)) return;
         const inventoryCount = this.invManager.get(item);
 
@@ -4157,8 +6052,21 @@ export class Player extends BaseGameObject {
                     amountToDrop = math.min(5, inventoryCount);
                 }
 
-                this.splitUpLoot(item, amountToDrop);
+                const recipientId = this.resolveServerBotDropRecipient(requestedRecipientId);
+                this.splitUpLoot(
+                    item,
+                    amountToDrop,
+                    recipientId,
+                    recipientId ? 15_000 : 0,
+                );
                 this.invManager.take(item, amountToDrop);
+                if (recipientId) {
+                    this.game.playerBarn.addEmote(
+                        ammoGiftEmoteForType(item),
+                        this.__id,
+                        item,
+                    );
+                }
                 break;
             }
             case "scope": {
@@ -4170,9 +6078,21 @@ export class Player extends BaseGameObject {
             case "boost": {
                 let amountToDrop = math.max(1, Math.floor(inventoryCount / 2));
 
+                if (inventoryCount >= GameConfig.inventoryInfiniteCount) break;
+
                 this.invManager.take(item, amountToDrop);
 
-                this.dropLoot(item, amountToDrop);
+                const recipientId = this.resolveServerBotDropRecipient(requestedRecipientId);
+                this.dropLoot(
+                    item,
+                    amountToDrop,
+                    undefined,
+                    recipientId,
+                    recipientId ? 15_000 : 0,
+                );
+                if (recipientId) {
+                    this.game.playerBarn.addEmote("ping_help", this.__id, item);
+                }
                 break;
             }
             case "throwable": {
@@ -4264,7 +6184,12 @@ export class Player extends BaseGameObject {
                 return;
             }
 
-            if (!emoteDef.teamOnly && (emoteIdx < 0 || emoteIdx > 3)) {
+            const serverBotAmmoGift = this.serverBot && isAmmoGiftEmote(emoteMsg.type);
+            if (
+                !emoteDef.teamOnly
+                && !serverBotAmmoGift
+                && (emoteIdx < 0 || emoteIdx > 3)
+            ) {
                 return;
             }
 
@@ -4350,6 +6275,21 @@ export class Player extends BaseGameObject {
         }
     }
 
+    isOnOtherSide(door: Obstacle): boolean {
+        switch (door.ori) {
+            case 0:
+                return this.pos.x < door.pos.x;
+            case 1:
+                return this.pos.y < door.pos.y;
+            case 2:
+                return this.pos.x > door.pos.x;
+            case 3:
+                return this.pos.y > door.pos.y;
+            default:
+                return false;
+        }
+    }
+
     doAction(
         actionItem: string,
         actionType: number,
@@ -4373,7 +6313,11 @@ export class Player extends BaseGameObject {
     }
 
     cancelAction(): void {
-        if (this.actionType === GameConfig.Action.None) {
+        if (
+            this.actionType === GameConfig.Action.None
+            && !this.playerBeingRevived
+            && !this.revivedBy
+        ) {
             return;
         }
 
@@ -4417,6 +6361,21 @@ export class Player extends BaseGameObject {
         this.frozen = true;
         this.frozenType = type;
         this.frozenOri = frozenOri;
+        this.setDirty();
+    }
+
+    applySpudHitEffect(config: {
+        scalePerHit: number;
+        maxScaleBonus: number;
+        decayDelay: number;
+        decayPerSecond: number;
+        speedPenaltyPerScale: number;
+    }): void {
+        const next = applySpudHit(this.spudEffect, config, this.hasPerk("small_arms"));
+        if (next.scaleBonus === this.spudEffect.scaleBonus) return;
+        this.spudEffect = next;
+        this.spudDecayPerSecond = Math.max(0, config.decayPerSecond);
+        this.recalculateScale();
         this.setDirty();
     }
 
@@ -4492,6 +6451,14 @@ export class Player extends BaseGameObject {
     }
 
     giveHaste(type: HasteType, duration: number): void {
+        if (this.hasteType === type && this._hasteTicker > 0) {
+            // The same haste is already active: refresh the remaining duration
+            // without bumping hasteSeq. Repeated triggers (for example the
+            // windwalk perk re-firing on every nearby bullet or explosion)
+            // otherwise make the client replay the sound/particle each time.
+            this._hasteTicker = duration;
+            return;
+        }
         this.hasteType = type;
         this.hasteSeq++;
         this._hasteTicker = duration;
@@ -4533,6 +6500,14 @@ export class Player extends BaseGameObject {
     }
 
     recalculateScale() {
+        // Boss 体型固定为普通玩家（scale=1）：能力体型加成（steelskin/
+        // leadership 等）会让 Boss 变成 1.75 倍，碰撞半径过大，
+        // 过不了门/窗口玻璃，卡在建筑出口。
+        if (this.isBoss) {
+            this.scale = 1;
+            this.collider.rad = this.rad;
+            return;
+        }
         let scale = 1;
         for (let i = 0; i < this.perks.length; i++) {
             const perk = this.perks[i].type;
@@ -4582,7 +6557,16 @@ export class Player extends BaseGameObject {
         }
     }
 
-    recalculateSpeed(hasTreeClimbing: boolean): void {
+    activateSandevistan(): void {
+        if (this.sandevistanActive || this.sandevistanCooldown > 0) return;
+        if (!this.game.map.mapDef.gameMode.sandevistanMode) return;
+        this.sandevistanActive = true;
+        this.sandevistanRemaining = GameConfig.player.sandevistan.duration;
+        this.recalculateSpeed();
+        this.setDirty();
+    }
+
+    recalculateSpeed(hasTreeClimbing = this.hasPerk("tree_climbing")): void {
         if (this.debug.speedEnabled) {
             this.speed = this.debug.speed;
         } else if (this.actionType == GameConfig.Action.Revive) {
@@ -4635,12 +6619,24 @@ export class Player extends BaseGameObject {
             this.speed -= GameConfig.player.cookSpeedPenalty;
         }
 
-        if (this.hasteType != GameConfig.HasteType.None) {
+        const zombieRushActive = this.serverBot
+            && this.game.map.mapDef.gameMode.zombieMode
+            && this.zombieSelfDestruct
+            && this.zombieRushing;
+
+        // Self-destruct zombies use an authoritative rush multiplier below.
+        // Windwalk remains only as the networked rush FX marker; allowing the
+        // generic haste bonus here as well would double-boost the committed rush.
+        if (this.hasteType != GameConfig.HasteType.None && !zombieRushActive) {
             this.speed += GameConfig.player.hasteSpeedBonus;
         }
 
         if (this.frozen) {
             this.speed -= GameConfig.player.frozenSpeedPenalty;
+        }
+
+        if (this.spudEffect.scaleBonus > 0) {
+            this.speed -= this.spudEffect.scaleBonus * this.spudEffect.speedPenaltyPerScale;
         }
 
         const hasFieldMedic = this.hasPerk("field_medic");
@@ -4655,6 +6651,30 @@ export class Player extends BaseGameObject {
 
         if (hasFieldMedic && this.actionType == GameConfig.Action.UseItem) {
             this.speed += PerkProperties.field_medic.speedBoost;
+        }
+
+        if (this.sandevistanActive) {
+            this.speed *= 1 + GameConfig.player.sandevistan.speedBonus;
+        }
+
+        if (this.serverBot && this.game.map.mapDef.gameMode.zombieMode) {
+            const difficulty = (
+                this.game.config as { zombieDifficulty?: "simple" | "normal" | "hard" }
+            ).zombieDifficulty ?? "normal";
+            const preset = ZOMBIE_DIFFICULTY_PRESETS[difficulty]
+                ?? ZOMBIE_DIFFICULTY_PRESETS.normal;
+            this.speed *= preset.speedMult;
+            if (zombieRushActive) {
+                this.speed *= ZOMBIE_RUSH_SPEED_MULT;
+            }
+        }
+
+        if (
+            !this.serverBot
+            && this.game.map.mapDef.gameMode.zombieMode
+            && this.zombieMissionCarriedElement >= 0
+        ) {
+            this.speed *= ZOMBIE_MISSION_CARRY_SPEED_MULT;
         }
 
         this.speed = math.clamp(this.speed, 1, 10000);

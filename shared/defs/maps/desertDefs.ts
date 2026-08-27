@@ -114,6 +114,7 @@ const mapDef: PartialMapDef = {
             { name: "model94", count: 1, weight: 2 },
             { name: "colt45", count: 1, weight: 1 },
             { name: "mkg45", count: 1, weight: 2.5 }, // !
+            { name: "endless_ammo", count: 1, weight: 0.75 },
         ],
         tier_airdrop_rare: [
             { name: "garand", count: 1, weight: 6 },
@@ -122,6 +123,18 @@ const mapDef: PartialMapDef = {
             { name: "m249", count: 1, weight: 0.1 },
             { name: "m4a1", count: 1, weight: 4 },
             { name: "ots38_dual", count: 1, weight: 4.5 },
+        ],
+        tier_eye_stone: [
+            // { name: "splinter", count: 1, weight: 0.5 },
+            // { name: "endless_ammo", count: 1, weight: 0.75 },
+            { name: "m9", count: 1, weight: 1 },
+            { name: "ots38_dual", count: 1, weight: 1 },
+            { name: "painkiller", count: 1, weight: 1 },
+            { name: "m4a1", count: 1, weight: 1 },
+            { name: "m249", count: 1, weight: 1 },
+            { name: "awc", count: 1, weight: 1 },
+            { name: "pkp", count: 1, weight: 1 },
+            { name: "outfitGhillie", count: 1, weight: 1 },
         ],
         tier_ammo: [
             { name: "45acp", count: 60, weight: 3 },

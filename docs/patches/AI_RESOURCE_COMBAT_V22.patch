@@ -1,0 +1,1104 @@
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -120,7 +120,7 @@
+     type GasEscapeCircle,
+ } from "./bot/gasEscape";
+ import { SystemCpuMonitor, cpuThrottleScale, normalizeCpuLimits } from "./utils/systemCpu";
+-import { movementInputFromDirection } from "./bot/movementInput";
++import { movementInputFromDirection, stabilizeMovementDirection } from "./bot/movementInput";
+ import {
+     closeRangeCombatDirection,
+     coverGeometry,
+@@ -203,6 +203,13 @@
+     predictedAmmoDropAmount,
+     shouldHandleGeneralFlare,
+ } from "./bot/integratedLogicSpec";
++import {
++    emptyFlareDropDecision,
++    factionUnarmedCombatPolicy,
++    lootSourceAssociationRadius,
++    lootSourceMemoryMs,
++    type EmptyFlareDropState,
++} from "./bot/resourceCombatPolicy";
+ 
+ type DifficultyName = "normal" | "hard" | "pro";
+ type BotRole = "leader" | "assault" | "support" | "scout";
+@@ -474,40 +481,40 @@
+ 
+ const DIFFICULTIES: Record<DifficultyName, DifficultyProfile> = {
+     normal: {
+-        thinkIntervalMs: 105,
+-        reactionMs: 185,
+-        aimJitterRad: 0.058,
+-        leadFactor: 0.78,
+-        targetMemoryMs: 1000,
+-        combatScanRange: 68,
+-        shootConfidence: 0.8,
+-        strafePeriodMs: 690,
+-        retreatHealth: 30,
+-        healEnemyRange: 34,
++        thinkIntervalMs: 100,
++        reactionMs: 150,
++        aimJitterRad: 0.046,
++        leadFactor: 0.86,
++        targetMemoryMs: 1250,
++        combatScanRange: 76,
++        shootConfidence: 0.87,
++        strafePeriodMs: 620,
++        retreatHealth: 32,
++        healEnemyRange: 36,
+     },
+     hard: {
+-        thinkIntervalMs: 62,
+-        reactionMs: 92,
+-        aimJitterRad: 0.024,
+-        leadFactor: 0.96,
+-        targetMemoryMs: 1480,
+-        combatScanRange: 96,
+-        shootConfidence: 0.94,
+-        strafePeriodMs: 455,
+-        retreatHealth: 39,
+-        healEnemyRange: 44,
++        thinkIntervalMs: 60,
++        reactionMs: 75,
++        aimJitterRad: 0.018,
++        leadFactor: 1.01,
++        targetMemoryMs: 1750,
++        combatScanRange: 104,
++        shootConfidence: 0.965,
++        strafePeriodMs: 410,
++        retreatHealth: 40,
++        healEnemyRange: 46,
+     },
+     pro: {
+-        thinkIntervalMs: 38,
+-        reactionMs: 48,
+-        aimJitterRad: 0.009,
+-        leadFactor: 1.08,
+-        targetMemoryMs: 2100,
+-        combatScanRange: 118,
+-        shootConfidence: 0.985,
+-        strafePeriodMs: 320,
+-        retreatHealth: 46,
+-        healEnemyRange: 52,
++        thinkIntervalMs: 36,
++        reactionMs: 35,
++        aimJitterRad: 0.006,
++        leadFactor: 1.12,
++        targetMemoryMs: 2400,
++        combatScanRange: 126,
++        shootConfidence: 0.993,
++        strafePeriodMs: 285,
++        retreatHealth: 47,
++        healEnemyRange: 54,
+     },
+ };
+ 
+@@ -1326,6 +1333,7 @@
+     private containerBlockerNoProgressSwings = 0;
+     private containerBlockerLastSwingAt = 0;
+     private lastGeneralFlareAt = 0;
++    private emptyFlareDropState: EmptyFlareDropState = { key: "", retryAt: 0 };
+     private specialRoleAssignedAt = 0;
+     private leaderOpeningFlareDeadline = 0;
+     private leaderOpeningFlareDone = false;
+@@ -1402,6 +1410,9 @@
+     unstuckUntil = 0;
+     unstuckDirection = v2.create(1, 0);
+     lastCommandDirection = v2.create(1, 0);
++    private movementCommitDirection = v2.create(1, 0);
++    private movementCommitUntil = 0;
++    private movementCommitState: BotState = "waiting";
+     lastRecoveryDirection = v2.create(0, 0);
+     stuckRecoveryLevel = 0;
+     lastStuckRecoveryAt = 0;
+@@ -2223,15 +2234,25 @@
+             healItem && !healSafety.canHeal && healSafety.mustSeekCover
+                 ? this.chooseHealingCoverTarget(myPos, healingThreat, timestamp)
+                 : null;
+-        const urgentEquipmentLoot =
++        const priorityAirdropWeapon =
+             !outsideGas &&
+             airstrike === null &&
+             !usingMedicine &&
+             !reviving &&
+             !healItem &&
+             !shouldHide
+-                ? this.chooseUrgentEquipmentLoot(myPos, enemyDistance, timestamp)
++                ? this.chooseAirdropWeaponLoot(myPos, enemyDistance, timestamp)
+                 : null;
++        const urgentEquipmentLoot =
++            priorityAirdropWeapon ??
++            (!outsideGas &&
++            airstrike === null &&
++            !usingMedicine &&
++            !reviving &&
++            !healItem &&
++            !shouldHide
++                ? this.chooseUrgentEquipmentLoot(myPos, enemyDistance, timestamp)
++                : null);
+         const urgentVaultPanel =
+             !urgentEquipmentLoot &&
+             !outsideGas &&
+@@ -2263,6 +2284,20 @@
+             const candidates: BotIntentCandidate[] = [];
+             const underarmed = this.usableGunCount() === 0;
+             const underEquipped = this.isUnderEquipped();
++            const enemyWeaponDefForPolicy = enemy
++                ? gameDef(String(enemy.object.data.activeWeapon ?? ""))
++                : undefined;
++            const enemyMeleeReachForPolicy =
++                enemyWeaponDefForPolicy?.type === "melee"
++                    ? Number(enemyWeaponDefForPolicy.attack?.rad ?? 3.2) + 1.8
++                    : 0;
++            const unarmedFactionPolicy = factionUnarmedCombatPolicy({
++                factionMode: this.factionModeActive(),
++                usableGunCount: underarmed ? 0 : this.usableGunCount(),
++                enemyDistance: enemy?.distance ?? Infinity,
++                enemyUsesMelee: enemyWeaponDefForPolicy?.type === "melee",
++                enemyMeleeReach: enemyMeleeReachForPolicy,
++            });
+             const enemyReady = Boolean(
+                 enemy && timestamp - this.enemyAcquiredAt >= this.profile.reactionMs,
+             );
+@@ -2311,25 +2346,30 @@
+             if (ballisticReady && ballisticThreat) {
+                 const immediateThreat =
+                     ballisticThreat.closestApproach <= 1.6 && ballisticThreat.confidence >= 0.78;
+-                candidates.push({
+-                    kind: "counterfire",
+-                    state: "counterfire",
+-                    tier: immediateThreat ? IntentTier.emergency : IntentTier.combat,
+-                    utility:
+-                        860 +
+-                        ballisticThreat.confidence * 130 +
+-                        Math.min(85, ballisticThreat.damage * 1.8) -
+-                        Math.min(45, ballisticThreat.closestApproach * 9),
+-                    targetKey: `trajectory:${ballisticThreat.key}`,
+-                    critical: immediateThreat,
+-                    reason: "incoming-ballistic-trajectory",
+-                });
++                if (!unarmedFactionPolicy.prioritizeWeaponSearch || immediateThreat) {
++                    candidates.push({
++                        kind: "counterfire",
++                        state: "counterfire",
++                        tier: immediateThreat ? IntentTier.emergency : IntentTier.combat,
++                        utility:
++                            860 +
++                            ballisticThreat.confidence * 130 +
++                            Math.min(85, ballisticThreat.damage * 1.8) -
++                            Math.min(45, ballisticThreat.closestApproach * 9),
++                        targetKey: `trajectory:${ballisticThreat.key}`,
++                        critical: immediateThreat,
++                        reason: "incoming-ballistic-trajectory",
++                    });
++                }
+             }
+ 
+             // BR opening rule: a bot with no usable firearm is allowed to break
+             // from a distant enemy and secure a gun. Point-blank attackers still
+             // force combat/counterfire so the bot does not run past them blindly.
+-            if (urgentEquipmentLoot && (!underarmed || enemyDistance > 4.8)) {
++            if (
++                urgentEquipmentLoot &&
++                (!underarmed || !unarmedFactionPolicy.immediateMeleeThreat)
++            ) {
+                 candidates.push({
+                     kind: "urgent-loot",
+                     state: "loot",
+@@ -2342,7 +2382,11 @@
+                         urgentEquipmentLoot.distance * 0.8,
+                     targetKey: `loot:${urgentEquipmentLoot.object.__id}`,
+                     commitMs: underarmed ? 1250 : 800,
+-                    reason: underarmed ? "no-usable-gun" : "core-equipment-upgrade",
++                    reason: priorityAirdropWeapon
++                        ? "airdrop-weapon-priority"
++                        : underarmed
++                          ? "no-usable-gun"
++                          : "core-equipment-upgrade",
+                 });
+             }
+             if (urgentVaultPanel && enemyDistance > 7.5) {
+@@ -2376,7 +2420,7 @@
+                 });
+             }
+ 
+-            if (this.duelModeActive && enemy) {
++            if (this.duelModeActive && enemy && !unarmedFactionPolicy.prioritizeWeaponSearch) {
+                 candidates.push({
+                     kind: "duel-throwable",
+                     state: "combat",
+@@ -2389,7 +2433,11 @@
+                     reason: "duel-grenade-opportunity",
+                 });
+             }
+-            if (duelCoverShot && (!enemy || duelCoverShot.score >= enemy.score - 4)) {
++            if (
++                !unarmedFactionPolicy.prioritizeWeaponSearch &&
++                duelCoverShot &&
++                (!enemy || duelCoverShot.score >= enemy.score - 4)
++            ) {
+                 candidates.push({
+                     kind: "duel-cover-shot",
+                     state: "combat",
+@@ -2400,6 +2448,7 @@
+                 });
+             }
+             if (
++                !unarmedFactionPolicy.prioritizeWeaponSearch &&
+                 tacticalShot &&
+                 (!enemy ||
+                     tacticalShot.score >
+@@ -2422,15 +2471,9 @@
+                     reason: `environment-${tacticalShot.kind}`,
+                 });
+             }
+-            if (enemyReady && enemy) {
++            if (enemyReady && enemy && unarmedFactionPolicy.allowCombat) {
+                 const pointBlankUnarmed = underarmed && enemy.distance <= 4.8;
+-                const enemyWeaponDef = gameDef(String(enemy.object.data.activeWeapon ?? ""));
+-                const enemyMeleeRadius =
+-                    enemyWeaponDef?.type === "melee"
+-                        ? Number(enemyWeaponDef.attack?.rad ?? 3.2) + 1.8
+-                        : 0;
+-                const immediateMeleeThreat =
+-                    enemyMeleeRadius > 0 && enemy.distance <= enemyMeleeRadius;
++                const immediateMeleeThreat = unarmedFactionPolicy.immediateMeleeThreat;
+                 candidates.push({
+                     kind: "combat",
+                     state:
+@@ -2460,6 +2503,17 @@
+                           : "visible-enemy",
+                 });
+             }
++            if (unarmedFactionPolicy.prioritizeWeaponSearch) {
++                candidates.push({
++                    kind: "weapon-search",
++                    state: "explore",
++                    tier: IntentTier.resource,
++                    utility: 690 + (enemyDistance < 14 ? 65 : 0),
++                    targetKey: `weapon-search:${Math.round(this.exploreTarget.x)}:${Math.round(this.exploreTarget.y)}`,
++                    commitMs: 1750,
++                    reason: "faction-unarmed-find-firearm",
++                });
++            }
+             if (rescue && this.shouldAttemptRescue(rescue, enemyDistance, timestamp)) {
+                 candidates.push({
+                     kind: "revive",
+@@ -2474,7 +2528,7 @@
+                     reason: "assigned-revive",
+                 });
+             }
+-            if (hiddenAttack) {
++            if (hiddenAttack && !unarmedFactionPolicy.prioritizeWeaponSearch) {
+                 candidates.push({
+                     kind: "flush",
+                     state: "flush",
+@@ -2708,6 +2762,9 @@
+                 case "urgent-crate":
+                     if (urgentEquipmentCrate) this.breakCrate(myPos, urgentEquipmentCrate, timestamp);
+                     break;
++                case "weapon-search":
++                    this.searchForFactionWeapon(myPos, enemy, timestamp);
++                    break;
+                 case "duel-throwable":
+                     if (!enemy || !this.tryDuelThrowable(myPos, enemy, timestamp)) {
+                         if (enemy) this.combat(myPos, enemy, timestamp, factionOrder);
+@@ -4295,7 +4352,10 @@
+         timestamp: number,
+     ): boolean {
+         const flareSlot = this.findFlareWeaponSlot();
+-        if (flareSlot < 0) return false;
++        if (flareSlot < 0) {
++            this.emptyFlareDropState = { key: "", retryAt: 0 };
++            return false;
++        }
+         const flareType = String(this.local.weapons[flareSlot]?.type ?? "flare_gun");
+         const clipAmmo = Number(this.local.weapons[flareSlot]?.ammo ?? 0);
+         const reserveAmmo = Number(this.local.inventory.flare ?? 0);
+@@ -4311,12 +4371,24 @@
+         });
+ 
+         if (decision === "drop-empty") {
+-            if (timestamp - this.lastGeneralFlareAt < 900) return true;
++            const flareKey = `${flareSlot}:${flareType}`;
++            const dropPlan = emptyFlareDropDecision(
++                this.emptyFlareDropState,
++                flareKey,
++                timestamp,
++            );
++            this.emptyFlareDropState = dropPlan.next;
++            if (!dropPlan.shouldDrop) {
++                // The drop packet is already in flight. Do not keep stealing the
++                // entire decision tick and freezing the bot while waiting for the
++                // authoritative inventory update.
++                return false;
++            }
+             this.sendDropItem(flareType, flareSlot);
+             this.lastGeneralFlareAt = timestamp;
+-            this.output.movement = EMPTY_MOVEMENT();
+             return true;
+         }
++        this.emptyFlareDropState = { key: "", retryAt: 0 };
+         if (this.currentSpecialRole === "leader") return false;
+         if (
+             decision === "wait" &&
+@@ -4586,6 +4658,67 @@
+         return null;
+     }
+ 
++    private chooseAirdropWeaponLoot(
++        myPos: Vec2,
++        enemyDistance: number,
++        timestamp: number,
++    ): LootChoice | null {
++        if (this.duelModeActive || !this.modeStrategy.profile.lootEnabled) return null;
++        const noUsableGun = this.usableGunCount() === 0;
++        if (!noUsableGun && enemyDistance <= 12) return null;
++
++        const candidates: LootChoice[] = [];
++        for (const object of this.objectPool.values(ObjectType.Loot)) {
++            if (!this.isValidLoot(object)) continue;
++            if ((this.ignoredLootUntil.get(object.__id) ?? 0) > timestamp) continue;
++            const type = String(object.data.type ?? "");
++            const def = gameDef(type);
++            if (def?.type !== "gun") continue;
++            const source = this.inferLootSourceContext(object, timestamp);
++            if (!source.tier.includes("airdrop")) continue;
++            const plan = this.gunPickupPlan(type, Boolean(object.data.isPreloadedGun));
++            if (!plan) continue;
++
++            const pos = object.data.pos as Vec2;
++            const dist = distance(myPos, pos);
++            const allowedRange = noUsableGun ? 86 : 54;
++            if (dist > allowedRange) continue;
++            if (dist > 3.2 && !this.canNavigateLootPath(myPos, pos, object.__id, timestamp)) {
++                continue;
++            }
++            const score =
++                760 +
++                (noUsableGun ? 620 : 0) +
++                source.highValue * 0.52 +
++                plan.improvement * 3.1 +
++                (object.data.isPreloadedGun ? 70 : 0) +
++                this.scoreLoot(object, dist, timestamp) -
++                dist * 0.55;
++            if (score > 0) candidates.push({ object, distance: dist, score });
++        }
++
++        candidates.sort((a, b) => b.score - a.score);
++        for (const candidate of candidates) {
++            if (
++                !this.squad.reserveLoot(
++                    candidate.object.__id,
++                    this.id,
++                    candidate.score,
++                    timestamp,
++                )
++            ) {
++                continue;
++            }
++            if (this.currentLootId && this.currentLootId !== candidate.object.__id) {
++                this.squad.releaseLoot(this.currentLootId, this.id);
++            }
++            this.currentLootId = candidate.object.__id;
++            this.lootLockUntil = timestamp + (noUsableGun ? 6200 : 4200);
++            return candidate;
++        }
++        return null;
++    }
++
+     private followFactionOrder(
+         myPos: Vec2,
+         order: FactionOrder,
+@@ -6070,11 +6203,12 @@
+                 const enemyLateral = dot(enemyVelocity, perpendicular(toEnemy));
+                 if (Math.abs(enemyLateral) > 0.8) {
+                     this.closeDodgeSign = enemyLateral > 0 ? -1 : 1;
+-                } else if (timestamp - this.lastDamagedAt < 620 || Math.random() < 0.42) {
++                } else if (timestamp - this.lastDamagedAt < 620 || Math.random() < 0.24) {
+                     this.closeDodgeSign *= -1;
+                 }
+-                const baseHold = this.difficulty === "pro" ? 250 : this.difficulty === "hard" ? 330 : 430;
+-                this.closeDodgeUntil = timestamp + baseHold + util.random(-55, 95);
++                const baseHold =
++                    this.difficulty === "pro" ? 380 : this.difficulty === "hard" ? 470 : 560;
++                this.closeDodgeUntil = timestamp + baseHold + util.random(-45, 85);
+             }
+             const closeDirection = closeRangeCombatDirection({
+                 myPos,
+@@ -7896,17 +8030,19 @@
+     }
+ 
+     private rememberLootSource(pos: Vec2, objectType: string, timestamp: number): void {
++        const source = this.mapNavigator.classifyLootSource(objectType, pos);
++        const expiresAt = timestamp + lootSourceMemoryMs(source.tier);
+         const existing = this.recentLootSources.find(
+             (entry) => entry.objectType === objectType && distance(entry.pos, pos) < 3,
+         );
+         if (existing) {
+             existing.pos = v2.create(pos.x, pos.y);
+-            existing.expiresAt = timestamp + 4200;
++            existing.expiresAt = expiresAt;
+         } else {
+             this.recentLootSources.push({
+                 pos: v2.create(pos.x, pos.y),
+                 objectType,
+-                expiresAt: timestamp + 4200,
++                expiresAt,
+             });
+         }
+         while (this.recentLootSources.length > 24) this.recentLootSources.shift();
+@@ -7935,8 +8071,8 @@
+         }
+         for (const remembered of this.recentLootSources) {
+             const dist = distance(pos, remembered.pos);
+-            if (dist > 14) continue;
+             const source = this.mapNavigator.classifyLootSource(remembered.objectType, remembered.pos);
++            if (dist > lootSourceAssociationRadius(source.tier)) continue;
+             const adjusted = dist - source.highValue * 0.022;
+             if (adjusted < bestDistance) {
+                 bestDistance = adjusted;
+@@ -8060,6 +8196,7 @@
+             if (expiry <= timestamp) this.servedAmmoRequests.delete(key);
+         }
+         if (
++            (this.factionModeActive() && this.usableGunCount() === 0) ||
+             outsideGas ||
+             underAirstrike ||
+             usingMedicine ||
+@@ -9565,6 +9702,60 @@
+         );
+     }
+ 
++    private searchForFactionWeapon(
++        myPos: Vec2,
++        enemy: TargetChoice | null,
++        timestamp: number,
++    ): void {
++        if (
++            timestamp >= this.exploreTargetUntil ||
++            distance(myPos, this.exploreTarget) < 5 ||
++            this.isPointOutsideMap(this.exploreTarget)
++        ) {
++            this.chooseExploreTarget(false, 2.25);
++        }
++
++        let direction = config.mapAi
++            ? this.mapNavigator.adjustStrategicDirection(
++                  myPos,
++                  this.exploreTarget,
++                  this.currentMapPhase(),
++                  this.role,
++                  timestamp,
++              )
++            : normalize(sub(this.exploreTarget, myPos));
++        if (enemy && enemy.distance < 22) {
++            const enemyPos = enemy.object.data.pos as Vec2;
++            const away = normalize(sub(myPos, enemyPos));
++            const dangerWeight = clamp((22 - enemy.distance) / 14, 0.35, 1.15);
++            direction = normalize(add(mul(direction, 1.35), mul(away, dangerWeight)));
++            this.output.aimDir = normalize(sub(enemyPos, myPos));
++        } else {
++            this.output.aimDir = normalize(sub(this.exploreTarget, myPos));
++        }
++
++        if (this.local.curWeapIdx !== GameConfig.WeaponSlot.Melee) {
++            this.equipSlot(GameConfig.WeaponSlot.Melee);
++        }
++        const committedDirection = this.applyAdrenalineMovement(
++            myPos,
++            direction,
++            this.exploreTarget,
++            "explore",
++            timestamp,
++            enemy !== null,
++        );
++        this.moveDirection(
++            this.steerStrategicDirection(
++                myPos,
++                committedDirection,
++                this.exploreTarget,
++                timestamp,
++                0x50f,
++            ),
++        );
++    }
++
+     private explore(myPos: Vec2, timestamp: number): void {
+         if (
+             timestamp >= this.exploreTargetUntil ||
+@@ -9603,7 +9794,7 @@
+         );
+     }
+ 
+-    private chooseExploreTarget(forceCenter: boolean): void {
++    private chooseExploreTarget(forceCenter: boolean, resourcePriority = 0): void {
+         const circle = this.currentGasCircle();
+         if (forceCenter) {
+             this.exploreTarget = v2.create(this.mapWidth / 2, this.mapHeight / 2);
+@@ -9617,6 +9808,7 @@
+                 circle?.radius ?? null,
+                 now(),
+                 this.squadSlot,
++                resourcePriority,
+             );
+         } else {
+             const margin = 18;
+@@ -9635,7 +9827,11 @@
+                 );
+             }
+         }
+-        this.exploreTargetUntil = now() + util.randomInt(4500, 11000);
++        this.exploreTargetUntil =
++            now() +
++            (resourcePriority > 0
++                ? util.randomInt(7000, 12000)
++                : util.randomInt(4500, 11000));
+         if (config.mapDebug) {
+             console.log(
+                 `[bot ${this.id}] map target=${this.mapNavigator.nearestTacticalLabel(this.exploreTarget)} ` +
+@@ -10281,7 +10477,40 @@
+     }
+ 
+     private moveDirection(direction: Vec2): void {
+-        this.output.movement = movementInputFromDirection(direction);
++        const timestamp = now();
++        const emergencyMovement =
++            this.state === "gas" ||
++            this.state === "airstrike" ||
++            this.state === "retreat" ||
++            this.state === "counterfire" ||
++            timestamp < this.unstuckUntil;
++        if (this.movementCommitState !== this.state) {
++            this.movementCommitState = this.state;
++            this.movementCommitUntil = 0;
++        }
++        const holdMs =
++            this.state === "combat"
++                ? 260
++                : this.state === "loot" || this.state === "break-crate"
++                  ? 460
++                  : this.state === "explore"
++                    ? 520
++                    : this.state === "regroup" || this.state === "cover"
++                      ? 420
++                      : 300;
++        const stable = stabilizeMovementDirection(
++            direction,
++            this.movementCommitDirection,
++            {
++                timestamp,
++                lockUntil: this.movementCommitUntil,
++                holdMs,
++                allowImmediate: emergencyMovement,
++            },
++        );
++        this.movementCommitDirection = v2.create(stable.direction.x, stable.direction.y);
++        this.movementCommitUntil = stable.lockUntil;
++        this.output.movement = movementInputFromDirection(stable.direction);
+     }
+ 
+     private isMoving(): boolean {
+@@ -10690,10 +10919,10 @@
+     }
+ 
+     private aimTurnRateRadians(reloading: boolean): number {
+-        let degreesPerSecond = this.state === "combat" ? 500 : 330;
+-        if (reloading) degreesPerSecond = 390;
+-        if (this.duelModeActive) degreesPerSecond += 70;
+-        if (this.profile.reactionMs <= 100) degreesPerSecond += 55;
++        let degreesPerSecond = this.state === "combat" ? 545 : 350;
++        if (reloading) degreesPerSecond = 420;
++        if (this.duelModeActive) degreesPerSecond += 75;
++        if (this.profile.reactionMs <= 100) degreesPerSecond += 65;
+         else if (this.profile.reactionMs >= 280) degreesPerSecond -= 35;
+ 
+         const myPos = this.getSelf()?.data.pos as Vec2 | undefined;
+@@ -10701,7 +10930,7 @@
+         if (myPos && memory && distance(myPos, memory.pos) <= 8) {
+             degreesPerSecond += 120;
+         }
+-        return (clamp(degreesPerSecond, 260, 650) * Math.PI) / 180;
++        return (clamp(degreesPerSecond, 280, 720) * Math.PI) / 180;
+     }
+ 
+     private updateTransmittedAim(
+--- a/server/src/game/objects/player.ts
++++ b/server/src/game/objects/player.ts
+@@ -36,6 +36,10 @@
+ import type { Game, JoinTokenData } from "../game";
+ import { Group } from "../group";
+ import { Team } from "../team";
++import {
++    isAmmoRequestEmote,
++    shouldDeliverTeamEmote,
++} from "../teamEmoteVisibility";
+ import { WeaponManager, throwableList } from "../weaponManager";
+ import { BaseGameObject, type DamageParams, type GameObject } from "./gameObject";
+ import type { Loot } from "./loot";
+@@ -2018,20 +2022,25 @@
+                 | Player
+                 | undefined;
+             if (emotePlayer) {
+-                const seeNormalEmote =
+-                    !emote.isPing && player.visibleObjects.has(emotePlayer);
+-
+                 const partOfGroup = emotePlayer.groupId === player.groupId;
+-
+-                if ((GameObjectDefs[emote.type] as EmoteDef)?.teamOnly && !partOfGroup) {
+-                    continue;
+-                }
+-
++                const sameFaction =
++                    game.map.factionMode &&
++                    emotePlayer.teamId > 0 &&
++                    emotePlayer.teamId === player.teamId;
+                 const isTeamLeader =
+-                    emotePlayer.role == "leader" && emotePlayer.teamId === player.teamId;
+-                const seePing =
+-                    (emote.isPing || emote.itemType) && (partOfGroup || isTeamLeader);
+-                if (seeNormalEmote || seePing) {
++                    emotePlayer.role == "leader" && sameFaction;
++                if (
++                    shouldDeliverTeamEmote({
++                        type: emote.type,
++                        teamOnly: Boolean((GameObjectDefs[emote.type] as EmoteDef)?.teamOnly),
++                        isPing: emote.isPing,
++                        hasItemType: Boolean(emote.itemType),
++                        senderVisible: player.visibleObjects.has(emotePlayer),
++                        sameGroup: partOfGroup,
++                        sameFaction,
++                        senderIsFactionLeader: isTeamLeader,
++                    })
++                ) {
+                     updateMsg.emotes.push(emote);
+                 }
+             } else if (emote.playerId === 0 && emote.isPing) {
+@@ -3967,11 +3976,16 @@
+             }
+         }
+ 
++        const activeWeaponDef = GameObjectDefs[this.activeWeapon] as GunDef | undefined;
++        const requestedAmmoType = isAmmoRequestEmote(emoteMsg.type)
++            ? String(activeWeaponDef?.ammo ?? "")
++            : "";
+         this.game.playerBarn.addEmote(
+             this.__id,
+             emoteMsg.pos,
+             emoteMsg.type,
+             emoteMsg.isPing,
++            requestedAmmoType,
+         );
+     }
+ 
+--- a/server/src/bot/movementInput.ts
++++ b/server/src/bot/movementInput.ts
+@@ -29,3 +29,67 @@
+         down: ny < -deadzone,
+     };
+ }
++
++export interface MovementStabilityOptions {
++    timestamp: number;
++    lockUntil: number;
++    holdMs: number;
++    allowImmediate: boolean;
++    deadzone?: number;
++}
++
++export interface StableMovementDirection {
++    direction: { x: number; y: number };
++    lockUntil: number;
++}
++
++const normalizedDirection = (
++    direction: { x: number; y: number },
++    fallback: { x: number; y: number },
++): { x: number; y: number } => {
++    const x = Number(direction.x);
++    const y = Number(direction.y);
++    const length = Math.hypot(x, y);
++    if (!Number.isFinite(length) || length <= 1e-6) return { ...fallback };
++    return { x: x / length, y: y / length };
++};
++
++/**
++ * Holds opposing keyboard axes for a short commitment window. This removes the
++ * visible left/right shuffle caused by tiny score or path changes without
++ * delaying gas, airstrike, retreat, or unstuck movement.
++ */
++export function stabilizeMovementDirection(
++    desiredDirection: { x: number; y: number },
++    committedDirection: { x: number; y: number },
++    options: MovementStabilityOptions,
++): StableMovementDirection {
++    const deadzone = options.deadzone ?? 0.18;
++    const committed = normalizedDirection(committedDirection, { x: 1, y: 0 });
++    const desired = normalizedDirection(desiredDirection, committed);
++    if (options.allowImmediate || options.timestamp >= options.lockUntil) {
++        return {
++            direction: desired,
++            lockUntil: options.timestamp + Math.max(0, options.holdMs),
++        };
++    }
++
++    const oldInput = movementInputFromDirection(committed, deadzone);
++    const nextInput = movementInputFromDirection(desired, deadzone);
++    const horizontalFlip =
++        (oldInput.left && nextInput.right) || (oldInput.right && nextInput.left);
++    const verticalFlip =
++        (oldInput.up && nextInput.down) || (oldInput.down && nextInput.up);
++    if (!horizontalFlip && !verticalFlip) {
++        return { direction: desired, lockUntil: options.lockUntil };
++    }
++
++    const stabilized = {
++        x: horizontalFlip ? committed.x : desired.x,
++        y: verticalFlip ? committed.y : desired.y,
++    };
++    return {
++        direction: normalizedDirection(stabilized, committed),
++        lockUntil: options.lockUntil,
++    };
++}
+--- a/server/src/bot/decisionBrain.ts
++++ b/server/src/bot/decisionBrain.ts
+@@ -31,6 +31,7 @@
+     | "urgent-loot"
+     | "vault-panel"
+     | "urgent-crate"
++    | "weapon-search"
+     | "duel-throwable"
+     | "duel-cover-shot"
+     | "tactical-shot"
+@@ -102,16 +103,17 @@
+     "urgent-loot": 900,
+     "vault-panel": 1050,
+     "urgent-crate": 1200,
++    "weapon-search": 1650,
+     "duel-throwable": 520,
+     "duel-cover-shot": 380,
+     "tactical-shot": 320,
+-    combat: 340,
+-    counterfire: 260,
++    combat: 470,
++    counterfire: 340,
+     flush: 500,
+     hide: 720,
+     "cover-rescue": 620,
+     "faction-order": 700,
+-    formation: 620,
++    formation: 760,
+     "duel-position": 720,
+     "late-ring": 800,
+     loot: 760,
+--- a/server/src/bot/mapStrategy.ts
++++ b/server/src/bot/mapStrategy.ts
+@@ -1405,6 +1405,7 @@
+         gasRadius: number | null,
+         timestamp: number,
+         squadSlot: number,
++        resourcePriority = 0,
+     ): Vec2 {
+         this.pruneVisited(timestamp);
+         const candidates = this.data.tacticalPoints.filter((point) => {
+@@ -1421,6 +1422,11 @@
+             if (dist < 4) continue;
+             let score = point.score - dist * (phase === "early" ? 0.34 : 0.52);
+             score += this.pointKindBias(point.kind, role, phase);
++            if (resourcePriority > 0) {
++                if (point.kind === "resource") score += 115 * resourcePriority;
++                else if (point.kind === "spawn") score += 52 * resourcePriority;
++                else if (point.kind === "building") score += 34 * resourcePriority;
++            }
+             if (phase === "early" && point.kind === "spawn") {
+                 // Actual `from` is the player's received spawn position. Prefer
+                 // a nearby dense cluster, but do not cross half the map for one.
+--- a/server/package.json
++++ b/server/package.json
+@@ -36,7 +36,8 @@
+         "test:spectator-difficulty": "node -r ts-node/register src/spectatorDifficultySmokeTest.ts",
+         "test:cpu-load": "node -r ts-node/register src/cpuLoadControlSmokeTest.ts",
+         "test:gas-escape": "node -r ts-node/register src/gasEscapeSmokeTest.ts",
+-        "test:combat-tactics": "node -r ts-node/register src/combatTacticsSmokeTest.ts"
++        "test:combat-tactics": "node -r ts-node/register src/combatTacticsSmokeTest.ts",
++        "test:v22-resource-combat": "node -r ts-node/register src/v22ResourceCombatSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+--- /dev/null
++++ b/server/src/bot/resourceCombatPolicy.ts
+@@ -0,0 +1,56 @@
++export interface FactionUnarmedCombatInput {
++    factionMode: boolean;
++    usableGunCount: number;
++    enemyDistance: number;
++    enemyUsesMelee: boolean;
++    enemyMeleeReach: number;
++}
++
++/**
++ * In faction mode an AI without a usable firearm should rotate to weapons,
++ * not volunteer for a fist fight. Only an attacker already inside immediate
++ * melee range is allowed to hard-interrupt the weapon search.
++ */
++export function factionUnarmedCombatPolicy(input: FactionUnarmedCombatInput): {
++    prioritizeWeaponSearch: boolean;
++    immediateMeleeThreat: boolean;
++    allowCombat: boolean;
++} {
++    const prioritizeWeaponSearch = input.factionMode && input.usableGunCount <= 0;
++    const immediateMeleeThreat =
++        input.enemyUsesMelee &&
++        input.enemyMeleeReach > 0 &&
++        input.enemyDistance <= input.enemyMeleeReach;
++    return {
++        prioritizeWeaponSearch,
++        immediateMeleeThreat,
++        allowCombat: !prioritizeWeaponSearch || immediateMeleeThreat,
++    };
++}
++
++export const lootSourceMemoryMs = (sourceTier: string): number =>
++    sourceTier.includes("airdrop") ? 14_000 : 5_200;
++
++export const lootSourceAssociationRadius = (sourceTier: string): number =>
++    sourceTier.includes("airdrop") ? 24 : 14;
++
++export interface EmptyFlareDropState {
++    key: string;
++    retryAt: number;
++}
++
++/** Prevents the empty flare gun branch from stalling movement every AI tick. */
++export function emptyFlareDropDecision(
++    current: EmptyFlareDropState,
++    flareKey: string,
++    timestamp: number,
++): { shouldDrop: boolean; next: EmptyFlareDropState } {
++    if (!flareKey) return { shouldDrop: false, next: { key: "", retryAt: 0 } };
++    if (current.key === flareKey && timestamp < current.retryAt) {
++        return { shouldDrop: false, next: current };
++    }
++    return {
++        shouldDrop: true,
++        next: { key: flareKey, retryAt: timestamp + 2200 },
++    };
++}
+--- /dev/null
++++ b/server/src/game/teamEmoteVisibility.ts
+@@ -0,0 +1,42 @@
++const AMMO_REQUEST_EMOTES = new Set([
++    "emote_ammo",
++    "emote_ammo9mm",
++    "emote_ammo12gauge",
++    "emote_ammo762mm",
++    "emote_ammo556mm",
++    "emote_ammo50ae",
++    "emote_ammo308sub",
++    "emote_ammoflare",
++    "emote_ammo45acp",
++]);
++
++export const isAmmoRequestEmote = (type: string): boolean =>
++    AMMO_REQUEST_EMOTES.has(String(type ?? ""));
++
++export interface TeamEmoteVisibilityInput {
++    type: string;
++    teamOnly: boolean;
++    isPing: boolean;
++    hasItemType: boolean;
++    senderVisible: boolean;
++    sameGroup: boolean;
++    sameFaction: boolean;
++    senderIsFactionLeader: boolean;
++}
++
++/**
++ * Team-only emotes normally stay inside the four-player group. Ammo requests
++ * are different in 50v50: every same-faction AI donor must be able to receive
++ * the request even when the human belongs to another squad or is off-screen.
++ */
++export function shouldDeliverTeamEmote(input: TeamEmoteVisibilityInput): boolean {
++    const factionAmmoRequest = input.sameFaction && isAmmoRequestEmote(input.type);
++    if (input.teamOnly && !input.sameGroup && !factionAmmoRequest) return false;
++
++    const seeNormalEmote =
++        !input.isPing && (input.senderVisible || factionAmmoRequest);
++    const seePing =
++        (input.isPing || input.hasItemType) &&
++        (input.sameGroup || input.senderIsFactionLeader || factionAmmoRequest);
++    return seeNormalEmote || seePing;
++}
+--- /dev/null
++++ b/server/src/v22ResourceCombatSmokeTest.ts
+@@ -0,0 +1,87 @@
++import assert from "assert";
++
++import {
++    emptyFlareDropDecision,
++    factionUnarmedCombatPolicy,
++    lootSourceAssociationRadius,
++    lootSourceMemoryMs,
++} from "./bot/resourceCombatPolicy";
++import { stabilizeMovementDirection } from "./bot/movementInput";
++import {
++    isAmmoRequestEmote,
++    shouldDeliverTeamEmote,
++} from "./game/teamEmoteVisibility";
++
++assert.equal(isAmmoRequestEmote("emote_ammo556mm"), true);
++assert.equal(isAmmoRequestEmote("emote_medical"), false);
++assert.equal(
++    shouldDeliverTeamEmote({
++        type: "emote_ammo",
++        teamOnly: true,
++        isPing: false,
++        hasItemType: true,
++        senderVisible: false,
++        sameGroup: false,
++        sameFaction: true,
++        senderIsFactionLeader: false,
++    }),
++    true,
++);
++assert.equal(
++    shouldDeliverTeamEmote({
++        type: "emote_medical",
++        teamOnly: true,
++        isPing: false,
++        hasItemType: false,
++        senderVisible: true,
++        sameGroup: false,
++        sameFaction: true,
++        senderIsFactionLeader: false,
++    }),
++    false,
++);
++
++let policy = factionUnarmedCombatPolicy({
++    factionMode: true,
++    usableGunCount: 0,
++    enemyDistance: 12,
++    enemyUsesMelee: false,
++    enemyMeleeReach: 0,
++});
++assert.equal(policy.prioritizeWeaponSearch, true);
++assert.equal(policy.allowCombat, false);
++policy = factionUnarmedCombatPolicy({
++    factionMode: true,
++    usableGunCount: 0,
++    enemyDistance: 3,
++    enemyUsesMelee: true,
++    enemyMeleeReach: 4.5,
++});
++assert.equal(policy.immediateMeleeThreat, true);
++assert.equal(policy.allowCombat, true);
++
++assert.equal(lootSourceMemoryMs("military-airdrop"), 14_000);
++assert.equal(lootSourceAssociationRadius("military-airdrop"), 24);
++assert.equal(lootSourceMemoryMs("crate"), 5_200);
++
++let flare = emptyFlareDropDecision({ key: "", retryAt: 0 }, "1:flare_gun", 1000);
++assert.equal(flare.shouldDrop, true);
++flare = emptyFlareDropDecision(flare.next, "1:flare_gun", 1500);
++assert.equal(flare.shouldDrop, false);
++flare = emptyFlareDropDecision(flare.next, "1:flare_gun", 3300);
++assert.equal(flare.shouldDrop, true);
++
++const held = stabilizeMovementDirection(
++    { x: 1, y: 0.1 },
++    { x: -1, y: 0.1 },
++    { timestamp: 1200, lockUntil: 1400, holdMs: 300, allowImmediate: false },
++);
++assert.ok(held.direction.x < 0, "horizontal direction should remain committed during lock");
++const emergency = stabilizeMovementDirection(
++    { x: 1, y: 0 },
++    { x: -1, y: 0 },
++    { timestamp: 1200, lockUntil: 1400, holdMs: 300, allowImmediate: true },
++);
++assert.ok(emergency.direction.x > 0, "emergency movement should bypass hysteresis");
++
++console.log("V22 resource/combat smoke test passed");
+--- /dev/null
++++ b/AI_RESOURCE_COMBAT_V22.md
+@@ -0,0 +1,52 @@
++# AI Resource & Combat V22
++
++本版本基于 V21 的决策脑、地图导航、空投、弹药协作和战斗模块继续修改，重点修复 50v50 资源优先级与 AI 抖动问题。
++
++## 修改内容
++
++### 1. 50v50 无枪 AI 不再主动参战
++- 新增 `weapon-search` 决策意图。
++- 同阵营模式下，主副武器均无可用枪械时，AI 优先搜索资源点、建筑、出生资源区、地面枪和可破坏容器。
++- 普通可见敌人、盲射、环境射击和普通弹道反击不再打断找枪。
++- 仅保留两类生存硬中断：已经进入近战攻击半径的敌人、即将命中的高置信度弹道。
++- 无枪 AI 不承担弹药捐赠任务，避免在获得武器前绕路。
++
++### 2. 空投爆出的枪优先拾取
++- 新增独立空投枪械扫描，不受普通 50v50 阵营命令的 `allowLoot` 限制。
++- 空投来源记忆由 4.2 秒延长到 14 秒。
++- 空投散落物与来源的关联半径由 14 扩大到 24，适配爆炸后散落距离。
++- 无枪 AI 搜索范围提高到 86；已有武器时只在安全距离内进行明确升级。
++- 对预装子弹枪、空槽填充和明显武器升级增加优先权，并延长目标锁定，减少换目标。
++
++### 3. C + 右键弹药请求可被 50v50 AI 接收
++- 客户端原有 C + 右键队伍指令轮盘会根据当前武器生成对应口径的弹药请求表情。
++- 修复服务端只向同四人小队广播 `teamOnly` 表情的问题。
++- 现在弹药请求会发送给整个同阵营 AI，即使请求者与 AI 不属于同一个四人小队或不在彼此视野中。
++- 通用弹药表情会附带当前武器口径，避免 AI 无法看到请求者对象时推断失败。
++- 医疗等其他队伍表情仍保持四人小队限制，不会产生 50 人广播噪声。
++
++### 4. 空信号枪丢弃逻辑
++- 空信号枪只发送一次丢弃请求，并等待 2.2 秒的权威背包更新。
++- 等待期间不再每个思考周期占用整个 AI 决策，避免停住或重复丢弃。
++- 武器消失、重新获得信号弹或状态变化后自动重置。
++
++### 5. 减少左右晃动
++- 新增移动方向短时承诺层，对同一状态下的左右/上下反向按键翻转进行抑制。
++- 战斗、拾取、开箱、探索和编队使用不同保持时间。
++- 毒圈、空袭、撤退、弹道闪避和卡住恢复可立即绕过保持，不牺牲紧急反应。
++- 近距离闪避换边概率降低，单侧保持时间延长。
++- 战斗、反击和编队决策锁定时间增加，减少相邻帧在多个目标间反复切换。
++
++### 6. 全难度战斗加强
++- Normal / Hard / Pro 均缩短反应时间、降低瞄准抖动、提高提前量、延长目标记忆并扩大扫描范围。
++- 提高战斗瞄准最大转向速度和近距离跟枪能力。
++- 调整扫射周期与撤退阈值，使 AI 更积极但仍保留治疗和撤退逻辑。
++
++## 使用弹药请求
++
++1. 手持需要弹药的枪。
++2. 按住 `C` 并按鼠标右键打开队伍指令轮盘。
++3. 选择左上方弹药图标并释放。
++4. 安全范围内、拥有可分享弹药的同阵营 AI 会接近玩家并丢出对应口径弹药。
++
++AI 不会在毒圈、空袭、治疗/救援、近距离交战或自身无枪时执行捐赠。
+--- /dev/null
++++ b/AI_RESOURCE_COMBAT_V22_VALIDATION.txt
+@@ -0,0 +1,23 @@
++AI Resource & Combat V22 validation
++===================================
++
++PASS  server TypeScript full build: npm run build
++PASS  V22 resource/combat smoke test
++PASS  integrated logic specification smoke test
++PASS  smart bot brain smoke test
++PASS  faction airdrop/container smoke test
++PASS  aim control smoke test
++PASS  combat tactics smoke test
++PASS  all-mode AI smoke test: 47 playlists / 17 maps
++PASS  faction auto-fill smoke test
++PASS  loot strategy smoke test
++PASS  navigation recovery smoke test
++PASS  opening resource sweep smoke test
++PASS  loot safety smoke test
++
++Client build note:
++- `tsc --noEmit` completed before Vite started.
++- Vite bundle could not run because the uploaded client/node_modules is missing
++  `@rollup/rollup-linux-x64-gnu`, an npm optional dependency for this Linux
++  validation environment. No client source change was required for V22; the
++  existing C + right-click ammo request UI is retained.

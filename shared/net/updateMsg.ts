@@ -18,6 +18,11 @@ function serializeActivePlayer(s: BitStream, data: LocalDataWithDirty) {
     s.writeBoolean(data.zoomDirty);
     if (data.zoomDirty) s.writeUint8(data.zoom);
 
+    // Indoor state affects outside-only tools such as the flare gun. Send the
+    // authoritative server value every update so bots never have to infer it
+    // from coarse roof geometry.
+    s.writeBoolean(data.indoors);
+
     s.writeBoolean(data.actionDirty);
     if (data.actionDirty) {
         s.writeFloat(data.action.time, 0, Constants.ActionMaxDuration, 8);
@@ -31,7 +36,7 @@ function serializeActivePlayer(s: BitStream, data: LocalDataWithDirty) {
         for (const key of Object.keys(GameConfig.bagSizes)) {
             const hasItem = data.inventory[key] > 0;
             s.writeBoolean(hasItem);
-            if (hasItem) s.writeBits(data.inventory[key], 9);
+            if (hasItem) s.writeBits(data.inventory[key], 12);
         }
     }
 
@@ -49,6 +54,13 @@ function serializeActivePlayer(s: BitStream, data: LocalDataWithDirty) {
         s.writeUint8(data.spectatorCount);
     }
 
+    // Sandevistan implant state: active flag, remaining active time and
+    // remaining cooldown are always written so the HUD can show both the
+    // effect window and the readiness ring without extra dirty flags.
+    s.writeBoolean(data.sandevistanActive);
+    s.writeFloat(data.sandevistanRemaining, 0, GameConfig.player.sandevistan.duration, 8);
+    s.writeFloat(data.sandevistanCooldown, 0, 60, 8);
+
     s.writeAlignToNextByte();
 }
 
@@ -65,6 +77,7 @@ function deserializeActivePlayer(s: BitStream, data: LocalDataWithDirty) {
     if (data.zoomDirty) {
         data.zoom = s.readUint8();
     }
+    data.indoors = s.readBoolean();
     data.actionDirty = s.readBoolean();
     if (data.actionDirty) {
         data.action = {} as Action;
@@ -81,7 +94,7 @@ function deserializeActivePlayer(s: BitStream, data: LocalDataWithDirty) {
             const item = inventoryKeys[i];
             let count = 0;
             if (s.readBoolean()) {
-                count = s.readBits(9);
+                count = s.readBits(12);
             }
             data.inventory[item] = count;
         }
@@ -101,6 +114,9 @@ function deserializeActivePlayer(s: BitStream, data: LocalDataWithDirty) {
     if (data.spectatorCountDirty) {
         data.spectatorCount = s.readUint8();
     }
+    data.sandevistanActive = s.readBoolean();
+    data.sandevistanRemaining = s.readFloat(0, GameConfig.player.sandevistan.duration, 8);
+    data.sandevistanCooldown = s.readFloat(0, 60, 8);
     s.readAlignToNextByte();
 }
 
@@ -169,6 +185,8 @@ export interface PlayerInfo {
     teamId: number;
     groupId: number;
     name: string;
+    /** True when the contestant is a server-controlled bot; lets teammates prioritize humans. */
+    isBot: boolean;
 
     loadout: {
         heal: string;
@@ -176,11 +194,12 @@ export interface PlayerInfo {
     };
 }
 
-function serializePlayerInfo(s: BitStream, data: PlayerInfo) {
+export function serializePlayerInfo(s: BitStream, data: PlayerInfo) {
     s.writeUint16(data.playerId);
     s.writeUint8(data.teamId);
     s.writeUint8(data.groupId);
     s.writeString(data.name);
+    s.writeBoolean(data.isBot);
 
     s.writeGameType(data.loadout.heal);
     s.writeGameType(data.loadout.boost);
@@ -188,11 +207,12 @@ function serializePlayerInfo(s: BitStream, data: PlayerInfo) {
     s.writeAlignToNextByte();
 }
 
-function deserializePlayerInfo(s: BitStream, data: PlayerInfo) {
+export function deserializePlayerInfo(s: BitStream, data: PlayerInfo) {
     data.playerId = s.readUint16();
     data.teamId = s.readUint8();
     data.groupId = s.readUint8();
     data.name = s.readString();
+    data.isBot = s.readBoolean();
     data.loadout = {} as PlayerInfo["loadout"];
     data.loadout.heal = s.readGameType();
     data.loadout.boost = s.readGameType();
@@ -813,6 +833,7 @@ export interface Action {
 export interface LocalData {
     health: number;
     zoom: number;
+    indoors: boolean;
     boost: number;
     scope: string;
     curWeapIdx: number;
@@ -837,6 +858,9 @@ export interface LocalDataWithDirty extends LocalData {
     inventoryDirty: boolean;
     weapsDirty: boolean;
     spectatorCountDirty: boolean;
+    sandevistanActive: boolean;
+    sandevistanRemaining: number;
+    sandevistanCooldown: number;
 }
 
 // the non-optional properties are used by both server and client

@@ -1,0 +1,68 @@
+V35 VALIDATION
+================
+
+Server TypeScript build: PASS
+Client TypeScript noEmit: PASS
+Admin source JavaScript syntax: PASS
+Admin dist JavaScript syntax: PASS
+Server tests: 50/50 PASS
+
+Test list:
+PASS  test:duel
+PASS  test:duel-lobby
+PASS  test:admin
+PASS  test:ipv6
+PASS  test:potato
+PASS  test:bot-input
+PASS  test:duel-vision
+PASS  test:all-modes
+PASS  test:spectator-autofill
+PASS  test:loot-ai
+PASS  test:bot-brain
+PASS  test:faction-autofill
+PASS  test:bot-combat-heal
+PASS  test:resource-sweep
+PASS  test:loot-safety
+PASS  test:aim-control
+PASS  test:special-roles
+PASS  test:gameplay-roles
+PASS  test:integrated-spec
+PASS  test:faction-airdrop-container
+PASS  test:admin-auth
+PASS  test:bot-autofill-config
+PASS  test:navigation-recovery
+PASS  test:room-lifecycle
+PASS  test:revive-coordination
+PASS  test:spectator-difficulty
+PASS  test:cpu-load
+PASS  test:gas-escape
+PASS  test:combat-tactics
+PASS  test:v22-resource-combat
+PASS  test:forbidden-ai
+PASS  test:forbidden-context
+PASS  test:airstrike-safety
+PASS  test:spud-gun
+PASS  test:ai-recorder
+PASS  test:collective-sim
+PASS  test:mode-isolation
+PASS  test:v26-sim
+PASS  test:v27-sim
+PASS  test:spectator-supervisor
+PASS  test:v28-spectator-sim
+PASS  test:aim-training
+PASS  test:v29-aim-sim
+PASS  test:dual-switch
+PASS  test:v30-dual-switch-sim
+PASS  test:v31-ui-cover
+PASS  test:v32-combat-nav-airdrop
+PASS  test:v33-aim-brokenarrow
+PASS  test:v34-vision-process
+PASS  test:v35-sim
+
+Key deterministic results:
+- Aim training starts with the first human and never requires both participants to unlock.
+- Target-first and human-first join orders both preserve role-based spawn positions.
+- Opening unarmed gun range: 108 versus 72 after the opening window.
+- Independent intervals validated for Normal, Hard, Pro, LEGIT and Forbidden.
+- Mosin/M870 quick-switch works in both directions only after confirmed shots.
+- V34 viewport fire gate and room process resilience remain passing.

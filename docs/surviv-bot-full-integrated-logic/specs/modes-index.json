@@ -1,0 +1,20 @@
+{
+  "solo": {
+    "teamSize": 1,
+    "faction": false
+  },
+  "duo": {
+    "teamSize": 2
+  },
+  "squad": {
+    "teamSize": 4
+  },
+  "faction_50v50": {
+    "teamSize": 4,
+    "faction": true
+  },
+  "duel": {
+    "teamSize": 1,
+    "oneVOne": true
+  }
+}

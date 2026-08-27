@@ -1,6 +1,7 @@
 import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
 
+import { farthestExtractionPoint, generateExtractionPoints } from "../../../shared/defs/extractionDefs.ts";
 import { PingDefs } from "../../../shared/defs/gameObjects/pingDefs.ts";
 import type { RoleDef } from "../../../shared/defs/gameObjects/roleDefs.ts";
 import type { MapDef } from "../../../shared/defs/mapDefs.ts";
@@ -126,6 +127,7 @@ export class UiManager {
     playersAliveBlueCounter = 0;
     playerKills = $(".js-ui-player-kills");
     announcement = $("#ui-announcement");
+    liveAnnouncement = $("#ui-live-announcement");
     killLeaderName = $("#ui-kill-leader-name");
     killLeaderCount = $("#ui-kill-leader-count");
     mapContainer = $("#ui-map-container");
@@ -165,10 +167,24 @@ export class UiManager {
     fullScreenButton = $("#btn-game-fullscreen");
     resumeButton = $("#btn-game-resume");
 
-    specStatsButton = $("#btn-spectate-view-stats");
     specAction = SpectateAction.None;
+    specFreeToggle = false;
+    specPlayersOnly = false;
+    specPlayersOnlyChanged = false;
+    specLayerRequested: number | null = null;
+    specTransparentObstacles = false;
+    spectatorChatPending = "";
     specNextButton = $("#btn-spectate-next-player");
     specPrevButton = $("#btn-spectate-prev-player");
+    specPlayersOnlyButton = $("#btn-spectate-players-only");
+    specFreeButton = $("#btn-spectate-free-camera");
+    specTransparentButton = $("#btn-spectate-transparent-obstacles");
+    specLayerSlider = $<HTMLInputElement>("#ui-spectate-layer-slider");
+    specLayerValue = $("#ui-spectate-layer-value");
+    spectatorChatFeed = $("#ui-spectator-chat-feed");
+    spectatorChatInput = $<HTMLInputElement>("#ui-spectator-chat-input");
+    spectatorInbox = $("#ui-spectator-inbox");
+    spectatorInboxTimer: ReturnType<typeof setTimeout> | undefined;
 
     // Touch specific buttons
     interactionElems = $("#ui-interaction-press, #ui-interaction");
@@ -212,6 +228,7 @@ export class UiManager {
     mapSpriteBarn = new MapSpriteBarn();
     mapIndicatorBarn!: MapIndicatorBarn;
     playerMapSprites: MapSprite[] = [];
+    private extractionMapSprite: MapSprite | null = null;
     playerPingSprites = {} as Record<number, MapSprite[]>;
     container = new PIXI.Container() as ContainerWithMask;
 
@@ -376,15 +393,68 @@ export class UiManager {
             this.game.m_updatePassDelay = 1;
             this.quitGame();
         });
-        this.specStatsButton.on("click", () => {
-            this.toggleLocalStats();
-        });
-
         this.specNextButton.on("click", () => {
             this.specAction = SpectateAction.Next;
         });
         this.specPrevButton.on("click", () => {
             this.specAction = SpectateAction.Prev;
+        });
+        this.specFreeButton.on("click", () => {
+            this.specFreeToggle = true;
+        });
+        this.specPlayersOnlyButton.on("click", () => {
+            this.specPlayersOnly = !this.specPlayersOnly;
+            this.specPlayersOnlyChanged = true;
+            this.specPlayersOnlyButton
+                .toggleClass("active", this.specPlayersOnly)
+                .text(`只观看玩家：${this.specPlayersOnly ? "开" : "关"}`);
+        });
+        this.specTransparentButton.on("click", () => {
+            this.specTransparentObstacles = !this.specTransparentObstacles;
+            this.specTransparentButton
+                .toggleClass("active", this.specTransparentObstacles)
+                .text(`遮挡物透明：${this.specTransparentObstacles ? "开" : "关"}`);
+        });
+        this.specLayerSlider.on("input change", () => {
+            this.specLayerRequested = Number(this.specLayerSlider.val());
+            this.specLayerValue.text(String(this.specLayerRequested));
+        });
+        const submitSpectatorChat = () => {
+            const value = String(this.spectatorChatInput.val() ?? "").trim();
+            if (!value) return;
+            this.spectatorChatPending = value.slice(0, 120);
+            this.spectatorChatInput.val("");
+        };
+        // 桌面端 click；手机端 touchend（iOS Safari 点发送时输入框失焦、
+        // 软键盘收起引发重排，合成 click 坐标错位会丢失，touchend 不受影响）。
+        const chatSendBtn = $("#btn-spectator-chat-send");
+        let chatSendLocked = false;
+        const fireSpectatorChatSend = (e?: JQuery.Event) => {
+            if (chatSendLocked) return;
+            chatSendLocked = true;
+            setTimeout(() => (chatSendLocked = false), 300);
+            e?.preventDefault();
+            submitSpectatorChat();
+        };
+        chatSendBtn.on("click", (e) => fireSpectatorChatSend(e));
+        chatSendBtn.on("touchend", (e) => {
+            if (!chatSendLocked) {
+                fireSpectatorChatSend(e);
+            }
+        });
+        this.spectatorChatInput.on("keydown keyup keypress", (event) => {
+            // iOS 软键盘回车有时 event.key 为 "Unidentified"，用 keyCode 兜底。
+            if (
+                event.type === "keydown"
+                && (event.key === "Enter" || event.keyCode === 13)
+            ) {
+                event.preventDefault();
+                submitSpectatorChat();
+            }
+            // Fullscreen is bound on a window-level keyup handler (L by
+            // default). Stop every keyboard phase at the chat field so text
+            // entry can never leak into gameplay or global UI shortcuts.
+            event.stopPropagation();
         });
 
         // Touch specific buttons
@@ -584,9 +654,12 @@ export class UiManager {
         $("#btn-spectate-quit").off("click");
         $("#btn-game-quit").off("mousedown");
         $("#btn-game-quit").off("click");
-        this.specStatsButton.off("click");
         this.specNextButton.off("click");
         this.specPrevButton.off("click");
+        this.specPlayersOnlyButton.off("click");
+        this.specFreeButton.off("click");
+        this.specTransparentButton.off("click");
+        this.specLayerSlider.off("input change");
         this.interactionElems.off("touchstart");
         this.reloadElems.off("touchstart");
         this.weapSwitches.off("mousedown");
@@ -925,6 +998,7 @@ export class UiManager {
             });
         }
         this.updatePlayerMapSprites(player, playerBarn, map);
+        this.updateExtractionMapSprite(map, player);
         this.mapSpriteBarn.update(dt, this, map);
         this.m_pieTimer.update(dt, camera);
 
@@ -953,7 +1027,38 @@ export class UiManager {
         }
     }
 
-    updatePlayerMapSprites(activePlayer: Player, playerBarn: PlayerBarn, map: Map) {
+    /**
+     * 搜打撤：小地图只标记当前开启（距离玩家最远）的撤离点，其余隐藏。
+     */
+    private updateExtractionMapSprite(map: Map, activePlayer: Player): void {
+        if (!map?.mapDef?.gameMode?.extractionMode) {
+            this.extractionMapSprite?.free();
+            return;
+        }
+        if (!this.extractionMapSprite) {
+            this.extractionMapSprite = this.mapSpriteBarn.addSprite();
+        }
+        const points = generateExtractionPoints(map.mapName, map.width, map.height);
+        const active = activePlayer.extractionPointIndex >= 0
+                && activePlayer.extractionPointIndex < points.length
+            ? points[activePlayer.extractionPointIndex]
+            : farthestExtractionPoint(points, activePlayer.m_pos);
+        const sprite = this.extractionMapSprite;
+        sprite.pos = v2.copy(active);
+        sprite.scale = 0.1;
+        sprite.alpha = 1;
+        sprite.visible = true;
+        sprite.pulse = true;
+        sprite.zOrder = 65535 * 3;
+        sprite.sprite.texture = PIXI.Texture.from("img/gui/extraction-point.png");
+        sprite.sprite.tint = 0xffffff;
+    }
+
+    updatePlayerMapSprites(
+        activePlayer: Player,
+        playerBarn: PlayerBarn,
+        map: Map,
+    ) {
         const activePlayerInfo = playerBarn.getPlayerInfo(activePlayer.__id);
 
         let spriteIdx = 0;
@@ -1536,7 +1641,9 @@ export class UiManager {
             }
             const restartButton = $("<a/>", {
                 class: "ui-stats-restart btn-green btn-darken menu-option",
-                html: this.localization.translate("game-play-new-game"),
+                html: this.game.privateDuelMatch
+                    ? "确认返回1v1大厅"
+                    : this.localization.translate("game-play-new-game"),
             });
             restartButton.on("click", () => {
                 SDK.requestFullscreenAd(() => {
@@ -1544,7 +1651,20 @@ export class UiManager {
                 });
             });
             this.statsOptions.append(restartButton);
-            const alive = this.playersAliveCounter + this.playersAliveRedCounter + this.playersAliveBlueCounter;
+            const extractionMode = map.getMapDef().gameMode.extractionMode === true;
+            const localPlayerStats = playerStats.find(
+                (stats) => stats.playerId === this.game.m_localId,
+            );
+            if (
+                extractionMode
+                && !spectatingAnotherTeam
+                && localPlayerStats?.dead
+            ) {
+                this.appendEquipmentReturnRequestUi();
+            }
+            const alive = this.playersAliveCounter
+                + this.playersAliveRedCounter
+                + this.playersAliveBlueCounter;
             if (gameOver || alive === 0) {
                 restartButton.css({
                     width: device.uiLayout != device.UiLayout.Sm || device.tablet
@@ -1623,6 +1743,188 @@ export class UiManager {
                 1000,
             );
         }
+    }
+
+    private appendEquipmentReturnRequestUi(): void {
+        const params = new URLSearchParams(window.location.search);
+        // 旧式/重连对局把 gameId 写在页面 URL；新版普通与组队匹配只在
+        // WebSocket 地址中携带它，由 Main.joinGame 保存到 Game。
+        const matchId = params.get("gameId") ?? this.game.m_matchId;
+        const token = localStorage.getItem("surviv_player_session") ?? "";
+        if (!matchId || !token) return;
+
+        const wrap = $("<div/>", {
+            class: "ui-equipment-return",
+            "data-game-input-blocker": "",
+        });
+        const reason = $("<textarea/>", {
+            class: "ui-equipment-return-reason",
+            maxlength: 300,
+            inputmode: "text",
+            autocomplete: "off",
+            autocapitalize: "sentences",
+            enterkeyhint: "done",
+            placeholder: "填写申请原因（必填，最多 300 字）",
+        });
+        reason.on("keydown keyup keypress", (event) => event.stopPropagation());
+        const button = $("<button/>", {
+            type: "button",
+            class: "ui-equipment-return-submit btn-darken menu-option",
+            text: "检查返还状态…",
+            disabled: true,
+        });
+        const status = $("<div/>", {
+            class: "ui-equipment-return-status",
+            text: "正在检查本局装备返还状态…",
+        });
+        wrap.append(reason, button, status);
+        this.statsOptions.append(wrap);
+
+        const parseReturnResponse = async (
+            response: Response,
+        ): Promise<Record<string, unknown>> => {
+            const contentType = response.headers.get("content-type") ?? "";
+            const text = await response.text();
+            if (!text.trim()) {
+                throw new Error(`服务器返回空响应（${response.status}）`);
+            }
+            if (!contentType.toLowerCase().includes("application/json")) {
+                throw new Error(
+                    "服务端未加载装备返还接口；请更新服务端文件并重启 start-surviv.ps1",
+                );
+            }
+            try {
+                return JSON.parse(text) as Record<string, unknown>;
+            } catch {
+                throw new Error(`服务器 JSON 响应异常（${response.status}）`);
+            }
+        };
+
+        const statusText = (value: string): string => {
+            switch (value) {
+                case "pending":
+                    return "申请已提交，正在等待后台审批";
+                case "approved":
+                    return "申请已批准，带入装备已返回仓库";
+                case "rejected":
+                    return "申请未通过";
+                case "auto-refunded":
+                    return "本局检测到服务器卡顿，带入装备已自动返回仓库，禁止再次申请";
+                default:
+                    return "";
+            }
+        };
+        const applyRequest = (request: { status?: string; reason?: string; adminNote?: string } | null) => {
+            if (!request) {
+                reason.prop("disabled", true);
+                button.prop("disabled", true).text("不可申请");
+                status.text("本局没有可申请返还的带入装备");
+                return;
+            }
+            if (request.reason) reason.val(request.reason);
+            const resolved = statusText(String(request.status ?? ""));
+            const adminNote = String(request.adminNote ?? "").trim();
+            if (resolved) {
+                status
+                    .text(adminNote ? `${resolved}\n后台留言：${adminNote}` : resolved)
+                    .css("white-space", "pre-line");
+            }
+            if (request.status === "eligible") {
+                reason.prop("disabled", false);
+                button.prop("disabled", false).text("申请返还本局带入装备");
+            } else {
+                reason.prop("disabled", true);
+                button.prop("disabled", true).text(
+                    request.status === "pending"
+                        ? "等待审批"
+                        : request.status === "auto-refunded"
+                        ? "已自动返还"
+                        : "申请已处理",
+                );
+            }
+        };
+        void fetch(
+            `/api/extraction/equipment-return?token=${encodeURIComponent(token)}&matchId=${
+                encodeURIComponent(matchId)
+            }`,
+            {
+                headers: {
+                    Accept: "application/json",
+                },
+                cache: "no-store",
+            },
+        )
+            .then(parseReturnResponse)
+            .then((data) =>
+                applyRequest(
+                    (data.request ?? null) as {
+                        status?: string;
+                        reason?: string;
+                        adminNote?: string;
+                    } | null,
+                )
+            )
+            .catch((error) => {
+                reason.prop("disabled", true);
+                button.prop("disabled", true).text("状态不可用");
+                status
+                    .text(
+                        `无法加载申请状态：${error instanceof Error ? error.message : String(error)}`,
+                    )
+                    .addClass("error");
+            });
+
+        button.on("click", async () => {
+            const requestReason = String(reason.val() ?? "").trim();
+            if (!requestReason) {
+                status.text("请先填写申请原因").addClass("error");
+                return;
+            }
+            reason.prop("disabled", true);
+            button.prop("disabled", true).text("提交中…");
+            status.removeClass("error").text("");
+            try {
+                const response = await fetch("/api/extraction/equipment-return", {
+                    method: "POST",
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                    },
+                    cache: "no-store",
+                    body: JSON.stringify({ token, matchId, reason: requestReason }),
+                });
+                const data = await parseReturnResponse(response);
+                if (!response.ok || !data.ok) {
+                    if (data.reason === "server-lag-auto-refunded") {
+                        reason.prop("disabled", true);
+                        button.prop("disabled", true).text("已自动返还");
+                        status
+                            .removeClass("error")
+                            .text(
+                                "本局检测到服务器卡顿，带入装备已自动返回仓库，无需且不能再次申请",
+                            );
+                        return;
+                    }
+                    throw new Error(
+                        data.reason === "not-eligible"
+                            ? "本局没有可申请返还的带入装备"
+                            : data.reason === "already-reviewed"
+                            ? "本申请已经处理"
+                            : typeof data.reason === "string"
+                            ? data.reason
+                            : "提交失败",
+                    );
+                }
+                button.text("等待审批");
+                status.text("申请已提交，正在等待后台审批");
+            } catch (error) {
+                reason.prop("disabled", false);
+                button.prop("disabled", false).text("申请返还本局带入装备");
+                status
+                    .addClass("error")
+                    .text(error instanceof Error ? error.message : String(error));
+            }
+        });
     }
 
     clearStatsElems() {
@@ -1770,18 +2072,70 @@ export class UiManager {
         }
     }
 
+    setFreeSpectating(active: boolean) {
+        document.body.classList.toggle("spectator-free-camera", active);
+        this.specFreeButton
+            .toggleClass("active", active)
+            .attr(
+                "data-l10n",
+                active ? "game-spectate-player-camera" : "game-spectate-free-camera",
+            )
+            .text(
+                this.localization.translate(
+                    active ? "game-spectate-player-camera" : "game-spectate-free-camera",
+                ),
+            );
+        if (active) {
+            this.spectatedPlayerText
+                .find("#spectate-player")
+                .html(this.localization.translate("game-spectate-free-help"));
+        } else if (this.spectatedPlayerName) {
+            this.spectatedPlayerText.find("#spectate-player").html(this.spectatedPlayerName);
+        }
+    }
+
+    setSpectatorLayer(layer: number): void {
+        this.specLayerValue.text(String(layer));
+        this.specLayerSlider.val(String(layer));
+    }
+
+    appendSpectatorChat(sender: string, text: string): void {
+        const line = $("<div/>", { class: "spectator-chat-line" });
+        line.append($("<strong/>", { text: `${sender}: ` }));
+        line.append(document.createTextNode(text));
+        this.spectatorChatFeed.append(line);
+        while (this.spectatorChatFeed.children().length > 12) {
+            this.spectatorChatFeed.children().first().remove();
+        }
+        const element = this.spectatorChatFeed[0];
+        if (element) element.scrollTop = element.scrollHeight;
+    }
+
+    showSpectatorMessage(sender: string, text: string): void {
+        if (this.spectatorInboxTimer) clearTimeout(this.spectatorInboxTimer);
+        this.spectatorInbox.empty();
+        this.spectatorInbox.append($("<strong/>", { text: `观众 ${sender}: ` }));
+        this.spectatorInbox.append(document.createTextNode(text));
+        this.spectatorInbox.addClass("visible");
+        this.spectatorInboxTimer = setTimeout(() => {
+            this.spectatorInbox.removeClass("visible");
+            this.spectatorInboxTimer = undefined;
+        }, 7000);
+    }
+
     setSpectating(spectating: boolean, teamMode?: TeamMode) {
         if (this.spectating != spectating) {
             this.spectating = spectating;
             if (this.spectating) {
                 this.spectateMode.css("display", "block");
                 $(".ui-zoom").removeClass("ui-zoom-hover");
-                const hideSpec = teamMode == TeamMode.Solo;
-                this.specPrevButton.css("display", hideSpec ? "none" : "block");
-                this.specNextButton.css("display", hideSpec ? "none" : "block");
+                this.specPrevButton.css("display", "block");
+                this.specNextButton.css("display", "block");
+                this.specFreeButton.css("display", "block");
                 this.hideStats();
             } else {
                 this.spectateMode.css("display", "none");
+                this.setFreeSpectating(false);
                 $(".ui-zoom").addClass("ui-zoom-hover");
             }
         }
@@ -1812,11 +2166,6 @@ export class UiManager {
     toggleLocalStats(hide = false) {
         const display = this.spectateModeStats.css("display") == "none" && !hide;
         this.spectateModeStats.css("display", display ? "inline-block" : "none");
-        this.specStatsButton.html(
-            display
-                ? this.localization.translate("game-hide-match-stats")
-                : this.localization.translate("game-view-match-stats"),
-        );
     }
 
     updatePlayersAlive(alive: number) {
@@ -1859,7 +2208,8 @@ export class UiManager {
         const waitTxt = gameMode?.sniperMode
             ? this.localization.translate("game-waiting-for-hunted")
             : this.localization.translate("game-waiting-for-new-leader");
-        this.killLeaderName.html(valid ? playerName : waitTxt);
+        // 玩家名是用户输入，必须用 .text() 渲染，防止 HTML/脚本注入。
+        this.killLeaderName.text(valid ? playerName : waitTxt);
         this.killLeaderCount.html(valid ? kills : 0);
     }
 
@@ -1969,6 +2319,15 @@ export class UiManager {
                     this.announcement.fadeOut(800);
                 }, 3000);
             });
+        }
+    }
+
+    displayLiveAnnouncement(message: string) {
+        this.liveAnnouncement.stop(true, true);
+        if (message) {
+            this.liveAnnouncement.text(message).show();
+        } else {
+            this.liveAnnouncement.text("").hide();
         }
     }
 
@@ -2117,7 +2476,8 @@ export class UiManager {
             const teamHealthInner = this.teamSelectors[slotIdx].teamHealthInner;
             this.teamSelectors[slotIdx].playerId = playerId;
             this.teamSelectors[slotIdx].teamNameHtml = name;
-            teamName.html(name);
+            // 队友名是用户输入，必须用 .text() 渲染，防止 HTML/脚本注入。
+            teamName.text(name);
             this.updateHealthBar(this.teamMemberHealthBarWidth, teamHealthInner, null, {
                 health,
                 dead: status.dead,

@@ -1,0 +1,144 @@
+{
+  "viewport": {
+    "1xscope": {
+      "zoom": 28,
+      "raw": {
+        "halfWidth": 27.999999999999996,
+        "halfHeight": 15.75
+      },
+      "acquisition": {
+        "halfWidth": 26.749999999999996,
+        "halfHeight": 14.5
+      },
+      "finalPacketGate": {
+        "halfWidth": 27.749999999999996,
+        "halfHeight": 15.5
+      }
+    },
+    "2xscope": {
+      "zoom": 36,
+      "raw": {
+        "halfWidth": 36,
+        "halfHeight": 20.25
+      },
+      "acquisition": {
+        "halfWidth": 34.75,
+        "halfHeight": 19
+      },
+      "finalPacketGate": {
+        "halfWidth": 35.75,
+        "halfHeight": 20
+      }
+    },
+    "4xscope": {
+      "zoom": 48,
+      "raw": {
+        "halfWidth": 48,
+        "halfHeight": 27
+      },
+      "acquisition": {
+        "halfWidth": 46.75,
+        "halfHeight": 25.75
+      },
+      "finalPacketGate": {
+        "halfWidth": 47.75,
+        "halfHeight": 26.75
+      }
+    },
+    "8xscope": {
+      "zoom": 68,
+      "raw": {
+        "halfWidth": 68,
+        "halfHeight": 38.25
+      },
+      "acquisition": {
+        "halfWidth": 66.75,
+        "halfHeight": 37
+      },
+      "finalPacketGate": {
+        "halfWidth": 67.75,
+        "halfHeight": 38
+      }
+    },
+    "15xscope": {
+      "zoom": 104,
+      "raw": {
+        "halfWidth": 104,
+        "halfHeight": 58.5
+      },
+      "acquisition": {
+        "halfWidth": 102.75,
+        "halfHeight": 57.25
+      },
+      "finalPacketGate": {
+        "halfWidth": 103.75,
+        "halfHeight": 58.25
+      }
+    }
+  },
+  "finalVisibleTrigger": {
+    "difficulty": "normal",
+    "reactionMs": 250,
+    "deadlineMs": 1010,
+    "timeline": [
+      {
+        "visibleForMs": 900,
+        "fires": false
+      },
+      {
+        "visibleForMs": 1009,
+        "fires": false
+      },
+      {
+        "visibleForMs": 1010,
+        "fires": true
+      },
+      {
+        "visibleForMs": 1011,
+        "fires": true
+      }
+    ],
+    "closeVisibleThreatInterruptsRecovery": true,
+    "offscreenThreatDoesNotInterruptRecovery": false,
+    "survivalEscapeRemainsHigherPriority": true
+  },
+  "roomProcess": {
+    "heartbeat": {
+      "at5Seconds": "healthy",
+      "at15Seconds": "warning",
+      "at31Seconds": "terminate"
+    },
+    "breakerTimeline": [
+      {
+        "failure": 1,
+        "consecutive": 1,
+        "recent": 1,
+        "pauseMs": 80,
+        "fatal": false
+      },
+      {
+        "failure": 10,
+        "consecutive": 10,
+        "recent": 10,
+        "pauseMs": 800,
+        "fatal": false
+      },
+      {
+        "failure": 19,
+        "consecutive": 19,
+        "recent": 19,
+        "pauseMs": 1500,
+        "fatal": false
+      },
+      {
+        "failure": 20,
+        "consecutive": 20,
+        "recent": 20,
+        "pauseMs": 1500,
+        "fatal": true
+      }
+    ],
+    "singleTickFaultFatal": false,
+    "sustainedFaultStormFatal": true
+  }
+}

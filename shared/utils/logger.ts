@@ -42,7 +42,7 @@ export class Logger {
         this.prefix = prefix;
     }
 
-    private log(logFn = console.log, ...message: any[]): void {
+    private write(logFn = console.log, ...message: any[]): void {
         if (this.config.logDate) {
             const date = new Date();
             const dateString = `[${date.toISOString().substring(0, 10)} ${date.toLocaleTimeString()}]`;
@@ -58,14 +58,19 @@ export class Logger {
         }
     }
 
+    /** Compatibility entry point retained for pre-0.3 server systems. */
+    log(...message: any[]): void {
+        this.info(...message);
+    }
+
     info(...message: any[]): void {
         if (!this.config.infoLogs) return;
-        this.log(console.info, styleText("blue", "[INFO]"), ...message);
+        this.write(console.info, styleText("blue", "[INFO]"), ...message);
     }
 
     debug(...message: any[]): void {
         if (!this.config.debugLogs) return;
-        this.log(
+        this.write(
             console.debug,
             // not a typo, just want it to align with the others :D
             styleText("magenta", "[DEBG]"),
@@ -75,11 +80,11 @@ export class Logger {
 
     warn(...message: any[]): void {
         if (!this.config.warnLogs) return;
-        this.log(console.warn, styleText("yellow", "[WARN]"), ...message);
+        this.write(console.warn, styleText("yellow", "[WARN]"), ...message);
     }
 
     error(...message: any[]): void {
         if (!this.config.errorLogs) return;
-        this.log(console.error, styleText("red", "[ERROR]"), ...message);
+        this.write(console.error, styleText("red", "[ERROR]"), ...message);
     }
 }

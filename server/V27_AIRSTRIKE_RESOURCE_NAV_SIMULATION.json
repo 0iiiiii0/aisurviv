@@ -1,0 +1,110 @@
+{
+  "version": 27,
+  "simulation": "airstrike-resource-navigation deterministic validation",
+  "buildingShell": {
+    "warehouseWallRadius": 3.2557641192199416,
+    "brickWallRadius": 2.0615528128088303,
+    "historicalFalseGapDetected": true,
+    "correctedShellBlocked": true
+  },
+  "airstrike": {
+    "criticalThreat": {
+      "highestPriority": true,
+      "impactInMs": 650,
+      "insideHighDamage": true
+    },
+    "alternateRouteClear": true,
+    "alternateTarget": {
+      "x": 42.28616793536588,
+      "y": 15.390906449655093
+    },
+    "singleStrikeBotsWarned": 40,
+    "singleStrikeBotsRoutedOutside": 40,
+    "strobePrediction": {
+      "pos": {
+        "x": 40.33261440515366,
+        "y": 31.45232960036812
+      },
+      "rad": 17,
+      "duration": 5.800000000000001,
+      "impactIn": 2.15,
+      "highDamageRad": 11.5
+    }
+  },
+  "resources": {
+    "throwableCrate": {
+      "type": "crate_14",
+      "obstacleType": "crate",
+      "resourceClass": "container",
+      "health": 75,
+      "lootEntries": 1,
+      "expectedLootUnits": 1,
+      "expectedLootValue": 11.5,
+      "priorityBias": 34,
+      "contactRadius": 2.25,
+      "dangerous": false,
+      "explosionType": "",
+      "explosionRadius": 0,
+      "armorPlated": false,
+      "stonePlated": false,
+      "swapWeaponOnDestroy": false,
+      "searchLootEligible": true
+    },
+    "platedAmmoCrate": {
+      "type": "crate_04",
+      "obstacleType": "crate",
+      "resourceClass": "container",
+      "health": 225,
+      "lootEntries": 1,
+      "expectedLootUnits": 1,
+      "expectedLootValue": 11.5,
+      "priorityBias": 30,
+      "contactRadius": 2.25,
+      "dangerous": false,
+      "explosionType": "",
+      "explosionRadius": 0,
+      "armorPlated": true,
+      "stonePlated": false,
+      "swapWeaponOnDestroy": false,
+      "searchLootEligible": true
+    },
+    "airdropPayload": {
+      "type": "crate_12",
+      "obstacleType": "crate",
+      "resourceClass": "container",
+      "health": 500,
+      "lootEntries": 10,
+      "expectedLootUnits": 30,
+      "expectedLootValue": 240,
+      "priorityBias": 18,
+      "contactRadius": 3.5,
+      "dangerous": false,
+      "explosionType": "",
+      "explosionRadius": 0,
+      "armorPlated": false,
+      "stonePlated": false,
+      "swapWeaponOnDestroy": false,
+      "searchLootEligible": true
+    },
+    "falseResourceTypesExcluded": [
+      "oven_01",
+      "barrel_01",
+      "refrigerator_01"
+    ]
+  },
+  "airdrop": {
+    "standardShellsSupported": [
+      "airdrop_crate_01",
+      "airdrop_crate_02",
+      "airdrop_crate_03",
+      "airdrop_crate_04"
+    ],
+    "payloadsSupported": [
+      "crate_10",
+      "crate_11",
+      "crate_12",
+      "crate_13"
+    ]
+  },
+  "result": "PASS"
+}

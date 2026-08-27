@@ -1,0 +1,37 @@
+V16 validation summary
+======================
+
+Build/type checks
+- Server TypeScript build: PASS
+- Client TypeScript noEmit check: PASS
+
+New behavior tests
+- Navigation recovery: PASS
+  - frontal obstacle sidestep
+  - repeated corner recovery changes direction
+  - recovery direction avoids repeating a failed route
+- Bot-only room lifecycle: PASS
+  - room does not close before a human has ever connected
+  - connected dead viewer / spectator counts as human presence
+  - previously watched non-duel bot-only room closes
+  - duel/1v1 room remains exempt
+- Bot auto-fill configuration: PASS
+  - Solo, Duo and Squad share one ordinary AI hard cap
+  - per-mode join interval and target count remain independent
+  - 50v50 keeps its independent balanced total cap
+- Password-protected admin dashboard and config persistence: PASS
+
+Regression tests
+- AI input and decision brain: PASS
+- Loot search and opening resource sweep: PASS
+- Loot runtime safety / anti-tunnelling: PASS
+- Aim smoothing and reload tracking: PASS
+- 1v1 firing and cover-gated healing: PASS
+- 50v50 roles, airdrop and container navigation: PASS
+- 50v50 auto-fill and 20+20 cap: PASS
+- Spectator and auto-fill behavior: PASS
+- Potato mode: PASS
+- Duel vision, duel room and duel lobby: PASS
+- All 47 playlists / 17 maps smoke test: PASS
+
+See UNIFIED_LIMIT_STUCK_LIFECYCLE_V16_VALIDATION_RAW.txt for command output.

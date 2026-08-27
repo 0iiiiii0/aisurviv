@@ -1,0 +1,30 @@
+V20 validation report
+=====================
+
+Build and syntax
+- Server TypeScript build: PASS (npm run build)
+- Client TypeScript check: PASS (npx tsc --noEmit)
+- Admin JavaScript syntax check: PASS (node --check client/public/admin/admin.js)
+
+Feature-specific validation
+- Admin status separates human players, AI players and spectator-only clients: PASS
+- Per-room status includes human/AI/spectator counts and alive count: PASS
+- Plain-text admin password file creation and password rotation: PASS
+- Legacy hashed credential login compatibility and automatic migration path: covered by implementation and TypeScript build
+- Gas escape candidate selection using current and next safe circles: PASS
+- Blocked-route alternative selection and urgent shortest escape: PASS
+- Waiting-stage gas circle no longer interpolates before movement: implementation reviewed and server build passed
+
+Server regression suite
+- 27 npm test:* smoke-test commands: PASS
+- Includes duel, duel lobby, admin, IPv6, potato, bot input, duel vision,
+  all modes, spectator/autofill, loot AI, decision brain, faction autofill,
+  combat/heal, resource sweep, loot safety, aim control, special roles,
+  integrated logic, faction airdrop/container, admin auth, bot config,
+  navigation recovery, room lifecycle, revive coordination,
+  spectator difficulty, CPU load control and gas escape.
+
+Limitations
+- The gas routing tests are deterministic smoke tests. They do not replace a long-running
+  live match on every custom map/building layout.
+- Plain-text password storage is intentionally less secure if someone can read the server files.

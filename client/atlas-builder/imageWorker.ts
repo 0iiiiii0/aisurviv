@@ -13,7 +13,10 @@ async function renderImage(path: string, hash: string) {
 
     const scale = scaledSprites[path] ?? 1;
 
-    const image = await loadImage(Path.join(imageFolder, path));
+    // node-canvas passes string paths through a narrow Windows fopen call, which
+    // cannot reliably open assets when the project lives below a Unicode path.
+    // Reading the asset with Node first keeps atlas generation path-safe.
+    const image = await loadImage(fs.readFileSync(Path.join(imageFolder, path)));
     tmpCanvas.width = Math.ceil(image.width * scale);
     tmpCanvas.height = Math.ceil(image.height * scale);
 

@@ -1,0 +1,26 @@
+V40 1v1 advanced AI validation scope
+
+Passed checks:
+- Server TypeScript noEmit
+- Client TypeScript noEmit
+- V40 exact sandbag/body-exposure regression
+- Timed peek intercept and clear future-ray regression
+- Healing grenade opportunity and cover-pressure regression
+- Ordinary map-bullet ricochet eligibility regression
+- Single-shot precision brake regression
+- V36 HACKER/LEGIT tactical simulation
+- Forbidden AI intercept/dodge/cover tests
+- HACKER omniscient vs LEGIT line-of-sight context test
+- Dual-switch confirmed-shot and 20-second simulation
+- Duel room, lobby and vision tests
+- Airstrike safety and bot input safety tests
+- Aim-training regression tests
+- All 47 public playlists / mode isolation
+- Spectator/autofill, room lifecycle and combat/heal tests
+
+Important limitation:
+These tests establish deterministic geometry, timing and state priority. They do not prove a guaranteed human-match win rate. New match recordings are still needed for empirical win-rate tuning.
+- Multi-process room reuse guard source/runtime check
+- Production API-to-game aim-training route proxy typecheck
+- V40 launcher stale-port and Vite-cache guard
+- Runtime log observed a separate default room and a separate aim_training room; the aim-target bot joined the latter with the requested Mosin/60m/infinite-magazine settings.

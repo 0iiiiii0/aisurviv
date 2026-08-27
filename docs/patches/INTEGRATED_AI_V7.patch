@@ -1,0 +1,1333 @@
+diff --git a/INTEGRATED_AI_V7.md b/INTEGRATED_AI_V7.md
+new file mode 100644
+index 0000000..aa1157b
+--- /dev/null
++++ b/INTEGRATED_AI_V7.md
+@@ -0,0 +1,33 @@
++# Integrated AI V7
++
++## 50v50 population policy
++
++- Public 50v50 rooms launch at most **one server bot per second**.
++- The planner assigns each new bot to the faction with fewer connected plus pending bots.
++- Each faction is capped at **20 server bots**, for a total server-bot ceiling of **40**.
++- Pending WebSocket joins count toward the cap and real-player reservations still reduce available room slots.
++- Manual AI addition uses the same 20+20 faction cap.
++
++## 1v1 combat execution
++
++- A precision weapon may stop movement only when the opponent is inside the weapon's actual range and a clear firing lane exists.
++- In duel mode, once reaction time, ammunition, range, and line-of-sight checks pass, the trigger is deterministic rather than depending on repeated random rolls.
++- If a shot is unavailable, the bot advances into range or sidesteps to recover a firing lane instead of remaining in an aim-only state.
++- Leading a moving target now falls back to the target's current position when the predicted lead point is obstructed.
++- A nearby enemy holding a melee weapon is promoted to an emergency combat interrupt.
++
++## Safe combat healing
++
++- Medicine is prohibited while an enemy has direct line-of-sight, at point-blank range, in lethal gas, or in an airstrike zone.
++- Under combat pressure, the bot first searches for hard cover or an intact indoor position.
++- Cover candidates are placed on the side of a solid obstacle opposite the threat and must break enemy line-of-sight, remain inside the safe zone, and be navigable.
++- Healing begins only after cover is reached and a short no-damage window has elapsed.
++- An active heal is cancelled when line-of-sight reopens, the enemy closes to point-blank range, gas becomes lethal, or an airstrike begins.
++- Critical health increases the urgency to retreat to cover; it does not permit healing directly in front of an enemy.
++
++## Integrated decision-order changes
++
++- Lethal gas is a hard branch and is resolved before medicine holds, special actions, looting, crate breaking, or normal combat scoring.
++- Airstrike evasion is the next hard survival branch.
++- Immediate melee pressure interrupts lower-priority actions.
++- Existing V6 resource search, no-wall-break crate checks, doors, flare handling, unarmed weapon search, faction doctrine, spectator repair, and ordinary-mode auto-fill remain included.
+diff --git a/INTEGRATED_AI_V7_VALIDATION.txt b/INTEGRATED_AI_V7_VALIDATION.txt
+new file mode 100644
+index 0000000..b434a79
+--- /dev/null
++++ b/INTEGRATED_AI_V7_VALIDATION.txt
+@@ -0,0 +1,27 @@
++Integrated AI V7 validation
++============================
++
++Build
++- server TypeScript compilation: PASS
++
++New focused tests
++- 50v50 one bot/second: PASS
++- 50v50 20+20 server-bot hard cap: PASS
++- connected + pending faction balancing: PASS
++- human room-slot reservation: PASS
++- 1v1 deterministic trigger after hard checks: PASS
++- precision weapon does not stop outside actual range: PASS
++- blocked/out-of-range/no-ammo duel shots remain disabled: PASS
++- direct enemy line-of-sight blocks medicine: PASS
++- hard cover or safe indoor position permits medicine after no-damage window: PASS
++- point-blank critical-health face-healing is blocked: PASS
++- active medicine cancels when line-of-sight reopens: PASS
++
++Regression tests
++- smart bot input safety: PASS
++- tactical decision brain: PASS
++- loot/resource search: PASS
++- duel game smoke test: PASS
++- duel vision/search: PASS
++- spectator and auto-fill: PASS
++- all modes: PASS (47 playlists / 17 maps)
+diff --git a/server/package.json b/server/package.json
+index 28f907c..fa016a8 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -1,35 +1,36 @@
+ {
+-  "private": true,
+-  "scripts": {
+-    "build": "tsc",
+-    "start:api": "NODE_ENV=production node --enable-source-maps dist/server/src/apiServer.js --api-server",
+-    "start:game": "NODE_ENV=production node --enable-source-maps dist/server/src/gameServer.js --game-server",
+-    "start:dev": "NODE_ENV=production node --enable-source-maps dist/server/src/devServer.js",
+-    "dev": "node -r ts-node/register --watch --watch-preserve-output --watch-path=../shared --watch-path=./src src/devServer.ts",
+-    "dev:api": "node -r ts-node/register --watch --watch-preserve-output --watch-path=../shared --watch-path=./src src/apiServer.ts --api-server",
+-    "dev:game": "node -r ts-node/register --watch --watch-preserve-output --watch-path=../shared --watch-path=./src src/gameServer.ts --game-server",
+-    "test:duel": "node -r ts-node/register src/duelSmokeTest.ts",
+-    "test:duel-lobby": "node -r ts-node/register src/duelLobbySmokeTest.ts",
+-    "test:admin": "node -r ts-node/register src/adminSmokeTest.ts",
+-    "test:ipv6": "node -r ts-node/register src/ipv6SmokeTest.ts",
+-    "test:potato": "node -r ts-node/register src/potatoSmokeTest.ts",
+-    "bot": "node -r ts-node/register src/smartBot.ts",
+-    "test:bot-input": "node -r ts-node/register src/smartBotInputSmokeTest.ts",
+-    "test:duel-vision": "node -r ts-node/register src/duelVisionSmokeTest.ts",
+-    "test:all-modes": "node -r ts-node/register src/allModesSmokeTest.ts",
+-    "test:spectator-autofill": "node -r ts-node/register src/spectatorAutoFillSmokeTest.ts",
+-    "test:loot-ai": "node -r ts-node/register src/lootStrategySmokeTest.ts",
+-    "test:bot-brain": "node -r ts-node/register src/smartBotBrainSmokeTest.ts",
+-    "test:faction-autofill": "node -r ts-node/register src/factionAutoFillSmokeTest.ts"
+-  },
+-  "dependencies": {
+-    "nanotimer": "^0.3.15",
+-    "typescript": "^5.6.3",
+-    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/v20.49.0.tar.gz"
+-  },
+-  "devDependencies": {
+-    "@types/nanotimer": "^0.3.2",
+-    "@types/node": "^20.17.1",
+-    "ts-node": "^10.9.2"
+-  }
++    "private": true,
++    "scripts": {
++        "build": "tsc",
++        "start:api": "NODE_ENV=production node --enable-source-maps dist/server/src/apiServer.js --api-server",
++        "start:game": "NODE_ENV=production node --enable-source-maps dist/server/src/gameServer.js --game-server",
++        "start:dev": "NODE_ENV=production node --enable-source-maps dist/server/src/devServer.js",
++        "dev": "node -r ts-node/register --watch --watch-preserve-output --watch-path=../shared --watch-path=./src src/devServer.ts",
++        "dev:api": "node -r ts-node/register --watch --watch-preserve-output --watch-path=../shared --watch-path=./src src/apiServer.ts --api-server",
++        "dev:game": "node -r ts-node/register --watch --watch-preserve-output --watch-path=../shared --watch-path=./src src/gameServer.ts --game-server",
++        "test:duel": "node -r ts-node/register src/duelSmokeTest.ts",
++        "test:duel-lobby": "node -r ts-node/register src/duelLobbySmokeTest.ts",
++        "test:admin": "node -r ts-node/register src/adminSmokeTest.ts",
++        "test:ipv6": "node -r ts-node/register src/ipv6SmokeTest.ts",
++        "test:potato": "node -r ts-node/register src/potatoSmokeTest.ts",
++        "bot": "node -r ts-node/register src/smartBot.ts",
++        "test:bot-input": "node -r ts-node/register src/smartBotInputSmokeTest.ts",
++        "test:duel-vision": "node -r ts-node/register src/duelVisionSmokeTest.ts",
++        "test:all-modes": "node -r ts-node/register src/allModesSmokeTest.ts",
++        "test:spectator-autofill": "node -r ts-node/register src/spectatorAutoFillSmokeTest.ts",
++        "test:loot-ai": "node -r ts-node/register src/lootStrategySmokeTest.ts",
++        "test:bot-brain": "node -r ts-node/register src/smartBotBrainSmokeTest.ts",
++        "test:faction-autofill": "node -r ts-node/register src/factionAutoFillSmokeTest.ts",
++        "test:bot-combat-heal": "node -r ts-node/register src/botCombatHealSmokeTest.ts"
++    },
++    "dependencies": {
++        "nanotimer": "^0.3.15",
++        "typescript": "^5.6.3",
++        "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/v20.49.0.tar.gz"
++    },
++    "devDependencies": {
++        "@types/nanotimer": "^0.3.2",
++        "@types/node": "^20.17.1",
++        "ts-node": "^10.9.2"
++    }
+ }
+diff --git a/server/src/bot/combatExecution.ts b/server/src/bot/combatExecution.ts
+new file mode 100644
+index 0000000..8978732
+--- /dev/null
++++ b/server/src/bot/combatExecution.ts
+@@ -0,0 +1,59 @@
++export interface PrecisionStopContext {
++    stopToShoot: boolean;
++    meleeWeapon: boolean;
++    targetDistance: number;
++    weaponRange: number;
++    lineClear: boolean;
++    healthSafe: boolean;
++    recentlyDamaged: boolean;
++    underAirstrike: boolean;
++    nearbyEnemyCount: number;
++}
++
++export interface TriggerContext {
++    duelMode: boolean;
++    reactionReady: boolean;
++    inRange: boolean;
++    lineClear: boolean;
++    ammoReady: boolean;
++    shootConfidence: number;
++    randomRoll: number;
++}
++
++/**
++ * A precision weapon may only root the bot when a real shot is currently
++ * possible. This prevents the 1v1 failure where a bot selected a long-range
++ * weapon, aimed at the opponent, stopped moving, but remained outside the
++ * weapon's effective range forever.
++ */
++export function shouldStopForPrecisionShot(context: PrecisionStopContext): boolean {
++    return Boolean(
++        context.stopToShoot &&
++            !context.meleeWeapon &&
++            context.targetDistance <= Math.max(1, context.weaponRange) &&
++            context.lineClear &&
++            context.healthSafe &&
++            !context.recentlyDamaged &&
++            !context.underAirstrike &&
++            context.nearbyEnemyCount === 0,
++    );
++}
++
++/**
++ * Duel mode uses deterministic trigger discipline once reaction time, range,
++ * line-of-sight, and ammunition checks pass. Aim jitter and weapon cooldowns
++ * still keep the result human-like, but a bad random streak can no longer make
++ * the bot stare at a visible opponent without firing.
++ */
++export function shouldPullTrigger(context: TriggerContext): boolean {
++    if (
++        !context.reactionReady ||
++        !context.inRange ||
++        !context.lineClear ||
++        !context.ammoReady
++    ) {
++        return false;
++    }
++    if (context.duelMode) return true;
++    return context.randomRoll <= Math.max(0, Math.min(1, context.shootConfidence));
++}
+diff --git a/server/src/bot/healSafety.ts b/server/src/bot/healSafety.ts
+new file mode 100644
+index 0000000..1e1df77
+--- /dev/null
++++ b/server/src/bot/healSafety.ts
+@@ -0,0 +1,106 @@
++export interface HealSafetyContext {
++    health: number;
++    enemyDistance: number;
++    enemyHasLineOfSight: boolean;
++    inHardCover: boolean;
++    indoors: boolean;
++    outsideGas: boolean;
++    underAirstrike: boolean;
++    ballisticPressure: boolean;
++    millisecondsSinceDamage: number;
++    actionAlreadyActive?: boolean;
++}
++
++export interface HealSafetyDecision {
++    canHeal: boolean;
++    mustSeekCover: boolean;
++    cancelActiveAction: boolean;
++    reason:
++        | "safe"
++        | "gas"
++        | "airstrike"
++        | "enemy-line-of-sight"
++        | "point-blank-threat"
++        | "recent-damage"
++        | "ballistic-pressure"
++        | "needs-cover";
++}
++
++/**
++ * Healing is a committed, stationary action. During combat it is permitted
++ * only after line-of-sight has been broken by hard cover or a sound indoor
++ * position and after a short no-damage window. Critical HP increases urgency to
++ * reach cover; it does not allow face-tanking a medkit in front of an enemy.
++ */
++export function assessHealSafety(context: HealSafetyContext): HealSafetyDecision {
++    const protectedPosition = context.inHardCover || context.indoors;
++    const recentDamageLimit = context.actionAlreadyActive ? 220 : 850;
++    const combatPressure =
++        context.enemyDistance < 72 ||
++        context.enemyHasLineOfSight ||
++        context.ballisticPressure ||
++        context.millisecondsSinceDamage < 3600;
++
++    if (context.outsideGas) {
++        return {
++            canHeal: false,
++            mustSeekCover: false,
++            cancelActiveAction: true,
++            reason: "gas",
++        };
++    }
++    if (context.underAirstrike) {
++        return {
++            canHeal: false,
++            mustSeekCover: false,
++            cancelActiveAction: true,
++            reason: "airstrike",
++        };
++    }
++    if (context.enemyDistance < 8) {
++        return {
++            canHeal: false,
++            mustSeekCover: true,
++            cancelActiveAction: true,
++            reason: "point-blank-threat",
++        };
++    }
++    if (context.enemyHasLineOfSight) {
++        return {
++            canHeal: false,
++            mustSeekCover: true,
++            cancelActiveAction: true,
++            reason: "enemy-line-of-sight",
++        };
++    }
++    if (context.millisecondsSinceDamage < recentDamageLimit) {
++        return {
++            canHeal: false,
++            mustSeekCover: combatPressure,
++            cancelActiveAction: Boolean(context.actionAlreadyActive),
++            reason: "recent-damage",
++        };
++    }
++    if (context.ballisticPressure && !protectedPosition) {
++        return {
++            canHeal: false,
++            mustSeekCover: true,
++            cancelActiveAction: Boolean(context.actionAlreadyActive),
++            reason: "ballistic-pressure",
++        };
++    }
++    if (combatPressure && !protectedPosition) {
++        return {
++            canHeal: false,
++            mustSeekCover: true,
++            cancelActiveAction: Boolean(context.actionAlreadyActive),
++            reason: "needs-cover",
++        };
++    }
++    return {
++        canHeal: true,
++        mustSeekCover: false,
++        cancelActiveAction: false,
++        reason: "safe",
++    };
++}
+diff --git a/server/src/botAutoFill.ts b/server/src/botAutoFill.ts
+index a432669..56e3658 100644
+--- a/server/src/botAutoFill.ts
++++ b/server/src/botAutoFill.ts
+@@ -26,8 +26,9 @@ export interface FactionBotSpawnPlanInput {
+  * Public room auto-fill policy.
+  *
+  * Ordinary modes are filled to a total contestant count. 50v50 is different:
+- * humans do not consume the AI quota, while server bots are capped at 30 per
+- * faction and enter two at a time each second.
++ * humans do not consume the AI quota, while server bots are capped at 20 per
++ * faction and enter one at a time each second. The planner alternates sides by
++ * always selecting the faction with fewer connected + pending bots.
+  */
+ export function getBotAutoFillPolicy(
+     mapName: string,
+@@ -42,8 +43,8 @@ export function getBotAutoFillPolicy(
+         return {
+             maxPlayers,
+             factionMode: true,
+-            spawnPerSecond: 2,
+-            factionBotCapPerTeam: 30,
++            spawnPerSecond: 1,
++            factionBotCapPerTeam: 20,
+         };
+     }
+ 
+@@ -61,8 +62,8 @@ export function getBotAutoFillPolicy(
+  *
+  * The planner includes already launched-but-not-connected bots, preserves room
+  * slots reserved for real players, and always chooses the faction with fewer
+- * effective bots. This yields one bot per side on a normal tick and never lets
+- * either side exceed its configured AI cap.
++ * effective bots. With a one-bot batch this alternates factions across ticks and
++ * never lets either side exceed its configured AI cap.
+  */
+ export function planFactionBotTeamIds(input: FactionBotSpawnPlanInput): number[] {
+     const factionCount = Math.max(
+diff --git a/server/src/botCombatHealSmokeTest.ts b/server/src/botCombatHealSmokeTest.ts
+new file mode 100644
+index 0000000..bdf503f
+--- /dev/null
++++ b/server/src/botCombatHealSmokeTest.ts
+@@ -0,0 +1,153 @@
++import assert from "assert/strict";
++import {
++    shouldPullTrigger,
++    shouldStopForPrecisionShot,
++} from "./bot/combatExecution";
++import { assessHealSafety } from "./bot/healSafety";
++
++function testDuelTriggerDiscipline(): void {
++    assert.equal(
++        shouldStopForPrecisionShot({
++            stopToShoot: true,
++            meleeWeapon: false,
++            targetDistance: 34,
++            weaponRange: 22,
++            lineClear: true,
++            healthSafe: true,
++            recentlyDamaged: false,
++            underAirstrike: false,
++            nearbyEnemyCount: 0,
++        }),
++        false,
++        "a precision weapon must not root the bot outside its actual range",
++    );
++
++    assert.equal(
++        shouldStopForPrecisionShot({
++            stopToShoot: true,
++            meleeWeapon: false,
++            targetDistance: 18,
++            weaponRange: 22,
++            lineClear: true,
++            healthSafe: true,
++            recentlyDamaged: false,
++            underAirstrike: false,
++            nearbyEnemyCount: 0,
++        }),
++        true,
++        "a safe clear in-range precision shot may stop movement",
++    );
++
++    assert.equal(
++        shouldPullTrigger({
++            duelMode: true,
++            reactionReady: true,
++            inRange: true,
++            lineClear: true,
++            ammoReady: true,
++            shootConfidence: 0,
++            randomRoll: 0.999,
++        }),
++        true,
++        "1v1 must fire deterministically once all hard checks pass",
++    );
++
++    for (const blocked of [
++        { reactionReady: false, inRange: true, lineClear: true, ammoReady: true },
++        { reactionReady: true, inRange: false, lineClear: true, ammoReady: true },
++        { reactionReady: true, inRange: true, lineClear: false, ammoReady: true },
++        { reactionReady: true, inRange: true, lineClear: true, ammoReady: false },
++    ]) {
++        assert.equal(
++            shouldPullTrigger({
++                duelMode: true,
++                ...blocked,
++                shootConfidence: 1,
++                randomRoll: 0,
++            }),
++            false,
++            "duel trigger must still respect reaction, range, line-of-sight, and ammo",
++        );
++    }
++}
++
++function testHealingSafety(): void {
++    const base = {
++        health: 35,
++        outsideGas: false,
++        underAirstrike: false,
++        ballisticPressure: false,
++        millisecondsSinceDamage: 4_000,
++    };
++
++    const exposed = assessHealSafety({
++        ...base,
++        enemyDistance: 30,
++        enemyHasLineOfSight: true,
++        inHardCover: false,
++        indoors: false,
++    });
++    assert.equal(exposed.canHeal, false);
++    assert.equal(exposed.mustSeekCover, true);
++    assert.equal(exposed.reason, "enemy-line-of-sight");
++
++    const covered = assessHealSafety({
++        ...base,
++        enemyDistance: 30,
++        enemyHasLineOfSight: false,
++        inHardCover: true,
++        indoors: false,
++    });
++    assert.equal(covered.canHeal, true, "hard cover with a damage-free window permits healing");
++
++    const indoor = assessHealSafety({
++        ...base,
++        enemyDistance: 48,
++        enemyHasLineOfSight: false,
++        inHardCover: false,
++        indoors: true,
++    });
++    assert.equal(indoor.canHeal, true, "a sound indoor position permits healing");
++
++    const faceHeal = assessHealSafety({
++        ...base,
++        health: 8,
++        enemyDistance: 5,
++        enemyHasLineOfSight: false,
++        inHardCover: true,
++        indoors: true,
++    });
++    assert.equal(faceHeal.canHeal, false, "critical HP must not permit healing in an enemy's face");
++    assert.equal(faceHeal.reason, "point-blank-threat");
++
++    const recentlyHit = assessHealSafety({
++        ...base,
++        enemyDistance: 30,
++        enemyHasLineOfSight: false,
++        inHardCover: true,
++        indoors: false,
++        millisecondsSinceDamage: 400,
++    });
++    assert.equal(recentlyHit.canHeal, false, "a new healing action needs a short no-damage window");
++    assert.equal(recentlyHit.reason, "recent-damage");
++
++    const interrupted = assessHealSafety({
++        ...base,
++        enemyDistance: 24,
++        enemyHasLineOfSight: true,
++        inHardCover: false,
++        indoors: false,
++        actionAlreadyActive: true,
++    });
++    assert.equal(interrupted.cancelActiveAction, true, "enemy line-of-sight must cancel active medicine");
++}
++
++function main(): void {
++    testDuelTriggerDiscipline();
++    testHealingSafety();
++    console.log(
++        "Bot combat/heal smoke test passed: deterministic 1v1 firing, no out-of-range rooting, and cover-gated combat healing.",
++    );
++}
++
++main();
+diff --git a/server/src/factionAutoFillSmokeTest.ts b/server/src/factionAutoFillSmokeTest.ts
+index 169c486..68ddd5a 100644
+--- a/server/src/factionAutoFillSmokeTest.ts
++++ b/server/src/factionAutoFillSmokeTest.ts
+@@ -41,11 +41,11 @@ async function main(): Promise<void> {
+     const policy = getBotAutoFillPolicy("faction", TeamMode.Squad);
+     assert(policy, "50v50 policy should exist");
+     assert.equal(policy.factionMode, true);
+-    assert.equal(policy.spawnPerSecond, 2, "50v50 entry speed must be two bots/second");
++    assert.equal(policy.spawnPerSecond, 1, "50v50 entry speed must be one bot/second");
+     assert.equal(
+         policy.factionBotCapPerTeam,
+-        30,
+-        "each 50v50 faction must be capped at 30 server bots",
++        20,
++        "each 50v50 faction must be capped at 20 server bots",
+     );
+ 
+     assert.deepEqual(
+@@ -55,73 +55,101 @@ async function main(): Promise<void> {
+             connectedPlayerCount: 0,
+             reservedHumanCount: 0,
+             maxPlayers: 100,
+-            spawnPerSecond: 2,
+-            botCapPerTeam: 30,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
+         }),
+-        [1, 2],
+-        "an empty room should receive one bot per faction per tick",
++        [1],
++        "an empty room should receive only one bot on the first tick",
++    );
++
++    assert.deepEqual(
++        planFactionBotTeamIds({
++            connectedBotTeamCounts: [1, 0],
++            pendingBotTeamCounts: [0, 0],
++            connectedPlayerCount: 1,
++            reservedHumanCount: 0,
++            maxPlayers: 100,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
++        }),
++        [2],
++        "the next tick should fill the smaller faction",
+     );
+ 
+     assert.deepEqual(
+         planFactionBotTeamIds({
+-            connectedBotTeamCounts: [30, 28],
++            connectedBotTeamCounts: [20, 18],
+             pendingBotTeamCounts: [0, 0],
+-            connectedPlayerCount: 58,
++            connectedPlayerCount: 38,
+             reservedHumanCount: 0,
+             maxPlayers: 100,
+-            spawnPerSecond: 2,
+-            botCapPerTeam: 30,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
+         }),
+-        [2, 2],
++        [2],
+         "a capped faction must not receive more bots",
+     );
+ 
+     assert.deepEqual(
+         planFactionBotTeamIds({
+-            connectedBotTeamCounts: [29, 29],
++            connectedBotTeamCounts: [19, 19],
+             pendingBotTeamCounts: [1, 1],
+-            connectedPlayerCount: 58,
++            connectedPlayerCount: 38,
+             reservedHumanCount: 0,
+             maxPlayers: 100,
+-            spawnPerSecond: 2,
+-            botCapPerTeam: 30,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
+         }),
+         [],
+-        "pending joins must count toward the 30+30 cap",
++        "pending joins must count toward the 20+20 cap",
+     );
+ 
+     assert.deepEqual(
+         planFactionBotTeamIds({
+-            connectedBotTeamCounts: [20, 20],
++            connectedBotTeamCounts: [10, 10],
+             pendingBotTeamCounts: [0, 0],
+             connectedPlayerCount: 98,
+             reservedHumanCount: 1,
+             maxPlayers: 100,
+-            spawnPerSecond: 2,
+-            botCapPerTeam: 30,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
+         }),
+         [1],
+-        "reserved human slots must reduce the bot batch size",
++        "one remaining non-reserved room slot may receive one bot",
+     );
+ 
+     assert.deepEqual(
+         planFactionBotTeamIds({
+-            connectedBotTeamCounts: [30, 30],
++            connectedBotTeamCounts: [10, 10],
++            pendingBotTeamCounts: [0, 0],
++            connectedPlayerCount: 99,
++            reservedHumanCount: 1,
++            maxPlayers: 100,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
++        }),
++        [],
++        "reserved human slots must block the last room slot",
++    );
++
++    assert.deepEqual(
++        planFactionBotTeamIds({
++            connectedBotTeamCounts: [20, 20],
+             pendingBotTeamCounts: [0, 0],
+-            connectedPlayerCount: 80,
++            connectedPlayerCount: 40,
+             reservedHumanCount: 0,
+             maxPlayers: 100,
+-            spawnPerSecond: 2,
+-            botCapPerTeam: 30,
++            spawnPerSecond: 1,
++            botCapPerTeam: 20,
+         }),
+         [],
+-        "30+30 bots is a hard maximum even when the room has spare slots",
++        "20+20 bots is a hard maximum even when the room has spare slots",
+     );
+ 
+     await testForcedFactionToken();
+ 
+     console.log(
+-        "Faction auto-fill smoke test passed: 2 bots/second, forced 1:1 faction assignment, pending reservations, room capacity, and 30+30 hard cap.",
++        "Faction auto-fill smoke test passed: 1 bot/second, balanced faction assignment, pending reservations, room capacity, and 20+20 hard cap.",
+     );
+ }
+ 
+diff --git a/server/src/gameServer.ts b/server/src/gameServer.ts
+index 95b0ef1..236e361 100644
+--- a/server/src/gameServer.ts
++++ b/server/src/gameServer.ts
+@@ -411,7 +411,7 @@ export class GameServer {
+                 reservedHumanCount: game.reservedHumanCount,
+                 maxPlayers,
+                 spawnPerSecond: 1,
+-                botCapPerTeam: policy?.factionBotCapPerTeam ?? 30,
++                botCapPerTeam: policy?.factionBotCapPerTeam ?? 20,
+                 factionCount,
+             });
+             if (botTeamIds.length === 0) {
+@@ -562,7 +562,7 @@ export class GameServer {
+                         reservedHumanCount: game.reservedHumanCount,
+                         maxPlayers: policy.maxPlayers,
+                         spawnPerSecond: policy.spawnPerSecond,
+-                        botCapPerTeam: policy.factionBotCapPerTeam ?? 30,
++                        botCapPerTeam: policy.factionBotCapPerTeam ?? 20,
+                         factionCount,
+                     });
+                     spawnCount = botTeamIds.length;
+diff --git a/server/src/smartBot.ts b/server/src/smartBot.ts
+index 8b8a51c..5e2ed7a 100644
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -96,6 +96,8 @@ import {
+ } from "./bot/combatIntelligence";
+ import { SpatialGrid } from "./bot/SpatialGrid";
+ import { sanitizeMouseDistance } from "./bot/inputSafety";
++import { shouldPullTrigger, shouldStopForPrecisionShot } from "./bot/combatExecution";
++import { assessHealSafety, type HealSafetyDecision } from "./bot/healSafety";
+ import { movementInputFromDirection } from "./bot/movementInput";
+ import {
+     adrenalineMovementPlan,
+@@ -1131,6 +1133,11 @@ class TacticalBot {
+     private duelFlankObstacleId = 0;
+     private duelFlankSign = 1;
+     private duelArenaRound = 0;
++    private duelLastTriggerAt = 0;
++    private healCoverTarget: Vec2 | null = null;
++    private healCoverUntil = 0;
++    private healThreatPos: Vec2 | null = null;
++    private healThreatUntil = 0;
+ 
+     constructor(
+         id: number,
+@@ -1604,14 +1611,15 @@ class TacticalBot {
+         const squadRescue = this.squad.getRescueFor(this.id, timestamp);
+         const factionRescue = this.factionRescueAssignment(factionOrder, enemyDistance);
+         const rescue = squadRescue ?? factionRescue;
+-        const mapHealRange = config.mapAi
+-            ? this.mapNavigator.healEnemyRange(this.profile.healEnemyRange)
+-            : this.profile.healEnemyRange;
+-        const medicineUnsafe =
+-            outsideGas ||
+-            airstrike !== null ||
+-            enemyDistance < mapHealRange * 0.72 ||
+-            timestamp - this.lastDamagedAt < 220;
++        const healingThreat = this.recentHealingThreat(myPos, enemy, timestamp);
++        const activeMedicineSafety = this.healingSafetyAt(
++            myPos,
++            healingThreat,
++            outsideGas,
++            airstrike !== null,
++            timestamp,
++            true,
++        );
+ 
+         const reviveUnsafe =
+             outsideGas ||
+@@ -1624,6 +1632,31 @@ class TacticalBot {
+         const shouldHide =
+             hideChoice !== null &&
+             this.shouldSeekConcealment(enemyDistance, outsideGas, airstrike !== null, timestamp);
++
++        // Hard survival branches are resolved before medicine holds, special
++        // actions, looting, or combat scoring. In particular, lethal gas may
++        // never lose to an attractive crate or a long action.
++        if (outsideGas && this.gasData) {
++            if (usingMedicine || reviving) this.addInput(GameConfig.Input.Cancel);
++            this.decisionBrain.reset();
++            this.setState("gas");
++            this.runToGas(myPos, enemy);
++            this.autoOpenDoor(myPos);
++            this.applyUnstuckOverride(timestamp);
++            this.lastCommandMoving = this.isMoving();
++            return;
++        }
++        if (airstrike) {
++            if (usingMedicine || reviving) this.addInput(GameConfig.Input.Cancel);
++            this.decisionBrain.reset();
++            this.setState("airstrike");
++            this.evadeAirstrike(myPos, airstrike, enemy, timestamp);
++            this.autoOpenDoor(myPos);
++            this.applyUnstuckOverride(timestamp);
++            this.lastCommandMoving = this.isMoving();
++            return;
++        }
++
+         if (reviving && !reviveUnsafe) {
+             this.setState("revive");
+             this.output.movement = EMPTY_MOVEMENT();
+@@ -1635,16 +1668,18 @@ class TacticalBot {
+ 
+         // Once a healing/boost action has started, keep still and allow the server
+         // action timer to finish. Only cancel when the situation becomes unsafe.
+-        if (usingMedicine && !medicineUnsafe) {
++        if (usingMedicine && activeMedicineSafety.canHeal) {
+             this.setState("heal");
+             this.output.movement = EMPTY_MOVEMENT();
+-            if (enemy) {
+-                this.output.aimDir = normalize(sub(enemy.object.data.pos as Vec2, myPos));
++            if (healingThreat) {
++                this.output.aimDir = normalize(sub(healingThreat.pos, myPos));
+             }
+             this.lastCommandMoving = false;
+             return;
+         }
+-        if (usingMedicine && medicineUnsafe) this.addInput(GameConfig.Input.Cancel);
++        if (usingMedicine && activeMedicineSafety.cancelActiveAction) {
++            this.addInput(GameConfig.Input.Cancel);
++        }
+ 
+         if (this.duelModeActive && this.continueSpecialAction(myPos, timestamp)) {
+             this.setState("combat");
+@@ -1670,7 +1705,24 @@ class TacticalBot {
+             return;
+         }
+ 
+-        const healItem = this.chooseMedicine(myPos, enemyDistance, outsideGas, timestamp);
++        const healItem = this.chooseMedicine(
++            myPos,
++            healingThreat?.distance ?? enemyDistance,
++            outsideGas,
++            timestamp,
++        );
++        const healSafety = this.healingSafetyAt(
++            myPos,
++            healingThreat,
++            outsideGas,
++            airstrike !== null,
++            timestamp,
++            false,
++        );
++        const healCoverTarget =
++            healItem && !healSafety.canHeal && healSafety.mustSeekCover
++                ? this.chooseHealingCoverTarget(myPos, healingThreat, timestamp)
++                : null;
+         const urgentEquipmentLoot =
+             !outsideGas &&
+             airstrike === null &&
+@@ -1692,15 +1744,7 @@ class TacticalBot {
+                 ? this.chooseCrate(myPos, enemyDistance, timestamp, true)
+                 : null;
+ 
+-        if (airstrike) {
+-            this.decisionBrain.reset();
+-            this.setState("airstrike");
+-            this.evadeAirstrike(myPos, airstrike, enemy, timestamp);
+-        } else if (outsideGas && this.gasData) {
+-            this.decisionBrain.reset();
+-            this.setState("gas");
+-            this.runToGas(myPos, enemy);
+-        } else if (this.handlePostReviveRetreat(myPos, enemy, timestamp)) {
++        if (this.handlePostReviveRetreat(myPos, enemy, timestamp)) {
+             this.decisionBrain.reset();
+             this.setState("retreat");
+         } else {
+@@ -1722,33 +1766,33 @@ class TacticalBot {
+ 
+             if (
+                 healItem &&
+-                shouldHide &&
+-                hideChoice &&
+-                !pointInsideConcealment(
+-                    myPos,
+-                    hideChoice.zone,
+-                    -Math.min(1, hideChoice.zone.radius * 0.22),
+-                )
++                !healSafety.canHeal &&
++                healSafety.mustSeekCover &&
++                (healingThreat?.distance ?? Infinity) > 5.5
+             ) {
+                 candidates.push({
+                     kind: "heal-in-cover",
+-                    state: "hide",
++                    state: "retreat",
+                     tier: IntentTier.emergency,
+-                    utility: 820 + Math.max(0, 55 - this.local.health) * 4,
+-                    targetKey: `hide:${hideChoice.zone.key}`,
++                    utility: 850 + Math.max(0, 60 - this.local.health) * 5,
++                    targetKey: healCoverTarget
++                        ? `heal-cover:${Math.round(healCoverTarget.x)}:${Math.round(healCoverTarget.y)}`
++                        : `heal-evade:${healingThreat ? Math.round(healingThreat.pos.x) : 0}:${
++                              healingThreat ? Math.round(healingThreat.pos.y) : 0
++                          }`,
+                     critical: this.local.health <= 28,
+-                    reason: "medicine-needs-cover",
++                    reason: `medicine-${healSafety.reason}`,
+                 });
+             }
+-            if (healItem) {
++            if (healItem && healSafety.canHeal) {
+                 candidates.push({
+                     kind: "heal",
+-                    state: this.local.health <= effectiveRetreatHealth ? "retreat" : "heal",
++                    state: "heal",
+                     tier: IntentTier.emergency,
+-                    utility: 760 + Math.max(0, 80 - this.local.health) * 5,
++                    utility: 780 + Math.max(0, 80 - this.local.health) * 5,
+                     targetKey: `heal:${healItem}`,
+                     critical: this.local.health <= 24,
+-                    reason: "safe-medicine",
++                    reason: "safe-medicine-behind-cover",
+                 });
+             }
+ 
+@@ -1850,21 +1894,37 @@ class TacticalBot {
+             }
+             if (enemyReady && enemy) {
+                 const pointBlankUnarmed = underarmed && enemy.distance <= 4.8;
++                const enemyWeaponDef = gameDef(String(enemy.object.data.activeWeapon ?? ""));
++                const enemyMeleeRadius =
++                    enemyWeaponDef?.type === "melee"
++                        ? Number(enemyWeaponDef.attack?.rad ?? 3.2) + 1.8
++                        : 0;
++                const immediateMeleeThreat =
++                    enemyMeleeRadius > 0 && enemy.distance <= enemyMeleeRadius;
+                 candidates.push({
+                     kind: "combat",
+                     state:
+-                        this.local.health <= effectiveRetreatHealth && !pointBlankUnarmed
++                        this.local.health <= effectiveRetreatHealth &&
++                        !pointBlankUnarmed &&
++                        !immediateMeleeThreat
+                             ? "retreat"
+                             : "combat",
+-                    tier: IntentTier.combat,
++                    tier: immediateMeleeThreat ? IntentTier.emergency : IntentTier.combat,
+                     utility:
+                         720 +
+                         enemy.score +
+                         (pointBlankUnarmed ? 180 : 0) +
++                        (immediateMeleeThreat ? 260 : 0) +
+                         (enemy.distance < 8 ? 45 : 0),
+                     targetKey: `enemy:${enemy.object.__id}`,
+-                    critical: pointBlankUnarmed && enemy.distance <= 2.7,
+-                    reason: pointBlankUnarmed ? "point-blank-defense" : "visible-enemy",
++                    critical:
++                        immediateMeleeThreat ||
++                        (pointBlankUnarmed && enemy.distance <= 2.7),
++                    reason: immediateMeleeThreat
++                        ? "enemy-melee-hard-interrupt"
++                        : pointBlankUnarmed
++                          ? "point-blank-defense"
++                          : "visible-enemy",
+                 });
+             }
+             if (rescue && this.shouldAttemptRescue(rescue, enemyDistance, timestamp)) {
+@@ -2082,7 +2142,7 @@ class TacticalBot {
+             this.setState(decision.state);
+             switch (decision.kind as BotIntentKind) {
+                 case "heal-in-cover":
+-                    if (hideChoice) this.moveIntoConcealment(myPos, hideChoice, enemy, timestamp);
++                    this.moveToHealingCover(myPos, healCoverTarget, healingThreat, timestamp);
+                     break;
+                 case "heal":
+                     if (healItem) this.useMedicine(healItem, myPos, enemy, timestamp);
+@@ -3920,7 +3980,8 @@ class TacticalBot {
+         const slot = this.chooseCombatWeapon(target.distance, -1, false, 1, 1, enemySpeed, false, timestamp);
+         this.equipSlot(slot);
+ 
+-        const weaponType = this.local.weapons[slot]?.type ?? "";
++        const weapon = this.local.weapons[slot];
++        const weaponType = weapon?.type ?? "";
+         const weaponDef = gameDef(weaponType);
+         const isMeleeWeapon = weaponDef?.type === "melee";
+         const projectileSpeed = isMeleeWeapon ? 1000 : gunSpeed(weaponType);
+@@ -3950,7 +4011,25 @@ class TacticalBot {
+             this.profile.leadFactor *
+             (mastery?.leadFactor ?? 1);
+         const predicted = add(enemyPos, mul(enemyVelocity, leadTime));
+-        const directAim = normalize(sub(predicted, myPos));
++        const predictedLineClear =
++            target.visible &&
++            this.hasVisualLineOfSight(
++                myPos,
++                predicted,
++                target.object.__id,
++                this.currentConcealmentZones,
++            );
++        const directLineClear =
++            target.visible &&
++            this.hasVisualLineOfSight(
++                myPos,
++                enemyPos,
++                target.object.__id,
++                this.currentConcealmentZones,
++            );
++        const shotClear = predictedLineClear || directLineClear;
++        const shotAimPoint = predictedLineClear ? predicted : enemyPos;
++        const directAim = normalize(sub(shotAimPoint, myPos));
+         const movingPenalty = this.isMoving() ? 1.25 : 1;
+         const aimJitter = config.mapAi
+             ? this.mapNavigator.aimJitter(this.profile.aimJitterRad)
+@@ -4111,17 +4190,30 @@ class TacticalBot {
+         }
+         this.moveDirection(movementVector);
+         if (
+-            mastery?.stopToShoot &&
+-            target.distance > 20 &&
+-            this.local.health > effectiveCombatRetreatHealth(this.profile.retreatHealth, this.currentSpecialRole, mapPhase) + 9 &&
+-            timestamp - this.lastDamagedAt > 320 &&
+-            this.airstrikeThreat(myPos, timestamp) === null &&
+-            this.countEnemiesNear(myPos, 10) === 0
++            shouldStopForPrecisionShot({
++                stopToShoot: Boolean(mastery?.stopToShoot) && target.distance > 20,
++                meleeWeapon: isMeleeWeapon,
++                targetDistance: target.distance,
++                weaponRange: isMeleeWeapon
++                    ? Number(weaponDef?.attack?.rad ?? 3.2) + 1.4
++                    : gunRange(weaponType),
++                lineClear: shotClear,
++                healthSafe:
++                    this.local.health >
++                    effectiveCombatRetreatHealth(
++                        this.profile.retreatHealth,
++                        this.currentSpecialRole,
++                        mapPhase,
++                    ) +
++                        9,
++                recentlyDamaged: timestamp - this.lastDamagedAt <= 320,
++                underAirstrike: this.airstrikeThreat(myPos, timestamp) !== null,
++                nearbyEnemyCount: this.countEnemiesNear(myPos, 10),
++            })
+         ) {
+             this.output.movement = EMPTY_MOVEMENT();
+         }
+ 
+-        const weapon = this.local.weapons[slot];
+         if (!isMeleeWeapon && weapon && weapon.ammo <= 0) {
+             if (this.reserveAmmoForWeapon(weapon.type) > 0) this.addInput(GameConfig.Input.Reload);
+             else {
+@@ -4131,18 +4223,34 @@ class TacticalBot {
+             return;
+         }
+ 
+-        const inRange = isMeleeWeapon ? target.distance <= Number(weaponDef?.attack?.rad ?? 3.2) + 1.4 : target.distance <= gunRange(weaponType);
+-        const shotClear =
+-            target.visible &&
+-            this.hasVisualLineOfSight(
+-                myPos,
+-                predicted,
+-                target.object.__id,
+-                this.currentConcealmentZones,
+-            );
+-        if (inRange && shotClear && Math.random() <= this.profile.shootConfidence) {
++        const inRange = isMeleeWeapon
++            ? target.distance <= Number(weaponDef?.attack?.rad ?? 3.2) + 1.4
++            : target.distance <= gunRange(weaponType);
++        const automaticFire = weaponDef?.fireMode === "auto" || weaponDef?.autoAttack === true;
++        const fireDelayMs = Math.max(55, Number(weaponDef?.fireDelay ?? 0.18) * 820);
++        const cadenceReady = automaticFire || timestamp - this.duelLastTriggerAt >= fireDelayMs;
++        const reactionReady = timestamp - this.enemyAcquiredAt >= this.profile.reactionMs;
++        const pullTrigger = shouldPullTrigger({
++            duelMode: this.duelModeActive,
++            reactionReady: reactionReady && (!this.duelModeActive || cadenceReady),
++            inRange,
++            lineClear: shotClear,
++            ammoReady: isMeleeWeapon || Number(weapon?.ammo ?? 0) > 0,
++            shootConfidence: this.profile.shootConfidence,
++            randomRoll: Math.random(),
++        });
++        if (pullTrigger) {
+             this.output.shootStart = true;
+-            this.output.shootHold = weaponDef?.fireMode === "auto" || weaponDef?.autoAttack === true;
++            this.output.shootHold = automaticFire;
++            if (this.duelModeActive) this.duelLastTriggerAt = timestamp;
++        } else if (this.duelModeActive && !this.isMoving()) {
++            // Never remain in the "aiming but doing nothing" state. Close range
++            // when the selected weapon cannot reach, or sidestep to recover a
++            // blocked firing lane while keeping the opponent tracked.
++            const recovery = !inRange
++                ? toEnemy
++                : normalize(add(mul(toEnemy, 0.35), mul(tangent, 0.9)));
++            this.moveDirection(recovery);
+         }
+ 
+         if (!isMeleeWeapon && weapon) {
+@@ -4894,6 +5002,221 @@ class TacticalBot {
+         return type === "bandage" || type === "healthkit" || type === "soda" || type === "painkiller";
+     }
+ 
++    private recentHealingThreat(
++        myPos: Vec2,
++        enemy: TargetChoice | null,
++        timestamp: number,
++    ): { pos: Vec2; distance: number; visible: boolean } | null {
++        if (enemy?.object.data.pos) {
++            const pos = enemy.object.data.pos as Vec2;
++            this.healThreatPos = v2.create(pos.x, pos.y);
++            this.healThreatUntil = timestamp + 3600;
++            return { pos, distance: enemy.distance, visible: true };
++        }
++
++        const ballistic = this.recentBallisticThreat;
++        if (ballistic && timestamp - ballistic.updatedAt <= 1200 && ballistic.confidence >= 0.45) {
++            const pos = ballistic.estimatedShooterPos as Vec2;
++            this.healThreatPos = v2.create(pos.x, pos.y);
++            this.healThreatUntil = timestamp + 2600;
++            return { pos, distance: distance(myPos, pos), visible: false };
++        }
++
++        let best: { pos: Vec2; distance: number; visible: boolean; score: number } | null = null;
++        for (const [playerId, memory] of this.playerMemory) {
++            if (
++                playerId === this.activePlayerId ||
++                this.isTeammate(playerId) ||
++                timestamp - memory.seenAt > 3600
++            ) {
++                continue;
++            }
++            const object = this.objectPool.getObjById(playerId);
++            if (object?.data.dead || Number(object?.data.layer ?? this.myLayer()) !== this.myLayer()) continue;
++            const dist = distance(myPos, memory.pos);
++            const age = timestamp - memory.seenAt;
++            const score = dist + age * 0.012;
++            if (!best || score < best.score) {
++                best = {
++                    pos: v2.create(memory.pos.x, memory.pos.y),
++                    distance: dist,
++                    visible: false,
++                    score,
++                };
++            }
++        }
++        if (best) {
++            this.healThreatPos = v2.create(best.pos.x, best.pos.y);
++            this.healThreatUntil = timestamp + 2200;
++            return { pos: best.pos, distance: best.distance, visible: false };
++        }
++
++        if (this.healThreatPos && timestamp < this.healThreatUntil) {
++            return {
++                pos: this.healThreatPos,
++                distance: distance(myPos, this.healThreatPos),
++                visible: false,
++            };
++        }
++        return null;
++    }
++
++    private healingIndoorsAt(point: Vec2): boolean {
++        return this.currentConcealmentZones.some(
++            (zone) =>
++                zone.kind === "roof" &&
++                !zone.ceilingDead &&
++                zone.layer === this.myLayer() &&
++                pointInsideConcealment(point, zone, -Math.min(0.45, zone.radius * 0.08)),
++        );
++    }
++
++    private healingSafetyAt(
++        point: Vec2,
++        threat: { pos: Vec2; distance: number; visible: boolean } | null,
++        outsideGas: boolean,
++        underAirstrike: boolean,
++        timestamp: number,
++        actionAlreadyActive: boolean,
++    ): HealSafetyDecision {
++        const enemyHasLineOfSight = Boolean(
++            threat &&
++                this.hasLineOfSight(
++                    threat.pos,
++                    point,
++                    this.activePlayerId,
++                ),
++        );
++        const inHardCover = Boolean(threat && !enemyHasLineOfSight);
++        return assessHealSafety({
++            health: this.local.health,
++            enemyDistance: threat?.distance ?? Infinity,
++            enemyHasLineOfSight,
++            inHardCover,
++            indoors: this.healingIndoorsAt(point),
++            outsideGas,
++            underAirstrike,
++            ballisticPressure: this.hasRecentBallisticPressure(timestamp),
++            millisecondsSinceDamage: Math.max(0, timestamp - this.lastDamagedAt),
++            actionAlreadyActive,
++        });
++    }
++
++    private validHealingCoverObstacle(object: GameObject): boolean {
++        if (object.__type !== ObjectType.Obstacle) return false;
++        const data = object.data;
++        const pos = data.pos as Vec2 | undefined;
++        if (!pos || data.dead || Number(data.layer ?? 0) !== this.myLayer()) return false;
++        if (data.isDoor && data.door?.open) return false;
++        const type = String(data.type ?? "");
++        if (/bush|grass|smoke|window|water|decal|barrel|tank|explosive/i.test(type)) return false;
++        if (this.isExplosiveObstacle(object)) return false;
++        if (Number(data.healthT ?? 1) < 0.32) return false;
++        return this.obstacleRadius(object) >= 0.65;
++    }
++
++    private chooseHealingCoverTarget(
++        myPos: Vec2,
++        threat: { pos: Vec2; distance: number; visible: boolean } | null,
++        timestamp: number,
++    ): Vec2 | null {
++        if (!threat) return null;
++        if (
++            this.healCoverTarget &&
++            timestamp < this.healCoverUntil &&
++            distance(myPos, this.healCoverTarget) > 1.1 &&
++            !this.isOutsideGas(this.healCoverTarget)
++        ) {
++            return this.healCoverTarget;
++        }
++
++        let best: Vec2 | null = null;
++        let bestScore = Infinity;
++        for (const object of this.spatialGrid.queryRadius(myPos, 34)) {
++            if (!this.validHealingCoverObstacle(object)) continue;
++            const obstaclePos = object.data.pos as Vec2;
++            const radius = this.obstacleRadius(object);
++            const awayFromEnemy = normalize(sub(obstaclePos, threat.pos));
++            const side = perpendicular(awayFromEnemy);
++            const clearance = radius + GameConfig.player.radius + 0.75;
++            const candidates = [
++                add(obstaclePos, mul(awayFromEnemy, clearance)),
++                add(add(obstaclePos, mul(awayFromEnemy, clearance)), mul(side, 0.9)),
++                add(add(obstaclePos, mul(awayFromEnemy, clearance)), mul(side, -0.9)),
++            ];
++            for (const raw of candidates) {
++                const candidate = v2.create(
++                    clamp(raw.x, 2, Math.max(2, this.mapWidth - 2)),
++                    clamp(raw.y, 2, Math.max(2, this.mapHeight - 2)),
++                );
++                if (this.isOutsideGas(candidate)) continue;
++                if (distance(candidate, threat.pos) < 8.5) continue;
++                if (this.hasLineOfSight(threat.pos, candidate, this.activePlayerId)) continue;
++                if (!this.canNavigateResourcePath(myPos, candidate, object.__id, object.__id)) continue;
++                const routeDistance = distance(myPos, candidate);
++                const score =
++                    routeDistance * 1.25 -
++                    Math.min(18, distance(candidate, threat.pos) * 0.12) +
++                    (Number(object.data.healthT ?? 1) < 0.55 ? 9 : 0);
++                if (score < bestScore) {
++                    bestScore = score;
++                    best = candidate;
++                }
++            }
++        }
++
++        if (!best) {
++            const indoor = this.currentConcealmentZones
++                .filter(
++                    (zone) =>
++                        zone.kind === "roof" &&
++                        !zone.ceilingDead &&
++                        zone.layer === this.myLayer(),
++                )
++                .map((zone) => ({
++                    point: v2.create(zone.center.x, zone.center.y),
++                    score: distance(myPos, zone.center),
++                }))
++                .filter(
++                    (choice) =>
++                        choice.score <= 34 &&
++                        !this.isOutsideGas(choice.point) &&
++                        !this.hasLineOfSight(threat.pos, choice.point, this.activePlayerId),
++                )
++                .sort((a, b) => a.score - b.score)[0];
++            best = indoor?.point ?? null;
++        }
++
++        if (best) {
++            this.healCoverTarget = v2.create(best.x, best.y);
++            this.healCoverUntil = timestamp + 2200;
++        }
++        return best;
++    }
++
++    private moveToHealingCover(
++        myPos: Vec2,
++        target: Vec2 | null,
++        threat: { pos: Vec2; distance: number; visible: boolean } | null,
++        timestamp: number,
++    ): void {
++        const threatPos = threat?.pos ?? this.healThreatPos;
++        if (target) {
++            const direction = this.steerToward(myPos, target, timestamp, 0, this.id + 701);
++            this.moveDirection(direction);
++            this.output.aimDir = threatPos ? normalize(sub(threatPos, myPos)) : direction;
++            return;
++        }
++        if (threatPos) {
++            const away = normalize(sub(myPos, threatPos));
++            const evade = normalize(add(mul(away, 1.2), mul(perpendicular(away), this.strafeSign * 0.42)));
++            this.moveDirection(evade);
++            this.output.aimDir = normalize(sub(threatPos, myPos));
++            return;
++        }
++        this.explore(myPos, timestamp);
++    }
++
+     private chooseMedicine(
+         myPos: Vec2,
+         enemyDistance: number,
+@@ -4918,15 +5241,11 @@ class TacticalBot {
+         const recentlyRevived = timestamp < this.recentlyRevivedUntil;
+ 
+         if (outsideGas && health > 27) return "";
+-        if (!safeFromEnemy && health > 22) return "";
+-        if (recentlyDamaged && health > 18) return "";
+ 
+         const medicClusterBonus =
+             this.currentSpecialRole === "medic" && nearbyRoleStats.injuredAllies >= 2 ? 12 : 0;
+         if (
+             recentlyRevived &&
+-            safeFromEnemy &&
+-            !recentlyDamaged &&
+             Number(inventory.healthkit ?? 0) > 0
+         ) {
+             return "healthkit";
+@@ -4974,25 +5293,6 @@ class TacticalBot {
+         enemy: TargetChoice | null,
+         timestamp: number,
+     ): void {
+-        // On open maps, take a short detour to hard cover before starting a long
+-        // medicine action. At critical health, healing immediately is safer.
+-        if (config.mapAi && this.local.health > 24) {
+-            const enemyPos = enemy ? (enemy.object.data.pos as Vec2) : null;
+-            const coverTarget = this.mapNavigator.medicineCoverTarget(myPos, enemyPos, this.role);
+-            if (coverTarget && distance(myPos, coverTarget) > 2.8) {
+-                const routeDirection = this.mapNavigator.adjustStrategicDirection(
+-                    myPos,
+-                    coverTarget,
+-                    this.currentMapPhase(),
+-                    this.role,
+-                    timestamp,
+-                );
+-                this.output.aimDir = enemyPos ? normalize(sub(enemyPos, myPos)) : routeDirection;
+-                this.moveDirection(routeDirection);
+-                return;
+-            }
+-        }
+-
+         this.output.useItem = item;
+         if (item === "soda" || item === "painkiller") {
+             this.lastAdrenalineUseAt = timestamp;
+@@ -5013,13 +5313,6 @@ class TacticalBot {
+             const enemyPos = enemy.object.data.pos as Vec2;
+             this.output.aimDir = normalize(sub(enemyPos, myPos));
+         }
+-
+-        // Do not repeatedly cancel our own medicine action. Cancel only if hit very
+-        // recently and the item is no longer worth finishing.
+-        if (timestamp - this.lastDamagedAt < 180 && this.local.health > 22) {
+-            this.addInput(GameConfig.Input.Cancel);
+-            this.output.useItem = "";
+-        }
+     }
+ 
+     private chooseLoot(myPos: Vec2, timestamp: number): LootChoice | null {

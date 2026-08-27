@@ -1,0 +1,42 @@
+{
+  "version": "V40",
+  "focus": "1v1 HACKER/LEGIT combat recovery",
+  "modifiedSource": [
+    "server/src/smartBot.ts",
+    "server/src/bot/forbiddenCombat.ts",
+    "server/src/bot/aiMatchRecorder.ts",
+    "server/src/game/gameProcessManager.ts",
+    "server/src/apiServer.ts",
+    "start-surviv.ps1",
+    "tools/SurvivLauncher/Program.cs",
+    "README.md",
+    "server/package.json"
+  ],
+  "added": [
+    "START_V40.cmd",
+    "server/src/v40DuelCombatRecoverySmokeTest.ts",
+    "server/src/gameProcessReuseSmokeTest.ts",
+    "server/src/v40LauncherSmokeTest.ts",
+    "docs/AI_DUEL_RECOVERY_V40.md",
+    "docs/V40_DUEL_COMBAT_ANALYSIS.md",
+    "docs/V40_DUEL_LOG_ANALYSIS.json",
+    "docs/validation/V40_DUEL_RECOVERY_VALIDATION.txt"
+  ],
+  "removed": [
+    "SurvivLauncher.exe (stale precompiled binary; rebuild from updated source on Windows)"
+  ],
+  "logicAreas": [
+    "authoritative exposed-body targeting",
+    "close-range and final-trigger cover validation",
+    "single-shot precision braking",
+    "timed peek interception",
+    "healing-behind-cover pressure",
+    "grenade opportunity timing",
+    "moving-target ricochet lead",
+    "dual-switch stale snapshot grace",
+    "advanced AI airstrike counterfire",
+    "match recorder V10 tactical fields",
+    "multi-process room reuse guard",
+    "stale client/server launcher guard"
+  ]
+}

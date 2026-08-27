@@ -26,6 +26,13 @@ export class DecalBarn {
         }
     }
 
+    clearForArenaRound(): void {
+        for (const decal of this.decals) {
+            if (!decal.destroyed) decal.destroy();
+        }
+        this.decals.length = 0;
+    }
+
     addDecal(type: string, pos: Vec2, layer: number, ori?: number, scale?: number) {
         const decal = new Decal(this.game, type, pos, layer, ori, scale);
         this.decals.push(decal);

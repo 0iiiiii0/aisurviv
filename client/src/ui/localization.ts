@@ -73,7 +73,8 @@ export class Localization {
         return this.locale;
     }
 
-    translate(key: string) {
+    translate(key: string | null | undefined) {
+        if (typeof key !== "string" || key.length === 0) return "";
         // Also try spaces as dashes
         const spacedKey = key.replace(" ", "-");
         return (

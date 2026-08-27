@@ -1,0 +1,45 @@
+V42 AIM TRAINING SPECTATOR GUARD VALIDATION
+==========================================
+
+Result: PASS
+
+Root cause coverage
+-------------------
+PASS - Joined message declares spectatorOnly explicitly.
+PASS - Joined message declares trainingTarget explicitly.
+PASS - Protocol version is 81; stale V41 clients are rejected.
+PASS - Aim-training human camera is forced to the local player on server and client.
+PASS - Non-observer aim-training clients ignore spectator overlay messages.
+PASS - Aim-training ignores ArenaRound UI messages.
+PASS - Training stats continue while the target is temporarily absent.
+PASS - targetReady differentiates online and reconnecting target states.
+PASS - GameServer continuously supervises and respawns the moving target.
+
+Production multi-process fault injection
+----------------------------------------
+PASS - /api/aim-training returned ready=true.
+PASS - AK-47 / distance 80 / infinite magazine settings were accepted.
+PASS - Initial moving target joined.
+PASS - Human probe joined with AK-47 and active player id 13.
+PASS - Initial target process PID 3568 was forcibly terminated.
+PASS - Server logged Aim-training target respawn requested.
+PASS - Replacement target process PID 3629 joined the same match.
+PASS - Human connection remained active with player id 13 and AK-47.
+
+Regression coverage
+-------------------
+PASS - Server TypeScript noEmit check.
+PASS - Server production build.
+PASS - Client TypeScript noEmit check.
+PASS - V42 role/protocol/target-readiness smoke test.
+PASS - V33 aim-training join-order and broken-arrow simulation.
+PASS - Aim-training human-first and target-first smoke tests.
+PASS - V29 aim-training numerical simulation.
+PASS - V31 aim-training UI/cover preservation.
+PASS - V35 training and frequency simulation.
+PASS - Multi-process game reuse test.
+PASS - V41 spectator share/private-chat/free-camera suite.
+PASS - V41 private duel/per-player weapon/pure-AI/admin suite.
+PASS - V40 duel combat recovery suite.
+PASS - HACKER/LEGIT visibility boundary test.
+PASS - Forbidden combat and input safety tests.

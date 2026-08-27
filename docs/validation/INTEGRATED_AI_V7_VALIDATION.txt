@@ -1,0 +1,27 @@
+Integrated AI V7 validation
+============================
+
+Build
+- server TypeScript compilation: PASS
+
+New focused tests
+- 50v50 one bot/second: PASS
+- 50v50 20+20 server-bot hard cap: PASS
+- connected + pending faction balancing: PASS
+- human room-slot reservation: PASS
+- 1v1 deterministic trigger after hard checks: PASS
+- precision weapon does not stop outside actual range: PASS
+- blocked/out-of-range/no-ammo duel shots remain disabled: PASS
+- direct enemy line-of-sight blocks medicine: PASS
+- hard cover or safe indoor position permits medicine after no-damage window: PASS
+- point-blank critical-health face-healing is blocked: PASS
+- active medicine cancels when line-of-sight reopens: PASS
+
+Regression tests
+- smart bot input safety: PASS
+- tactical decision brain: PASS
+- loot/resource search: PASS
+- duel game smoke test: PASS
+- duel vision/search: PASS
+- spectator and auto-fill: PASS
+- all modes: PASS (47 playlists / 17 maps)

@@ -117,6 +117,9 @@ const GasStages: StageData[] = [
 ];
 
 export class Gas {
+    /** Modes whose entire playable map must remain permanently gas-free. */
+    private readonly disabled: boolean;
+
     /**
      * Current gas mode
      * Inactive: The gas is not active, used when only a single player is on the lobby
@@ -216,19 +219,37 @@ export class Gas {
 
     constructor(readonly game: Game) {
         const map = game.map;
+        this.disabled = game.mapName === "aim_training"
+            || Boolean(map.mapDef.gameMode.zombieMode);
         this.mapSize = (map.width + map.height) / 2;
         this.posOld = v2.create(map.width / 2, map.height / 2);
         this.posNew = v2.copy(this.posOld);
         this.currentPos = v2.copy(this.posOld);
 
-        const stage = this._getStageData();
+        const stage = this._getStageData()!;
         this.radOld = 0.85 * this.mapSize;
         this.radNew = this.currentRad = stage.rad * this.mapSize;
         this.duration = stage.duration;
         this.damage = stage.damage;
+
+        // The practice range and zombie mission have no shrinking zone, gas
+        // overlay, or gas damage. A radius larger than the map keeps every
+        // client-side gas renderer completely outside the playable area.
+        if (this.disabled) {
+            this.mode = GasMode.Inactive;
+            this.stage = 0;
+            this.circleIdx = -1;
+            this.radOld = this.radNew = this.currentRad = this.mapSize * 2;
+            this.duration = 0;
+            this.damage = 0;
+        }
     }
 
     update(dt: number) {
+        if (this.disabled) {
+            this.doDamage = false;
+            return;
+        }
         this._gasTicker += dt;
 
         if (this._running) {
@@ -255,6 +276,7 @@ export class Gas {
     }
 
     advanceGasStage() {
+        if (this.disabled) return;
         this.stage++;
         this._running = true;
 
@@ -317,8 +339,72 @@ export class Gas {
         this.game.updateData();
     }
 
-    private _getStageData() {
-        return GasStages[this.stage];
+    resetForArenaRound(): void {
+        const stage = this._getArenaStageData(0);
+        if (!stage) return;
+
+        const center = v2.create(this.game.map.width / 2, this.game.map.height / 2);
+        this.mode = GasMode.Inactive;
+        this.stage = 0;
+        this.circleIdx = -1;
+        this.duration = stage.duration;
+        this.damage = stage.damage;
+        this.radOld = stage.rad * this.mapSize;
+        this.radNew = this.radOld;
+        this.currentRad = this.radOld;
+        this.posOld = v2.copy(center);
+        this.posNew = v2.copy(center);
+        this.currentPos = v2.copy(center);
+        this.gasT = 0;
+        this._gasTicker = 0;
+        this._damageTicker = 0;
+        this._running = false;
+        this.doDamage = false;
+        this.dirty = true;
+        this.timeDirty = true;
+
+        this.advanceGasStage();
+    }
+
+    private _getArenaStageData(stage: number): StageData | undefined {
+        const config = this.game.map.mapDef.arena?.gas;
+        if (!config) return undefined;
+        if (stage === 0) {
+            return {
+                mode: GasMode.Inactive,
+                duration: 0,
+                rad: 0.85,
+                damage: 0,
+            };
+        }
+        if (stage === 1) {
+            return {
+                mode: GasMode.Moving,
+                duration: config.duration,
+                rad: 0,
+                damage: config.damage,
+            };
+        }
+        return undefined;
+    }
+
+    private _getStageData(): StageData | undefined {
+        if (this.game.map.mapDef.arena?.gas) {
+            return this._getArenaStageData(this.stage);
+        }
+        const stage = GasStages[this.stage];
+        if (!stage) return undefined;
+        if (
+            this.stage === 1
+            && this.game.map.mapDef.gameMode.factionMode
+        ) {
+            // Forty AI joining at the configured two-second cadence require
+            // roughly 80 seconds just to connect. Preserve a preparation window
+            // for the final worker batches so they can arm before the first mass
+            // rotation instead of spawning directly into a gas-only state.
+            return { ...stage, duration: Math.max(stage.duration, 125) };
+        }
+        return stage;
     }
 
     isInGas(pos: Vec2) {

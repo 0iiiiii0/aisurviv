@@ -9,6 +9,10 @@ export const zFindGameBody = z.object({
     playerCount: z.number(),
     autoFill: z.boolean(),
     gameModeIdx: z.number(),
+    /** Explicit opt-in from the all-modes menu for unlisted non-extraction playlists. */
+    allowUnlistedMode: z.boolean().optional(),
+    accountToken: z.string().optional(),
+    zombieDifficulty: z.enum(["simple", "normal", "hard"]).optional(),
     turnstileToken: z.string().optional(),
 });
 
@@ -44,6 +48,7 @@ export type FindGameError =
     | "invalid_protocol"
     | "invalid_region"
     | "join_game_failed"
+    | "login_required"
     | "mode_disabled"
     | "rate_limited";
 

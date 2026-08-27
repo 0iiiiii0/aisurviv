@@ -13,20 +13,20 @@ export function getConfig(isProduction: boolean, dir: string) {
 
     const config: ConfigType = {
         apiServer: {
-            host: "0.0.0.0",
+            host: "127.0.0.1",
             port: 8000,
         },
         gameServer: {
             host: "0.0.0.0",
-            port: 8001,
+            port: 3000,
             apiServerUrl: "",
             thisRegion: "local",
             firstGamePort: 9000,
             maxGames: 64,
         },
         vite: {
-            host: "127.0.0.1",
-            port: 3000,
+            host: "0.0.0.0",
+            port: 8001,
         },
         regions: {},
         proxies: {},
@@ -37,8 +37,8 @@ export function getConfig(isProduction: boolean, dir: string) {
         ],
         clientTheme: "main",
         passType: "pass_survivr1",
-        gameTps: 100,
-        netSyncTps: 33,
+        gameTps: 60,
+        netSyncTps: 20,
         logging: {
             logDate: true,
             infoLogs: true,
@@ -73,9 +73,7 @@ export function getConfig(isProduction: boolean, dir: string) {
         defaultItems: {},
     };
 
-    const dirname = import.meta?.dirname || __dirname;
-
-    const configPath = path.join(dirname, dir, configFileName);
+    const configPath = path.join(import.meta.dirname, dir, configFileName);
 
     let localConfig: PartialConfig = {};
 
@@ -110,7 +108,10 @@ export function getConfig(isProduction: boolean, dir: string) {
 
     if (!config.gameServer.apiServerUrl) {
         // same as above, provide a more accurate default value if not set manually
-        config.gameServer.apiServerUrl = `http://${config.apiServer.host}:${config.apiServer.port}`;
+        const apiHost = config.apiServer.host === "0.0.0.0" || config.apiServer.host === "::"
+            ? "127.0.0.1"
+            : config.apiServer.host;
+        config.gameServer.apiServerUrl = `http://${apiHost}:${config.apiServer.port}`;
     }
 
     const googleLogin = !!(
@@ -127,22 +128,22 @@ export function getConfig(isProduction: boolean, dir: string) {
         ...config.proxies[baseUrl.hostname],
     };
 
-    if (isDev) {
-        config.regions.local ??= {
-            https: false,
-            address: `127.0.0.1:${config.gameServer.port}`,
-            l10n: "index-local",
-        };
-    }
+    // Keep the Windows/local production launcher usable when an upgraded
+    // legacy install only has secrets in survev-config.hjson. Public hosts can
+    // override this entry, while a missing regions block safely advertises the
+    // local game server instead of crashing GameServer during construction.
+    config.regions.local ??= {
+        https: false,
+        address: `127.0.0.1:${config.gameServer.port}`,
+        l10n: "index-local",
+    };
 
     return config;
 }
 
 export function saveConfig(dir: string, config: PartialConfig) {
     try {
-        const dirname = import.meta?.dirname || __dirname;
-
-        const configPath = path.join(dirname, dir, configFileName);
+        const configPath = path.join(import.meta.dirname, dir, configFileName);
 
         const configText = fs.readFileSync(configPath).toString();
         const localConfig = hjson.parse(configText);

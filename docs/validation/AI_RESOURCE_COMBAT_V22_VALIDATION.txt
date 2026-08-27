@@ -1,0 +1,23 @@
+AI Resource & Combat V22 validation
+===================================
+
+PASS  server TypeScript full build: npm run build
+PASS  V22 resource/combat smoke test
+PASS  integrated logic specification smoke test
+PASS  smart bot brain smoke test
+PASS  faction airdrop/container smoke test
+PASS  aim control smoke test
+PASS  combat tactics smoke test
+PASS  all-mode AI smoke test: 47 playlists / 17 maps
+PASS  faction auto-fill smoke test
+PASS  loot strategy smoke test
+PASS  navigation recovery smoke test
+PASS  opening resource sweep smoke test
+PASS  loot safety smoke test
+
+Client build note:
+- `tsc --noEmit` completed before Vite started.
+- Vite bundle could not run because the uploaded client/node_modules is missing
+  `@rollup/rollup-linux-x64-gnu`, an npm optional dependency for this Linux
+  validation environment. No client source change was required for V22; the
+  existing C + right-click ammo request UI is retained.

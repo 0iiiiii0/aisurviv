@@ -1,0 +1,9 @@
+{
+  "A_chain": "immediate_next_crate",
+  "B": {
+    "enemy_meleeing_me": "combat",
+    "me_has_gun": "combat",
+    "me_unarmed_enemy_gun": "flee",
+    "both_unarmed": "continue_crate"
+  }
+}

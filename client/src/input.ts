@@ -1,5 +1,8 @@
 import { v2 } from "../../shared/utils/v2.ts";
 
+const GAME_INPUT_BLOCKER_SELECTOR = "[data-game-input-blocker]";
+const GAME_INPUT_MODAL_SELECTOR = "[data-game-input-modal]:not([hidden])";
+
 class Touch {
     id = 0;
     pos = {
@@ -41,6 +44,14 @@ export class InputHandler {
             inputValue: InputValue,
         ) => void)
         | null = null;
+
+    private isGameplayInputBlocked(event?: Event): boolean {
+        const target = event?.target;
+        return (
+            (target instanceof Element && !!target.closest(GAME_INPUT_BLOCKER_SELECTOR))
+            || document.querySelector(GAME_INPUT_MODAL_SELECTOR) !== null
+        );
+    }
 
     constructor(public touchElem: HTMLElement) {
         window.addEventListener("focus", this.onWindowFocus.bind(this), false);
@@ -157,6 +168,18 @@ export class InputHandler {
 
     // Keyboard
     onKeyDown(event: KeyboardEvent) {
+        if (this.isGameplayInputBlocked(event)) {
+            this.keys[event.keyCode] = false;
+            return;
+        }
+        const target = event.target as HTMLElement | null;
+        if (
+            target instanceof HTMLInputElement
+            || target instanceof HTMLTextAreaElement
+            || target?.isContentEditable
+        ) {
+            return;
+        }
         const keyCode = event.keyCode;
         // Prevent tab behavior
         if (keyCode == 9) {
@@ -169,6 +192,15 @@ export class InputHandler {
     }
 
     onKeyUp(event: KeyboardEvent) {
+        const target = event.target as HTMLElement | null;
+        if (
+            target instanceof HTMLInputElement
+            || target instanceof HTMLTextAreaElement
+            || target?.isContentEditable
+        ) {
+            this.keys[event.keyCode] = false;
+            return;
+        }
         this.keys[event.keyCode] = false;
     }
 
@@ -191,7 +223,15 @@ export class InputHandler {
     }
 
     onMouseDown(event: MouseEvent) {
-        const button = event.button;
+        const button = event.which ? event.which - 1 : event.button;
+        // Middle mouse must not start the browser autoscroll gesture.
+        if (button == 1) {
+            event.preventDefault();
+        }
+        if (this.isGameplayInputBlocked(event)) {
+            this.mouseButtons[button] = false;
+            return;
+        }
         if (this.checkCaptureInput(event, InputType.MouseButton, button)) {
             return;
         }
@@ -211,6 +251,10 @@ export class InputHandler {
     }
 
     onMouseWheel(event: WheelEvent) {
+        if (this.isGameplayInputBlocked(event)) {
+            this.mouseWheelState = 0;
+            return;
+        }
         const wheel = event.deltaY < 0 ? MouseWheel.Up : MouseWheel.Down;
 
         if (this.checkCaptureInput(event, InputType.MouseWheel, wheel)) {
@@ -237,6 +281,9 @@ export class InputHandler {
 
     // Touch
     onTouchShared(event: globalThis.TouchEvent, type: TouchEvent) {
+        if (type == TouchEvent.Start && this.isGameplayInputBlocked(event)) {
+            return;
+        }
         if (event.target == this.touchElem || type != TouchEvent.Start) {
             /* This apparently does nothing and just spams the console with errors
             if (

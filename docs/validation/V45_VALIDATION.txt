@@ -1,0 +1,64 @@
+V45 VALIDATION REPORT
+Date: 2026-07-28
+
+STATIC / BUILD
+- Server TypeScript noEmit: PASS
+- Client TypeScript noEmit: PASS
+- Server production build: PASS
+- V45 launcher/build marker test: PASS
+
+AIM TRAINING REFACTOR
+- Internal target exists immediately after Game.init: PASS
+- Internal target is registered as serverBot + trainingTarget: PASS
+- Internal target moves without a smartBot/WebSocket process: PASS
+- Internal target has infinite health and never fires: PASS
+- First human starts the range immediately: PASS
+- Human receives selected AK-47 loadout: PASS
+- Human is not spectator and has no spectating target: PASS
+- Exactly two living players after human joins: PASS
+- Legacy external aim-target credential is rejected: PASS
+- Only one training target can exist: PASS
+- Production multi-process /api/aim-training ready=true: PASS
+- Production room log contains internal target creation: PASS
+- Production human probe successfully joined same room: PASS
+- No target smartBot process existed before human probe: PASS
+
+LEGIT / HACKER DODGE
+- 48-direction candidate search: PASS
+- Reaction phase included: PASS
+- Piecewise analytic relative-motion closest approach: PASS
+- Complete movement corridor collision check: PASS
+- Avoidable direct hit selects a legal direction: PASS
+- Selected direction removes at least one direct impact: PASS
+- Unavoidable direct hit returns null: PASS
+- Near miss does not cause a dodge: PASS
+- Shared forbidden combat entry is used by both LEGIT and HACKER: PASS
+
+BROKEN ARROW / 时断剑
+- 0-2 strobes do not arm opening doctrine: PASS
+- Exactly 3 strobes arm a 3-beacon carpet: PASS
+- 99 strobes commit all 99 with zero reserve: PASS
+- Inventory readiness can arm doctrine after initial zero inventory: PASS
+- First action is immediate: PASS
+- Rapid cook is 45 ms: PASS
+- Inter-throw retry is 42 ms: PASS
+- Coverage target is recomputed for every throw: PASS
+
+SPECTATOR INPUT
+- Spectator chat stops keydown: PASS
+- Spectator chat stops keyup: PASS
+- Spectator chat stops keypress: PASS
+- Window fullscreen handler ignores input/textarea/contenteditable: PASS
+- Global gameplay input ignores editable targets: PASS
+
+REGRESSION
+- All 63 server package test scripts completed successfully after restoring the normal config.
+- Includes duel, duel lobby, admin, all modes, faction, HACKER/LEGIT context,
+  airstrike, recorder, aim training, dual switch, V29-V45 simulations,
+  spectator sharing, pure-AI duel, process reuse, map/dodge and launcher checks.
+
+NOTES
+- A temporary production integration run set botAutoFill.enabled=false. The config
+  was restored before regression testing and packaging.
+- No claim is made that every Broken Arrow opening guarantees a kill; the code
+  commits all available beacons and maximizes live coverage under game rules.

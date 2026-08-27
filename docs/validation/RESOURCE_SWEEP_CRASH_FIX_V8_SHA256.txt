@@ -1,0 +1,3 @@
+b477bdb6d4cd17b63910309888125acbbe443586bae410036c09d784a88214e1  surviv.io-main-resource-sweep-crash-fix-v8-update-only.zip
+b4963cb8489c49a18ccfb5cbd6657146f959bf0a4f38ef3c27e9c6e8f16da867  surviv.io-main-resource-sweep-crash-fix-v8-full.zip
+1316fa1f50af3b355e6f4901b41007cfc7b355e993de8121b195c9fd2ecfd195  RESOURCE_SWEEP_CRASH_FIX_V8.patch

@@ -1,0 +1,8 @@
+{
+  "require": [
+    "same_layer",
+    "path_to_stand",
+    "clear_los",
+    "can_destroy"
+  ]
+}

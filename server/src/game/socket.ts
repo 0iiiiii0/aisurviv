@@ -1,4 +1,4 @@
-import type { GameWsDisconnectReason } from "../../../shared/types/api";
+import type { GameWsDisconnectReason } from "../../../shared/types/api.ts";
 
 export abstract class ClientSocket<T extends object> {
     private _userData?: WeakRef<T>;
@@ -10,6 +10,10 @@ export abstract class ClientSocket<T extends object> {
     }
     abstract ip(): string;
     abstract closed(): boolean;
+    /** Bytes queued by the server transport and not yet accepted by the peer. */
+    bufferedAmount(): number {
+        return 0;
+    }
     abstract send(data: Uint8Array<ArrayBuffer>): void;
     abstract close(reason?: GameWsDisconnectReason): void;
 }

@@ -1,0 +1,16 @@
+{
+  "version": "V54",
+  "serverBuild": true,
+  "clientTypecheck": true,
+  "serverTests": {
+    "passed": "see run log",
+    "total": "see run log"
+  },
+  "readinessSorting": true,
+  "earlyFillAccelerationWindowMs": 15000,
+  "earlyFillAcceleratedIntervalMs": 800,
+  "fillSnapshotInFindGame": true,
+  "matchEndedRecording": true,
+  "interruptedSessionFirstRotation": true,
+  "recordingFormatVersion": 13
+}

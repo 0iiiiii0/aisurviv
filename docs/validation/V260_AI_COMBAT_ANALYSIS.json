@@ -1,0 +1,128 @@
+{
+  "version": "V260",
+  "input": {
+    "current": "V257 full project from node_modules.zip",
+    "old": "V45 full project",
+    "currentRecording": "2026-08-14 V257 1v1 logs"
+  },
+  "v257LegitOneBotDuel": {
+    "matches": 86,
+    "frames": 15387,
+    "shotFramesRequested": 3661,
+    "shotFramesTransmitted": 2846,
+    "visibleOnScreenTransmitRate": 0.255633581385599,
+    "shotIntentFrames": {
+      "none": 9370,
+      "ricochet": 3290,
+      "direct": 1808,
+      "exposed": 508,
+      "destroy": 277,
+      "explode": 41,
+      "peek-prefire": 93
+    },
+    "eventCounts": {
+      "match_recording_started": 86,
+      "bot_registered": 86,
+      "map_recorded": 86,
+      "mode_system_loaded": 86,
+      "state_changed": 6779,
+      "intent_changed": 86,
+      "path_recovery_triggered": 272,
+      "indirect_ricochet_selected": 67984,
+      "gunfire_wall_blocked": 36754,
+      "gunfire_request_suppressed": 3222,
+      "grenade_dodge_started": 59,
+      "final_visible_trigger_restored": 669,
+      "damage_taken": 1558,
+      "feasible_dodge_committed": 8324,
+      "gunfire_viewport_blocked": 309,
+      "gun_line_dodge_started": 1111,
+      "grenade_opportunity_selected": 380,
+      "special_action_queued": 498,
+      "timed_grenade_solution": 380,
+      "special_action_phase_changed": 135989,
+      "throwable_equip_requested": 521,
+      "special_action_failed": 310,
+      "explosive_cover_selected": 754,
+      "game_over": 34,
+      "throw_released": 144,
+      "special_action_completed": 144,
+      "bot_finished": 6,
+      "match_ended": 6,
+      "recovery_interrupted_for_visible_threat": 22,
+      "smoke_ambush_bridged": 2347,
+      "hidden_contact_selected": 23,
+      "hidden_contact_cleared": 10,
+      "smoke_ambush_memory_bridged": 205,
+      "gas_escape_started": 54,
+      "gas_escape_ended": 54,
+      "airstrike_counter_armed": 13,
+      "airstrike_warning_observed": 38,
+      "special_action_cancelled": 43,
+      "airstrike_escape_started": 155,
+      "airstrike_escape_ended": 32,
+      "airstrike_escape_route": 26,
+      "gunfire_cross_floor_blocked": 13,
+      "dual_switch_armed": 18,
+      "dual_switch_requested": 17,
+      "dual_switch_confirmed": 17,
+      "dual_switch_cancelled": 5
+    },
+    "wallBlockerTypes": {
+      "crate_01": 3710,
+      "sandbags_01": 28886,
+      "stone_01": 3429,
+      "barrel_01": 729
+    },
+    "suppressionReasons": {
+      "wall:solid-wall-on-live-aim-ray": 2244,
+      "alignment-wait": 775,
+      "empty-clip": 92,
+      "wall:wall-before-tactical-object": 62,
+      "viewport:outside-active-scope": 48,
+      "reload-active": 1
+    },
+    "ricochetIntentFrames": 3290,
+    "ricochetRequestedFrames": 0,
+    "ricochetTransmittedFrames": 66,
+    "intentionalTacticalHitFalseVetoCandidates": 594
+  },
+  "oldEmbeddedRecordingReference": {
+    "note": "V45 project includes V43_RECORDING_ANALYSIS.json; V45 inherited the same core ricochet/fire path before later V257 execution gates.",
+    "frames": 2220,
+    "shotFrames": 827,
+    "shotFrameRate": 0.37252252252252255,
+    "shotIntentFrames": {
+      "none": 1411,
+      "ricochet": 195,
+      "exposed": 79,
+      "direct": 518,
+      "destroy": 8,
+      "peek-prefire": 8,
+      "explode": 1
+    },
+    "ricochetIntentFrames": 195,
+    "ricochetShotFrames": 137,
+    "ricochetShotRate": 0.7025641025641025
+  },
+  "confirmedRegressions": [
+    "V257 forbidden ricochet planned with spreadRadians=0 and then waited for currentWeapon.recoilTime<=0.015; AK47/M39 define recoilTime=1e10, creating a practical deadlock.",
+    "V257 local tactical ricochet repeated the same first-shot-accuracy assumption and converted recoilTime into millisecond wait deadlines.",
+    "V257 packet wall safety could classify the intended crate/stone/barrel itself as a wall because generic tactical lock took precedence and center-bearing approximation was used.",
+    "V68 movement smoothing can rotate a proven emergency dodge over multiple ticks; the ballistic solver assumes immediate escape direction.",
+    "Throwable cook repeatedly changed special-action phase holding->aligning->holding each tick, creating 135989 phase-change events for 498 queued actions."
+  ],
+  "v260Changes": [
+    "Both ricochet planners use authoritative weapon shotSpread again.",
+    "Removed recoilTime-based ricochet execution gates; WeaponManager cooldown remains authoritative.",
+    "Kept exact packet alignment at 0.0006 rad initially, with a bounded 0.0009-rad recovery after 140 ms; 960-shot authoritative physics simulation at 0.0009 rad achieved 96.46% aggregate hit rate.",
+    "Emergency bullet/explosive/gun-line dodge directions bypass movement smoothing; ordinary navigation remains smoothed.",
+    "Packet wall safety uses the actual transmitted ray and allows the intended tactical object only when it is the first blocker.",
+    "Throwable holding phase no longer resets to aligning every tick.",
+    "Hardened zombieNuclearAchievementG13SmokeTest so it refuses to recursively clean an implicit current directory."
+  ],
+  "includedPreviousFixes": [
+    "V258 extraction team reserved-slot fix",
+    "V259 zombie difficulty / nuclear achievement production matchmaking fix"
+  ]
+}

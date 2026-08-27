@@ -2,10 +2,12 @@ import type { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
+import { TeamMode } from "../../shared/gameConfig.ts";
 import type { FindGamePrivateError } from "../../shared/types/api.ts";
 import {
     type ClientRoomData,
     type ClientToServerTeamMsg,
+    normalizeTeamRoomUrl,
     type RoomData,
     type ServerToClientTeamMsg,
     type TeamErrorMsg,
@@ -20,6 +22,8 @@ import type { ApiServer } from "./api/apiServer.ts";
 import { validateSessionToken } from "./api/auth/index.ts";
 import { hashIp, isBanned } from "./api/routes/private/ModerationRouter.ts";
 import { Config } from "./config.ts";
+import { PLAYER_ACCOUNT_SESSION_COOKIE } from "./playerAccounts.ts";
+import { isTeamModePlaylist } from "./teamPlaylistPolicy.ts";
 import { validateUserName } from "./utils/badWords.ts";
 import { ServerLogger } from "./utils/logger.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
@@ -30,6 +34,11 @@ interface SocketData {
     rateLimit: Record<symbol, number>;
     player: Player;
     ip: string;
+    legacyAccountToken: string;
+}
+
+function isExtractionMode(mode: (typeof Config.modes)[number] | undefined): boolean {
+    return mode?.mapName === "extraction" || mode?.mapName === "extraction_secret";
 }
 
 class Player {
@@ -63,19 +72,37 @@ class Player {
 
     encodedIp: string;
 
+    legacyAccountToken = "";
+
+    get accountAuthenticated(): boolean {
+        return Boolean(this.userId || this.legacyAccountToken);
+    }
+
     constructor(
         public socket: WSContext<SocketData>,
         public teamMenu: TeamMenu,
         public userId: string | null,
         public ip: string,
+        legacyAccountToken: string,
     ) {
         this.encodedIp = hashIp(ip);
+        this.refreshLegacyAccount(legacyAccountToken);
         // disconnect if didn't join a room in 5 seconds
         this.disconnectTimeout = setTimeout(() => {
             if (!this.room) {
                 this.socket.close();
             }
         }, 5000);
+    }
+
+    refreshLegacyAccount(token: unknown): boolean {
+        const candidate = typeof token === "string" ? token.trim() : "";
+        this.legacyAccountToken = candidate
+                && this.teamMenu.server.playerAccounts.profile(candidate)
+            ? candidate
+            : "";
+        this.socket.raw!.legacyAccountToken = this.legacyAccountToken;
+        return this.accountAuthenticated;
     }
 
     setName(name: string) {
@@ -147,6 +174,10 @@ class Room {
                 player.send("keepAlive", {});
                 break;
             }
+            case "updateAccount": {
+                player.refreshLegacyAccount(msg.data.accountToken);
+                break;
+            }
             case "gameComplete": {
                 player.inGame = false;
                 this.sendState();
@@ -154,6 +185,18 @@ class Room {
             }
             case "setRoomProps": {
                 if (!player.isLeader) break;
+                const nextMode = this.teamMenu.server.modes[msg.data.gameModeIdx];
+                if (
+                    isExtractionMode(nextMode)
+                    && this.players.some((member) => !member.accountAuthenticated)
+                ) {
+                    for (const member of this.players) {
+                        if (!member.accountAuthenticated) {
+                            member.send("error", { type: "login_required" });
+                        }
+                    }
+                    break;
+                }
                 this.setProps(msg.data);
                 break;
             }
@@ -184,7 +227,7 @@ class Room {
         if (!this.data.enabledGameModeIdxs.includes(gameModeIdx)) {
             // we don't allow creating teams if there's no valid team mode
             // so this will never be -1
-            gameModeIdx = modes.findIndex((mode) => mode.enabled && mode.teamMode > 1);
+            gameModeIdx = modes.findIndex(isTeamModePlaylist);
         }
 
         this.data.gameModeIdx = gameModeIdx;
@@ -232,6 +275,20 @@ class Room {
         const roomLeader = this.players[0];
         if (!roomLeader) return;
 
+        roomLeader.refreshLegacyAccount(data.accountToken);
+        const mode = this.teamMenu.server.modes[this.data.gameModeIdx];
+        if (isExtractionMode(mode)) {
+            const invalidMembers = this.players.filter(
+                (member) => !member.accountAuthenticated,
+            );
+            if (invalidMembers.length) {
+                for (const member of invalidMembers) {
+                    member.send("error", { type: "login_required" });
+                }
+                return;
+            }
+        }
+
         this.data.findingGame = true;
         this.sendState();
 
@@ -247,16 +304,24 @@ class Room {
             this.players.map((player) => {
                 const joinToken = randomUUID();
                 tokenMap.set(player, joinToken);
+                const legacyProfile = this.teamMenu.server.playerAccounts.profile(
+                    player.legacyAccountToken,
+                );
                 return {
                     joinToken,
                     userId: player.userId,
+                    stashName: legacyProfile
+                        ? (legacyProfile.displayName || legacyProfile.username).trim()
+                        : undefined,
                     ip: player.ip,
                 } satisfies FindGamePrivateBody["playerData"][0];
             }),
         );
 
-        const mode = this.teamMenu.server.modes[this.data.gameModeIdx];
-        if (!mode || !mode.enabled) {
+        if (!mode || !isTeamModePlaylist(mode)) {
+            this.data.findingGame = false;
+            this.data.lastError = "find_game_error";
+            this.sendState();
             return;
         }
 
@@ -281,14 +346,18 @@ class Room {
             }
         }
 
-        const res = await this.teamMenu.server.findGame({
+        const findGameBody = {
             mapName: mode.mapName,
             teamMode: mode.teamMode,
             autoFill: this.data.autoFill,
             region: region,
             version: data.version,
             playerData,
-        });
+            zombieDifficulty: data.zombieDifficulty,
+        } as FindGamePrivateBody & {
+            zombieDifficulty?: "simple" | "normal" | "hard";
+        };
+        const res = await this.teamMenu.server.findGame(findGameBody);
 
         if ("error" in res) {
             const errMap: Partial<Record<FindGamePrivateError, TeamMenuErrorType>> = {
@@ -331,7 +400,8 @@ class Room {
     sendState() {
         const players = this.players.map((p) => p.data);
         // all players must be logged in to disable it
-        this.data.captchaEnabled = this.teamMenu.server.captchaEnabled && !this.players.every((p) => !!p.userId);
+        this.data.captchaEnabled = this.teamMenu.server.captchaEnabled
+            && !this.players.every((p) => p.accountAuthenticated);
         for (const player of this.players) {
             player.send("state", {
                 localPlayerId: player.playerId,
@@ -390,7 +460,7 @@ export class TeamMenu {
             .map((_, i) => i)
             .filter((i) => {
                 const mode = this.server.modes[i];
-                return mode.enabled && mode.teamMode > 1;
+                return isTeamModePlaylist(mode);
             });
     }
 
@@ -414,14 +484,21 @@ export class TeamMenu {
                     closeReason = "rate_limited";
                 }
 
-                if (await isBanned(ip!)) {
+                if (ip && (await isBanned(ip))) {
                     closeReason = "banned";
                 }
 
-                wsRateLimit.ipConnected(ip!);
+                if (ip) wsRateLimit.ipConnected(ip);
 
                 let userId: string | null = null;
                 const sessionId = getCookie(c, "session") ?? null;
+                const legacyAccountToken = getCookie(
+                    c,
+                    PLAYER_ACCOUNT_SESSION_COOKIE,
+                ) ?? "";
+                const legacyAuthenticated = Boolean(
+                    this.server.playerAccounts.profile(legacyAccountToken),
+                );
 
                 if (sessionId) {
                     try {
@@ -437,16 +514,20 @@ export class TeamMenu {
                     }
                 }
 
-                if (!closeReason && (await isBehindProxy(ip!, !userId))) {
+                if (
+                    !closeReason
+                    && (await isBehindProxy(ip!, !(userId || legacyAuthenticated)))
+                ) {
                     closeReason = "behind_proxy";
                 }
 
                 return {
                     onOpen(_event, ws) {
                         ws.raw = {
-                            ip,
+                            ip: ip ?? "",
                             rateLimit: {},
                             player: undefined,
+                            legacyAccountToken,
                         };
 
                         if (closeReason) {
@@ -464,7 +545,12 @@ export class TeamMenu {
                             ws.close();
                             return;
                         }
-                        teamMenu.onOpen(ws as WSContext<SocketData>, userId, ip!);
+                        teamMenu.onOpen(
+                            ws as WSContext<SocketData>,
+                            userId,
+                            ip!,
+                            legacyAccountToken,
+                        );
                     },
 
                     onMessage(event, ws) {
@@ -491,15 +577,20 @@ export class TeamMenu {
                         teamMenu.onClose(ws as WSContext<SocketData>);
 
                         const data = ws.raw! as SocketData;
-                        wsRateLimit.ipDisconnected(data.ip);
+                        if (data.ip) wsRateLimit.ipDisconnected(data.ip);
                     },
                 };
             }),
         );
     }
 
-    onOpen(ws: WSContext<SocketData>, userId: string | null, ip: string) {
-        const player = new Player(ws, this, userId, ip);
+    onOpen(
+        ws: WSContext<SocketData>,
+        userId: string | null,
+        ip: string,
+        legacyAccountToken: string,
+    ) {
+        const player = new Player(ws, this, userId, ip, legacyAccountToken);
         ws.raw!.player = player;
 
         let players = this.playersByIp.get(player.encodedIp);
@@ -511,6 +602,7 @@ export class TeamMenu {
     }
 
     onMsg(ws: WSContext<SocketData>, data: string) {
+        this.server.refreshPublicConfig();
         let msg: ClientToServerTeamMsg;
         try {
             assert(data.length < 1024);
@@ -542,6 +634,19 @@ export class TeamMenu {
                     }
 
                     player.setName(msg.data.playerData.name);
+                    player.refreshLegacyAccount(
+                        msg.data.playerData.accountToken
+                            ?? ws.raw?.legacyAccountToken,
+                    );
+
+                    const requestedMode = this.server.modes[msg.data.roomData.gameModeIdx];
+                    if (
+                        isExtractionMode(requestedMode)
+                        && !player.accountAuthenticated
+                    ) {
+                        player.send("error", { type: "login_required" });
+                        break;
+                    }
 
                     const room = this.createRoom(msg.data.roomData);
                     room.addPlayer(player);
@@ -549,7 +654,10 @@ export class TeamMenu {
                     break;
                 }
                 case "join": {
-                    const room = this.rooms.get(msg.data.roomUrl);
+                    const normalizedRoomUrl = normalizeTeamRoomUrl(msg.data.roomUrl);
+                    const room = normalizedRoomUrl
+                        ? this.rooms.get(normalizedRoomUrl.slice(1))
+                        : undefined;
                     if (!room) {
                         player.send("error", { type: "join_not_found" });
                         break;
@@ -560,6 +668,18 @@ export class TeamMenu {
                         break;
                     }
                     player.setName(msg.data.playerData.name);
+                    player.refreshLegacyAccount(
+                        msg.data.playerData.accountToken
+                            ?? ws.raw?.legacyAccountToken,
+                    );
+                    const roomMode = this.server.modes[room.data.gameModeIdx];
+                    if (
+                        isExtractionMode(roomMode)
+                        && !player.accountAuthenticated
+                    ) {
+                        player.send("error", { type: "login_required" });
+                        break;
+                    }
 
                     room.addPlayer(player);
                 }

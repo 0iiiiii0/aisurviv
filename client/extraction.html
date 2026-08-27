@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang='zh-CN'>
+<head>
+	<meta charset='UTF-8'>
+	<title>搜打撤</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/css/storage.css">
+</head>
+<body>
+	<div id='extraction-app'>
+		<header class='storage-header'>
+			<div class='storage-title'>搜打撤</div>
+			<div class='storage-identity'>
+				<a class='storage-back' href='/'>返回大厅</a>
+				<a class='storage-back' id='extraction-to-stash' href='/storage'>仓库配装</a>
+			</div>
+		</header>
+		<div id='extraction-status' class='extraction-stash-status'></div>
+		<main class='storage-main storage-leaderboard'>
+			<section class='storage-leaderboard-panel'>
+				<div class='storage-leaderboard-head'>
+					<div>
+						<h2>排行榜</h2>
+						<p class='storage-leaderboard-hint'>按仓库身价排名（金币 + 物品价值），
+							点击「查看」浏览他人仓库（只读）。</p>
+						<div class='storage-leaderboard-search'>
+							<input id='leaderboard-search-input' type='text' maxlength='16'
+								placeholder='输入玩家名查看仓库' />
+							<button type='button' id='leaderboard-search-btn' class='shop-btn'>查看</button>
+						</div>
+					</div>
+				</div>
+				<div id='leaderboard-list' class='storage-leaderboard-list'></div>
+			</section>
+		</main>
+	</div>
+	<script type="module" src="/src/extraction.ts"></script>
+</body>
+</html>

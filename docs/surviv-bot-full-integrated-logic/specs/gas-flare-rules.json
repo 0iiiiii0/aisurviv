@@ -1,0 +1,12 @@
+{
+  "gas": {
+    "forbid_stand_and_die": true,
+    "hard_branch": true
+  },
+  "flare": {
+    "pick_when_gun_and_ammo": true,
+    "fire_non_combat": true,
+    "drop_when_ammo_empty": true,
+    "ignore_gun_without_ammo": true
+  }
+}

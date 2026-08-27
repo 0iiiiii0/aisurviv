@@ -1,0 +1,32 @@
+V24 collective AI logic fix validation
+======================================
+
+Source recording analysis
+-------------------------
+Sessions: 11
+Matches: 2
+Frames: 47,479
+Events: 23,147
+Faction worker sessions: 8
+Maximum simultaneous faction AI behavior streams: 61
+Faction 1-second bins with >=3 AI on one resource target: 260
+Maximum AI on one resource target: 8
+Faction 1-second bins with >=3 AI within 4 units: 366
+Maximum near-position cluster: 12
+Worst faction worker gas-state frames: 3,961 / 4,733 (83.7%)
+Worst faction worker armed-frame ratio: 4.6%
+
+Build and tests
+---------------
+[PASS] Server TypeScript build: npm run build
+[PASS] Client TypeScript check: node node_modules/typescript/bin/tsc --noEmit
+[PASS] All 35 server smoke-test scripts
+[PASS] Gas escape lane spread assertion
+[PASS] Faction first gas-stage duration assertion (125 seconds)
+[PASS] Existing duel, spectator, 50v50, concealment, recorder, Spud Gun and airstrike tests
+
+Packaging safety
+----------------
+- Runtime ai-match-recordings directories excluded
+- survivio-admin-auth.json excluded
+- Existing .gitignore protections retained

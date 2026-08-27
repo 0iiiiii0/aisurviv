@@ -1,0 +1,39 @@
+ROLE_NAVIGATION_POTATO_LOOT_V13 validation summary
+Date: 2026-07-25
+
+PASSED
+- Server TypeScript build: npm run build
+- Client TypeScript check: npx tsc --noEmit
+- Smart-bot input safety: npm run test:bot-input
+- Decision brain: npm run test:bot-brain
+- Loot/resource selection: npm run test:loot-ai
+- Opening resource sweep: npm run test:resource-sweep
+- Loot definition/runtime and continuous anti-tunnelling: npm run test:loot-safety
+- Reload aim smoothing: npm run test:aim-control
+- 1v1 fire and combat-heal safety: npm run test:bot-combat-heal
+- 50v50 special-role strategy: npm run test:special-roles
+- Integrated rule specification: npm run test:integrated-spec
+- 50v50 auto-fill cadence, batching, balance, reservations and 20+20 cap: npm run test:faction-autofill
+- Spectator/auto-fill regression: npm run test:spectator-autofill
+- Potato weapon rotation: npm run test:potato
+- Duel vision/search: npm run test:duel-vision
+- All-mode configuration: npm run test:all-modes (47 playlists / 17 maps)
+- Duel game regression: npm run test:duel
+- Duel lobby regression: npm run test:duel-lobby
+- Admin API regression: npm run test:admin
+
+KEY REGRESSION ASSERTIONS
+- Opening commander flare may proceed during distant formation combat, but not with a close threat.
+- A local Shoot input does not mark flare deployment successful; ammo/airdrop state must confirm it.
+- Bots receive the authoritative server indoor flag.
+- Critical-health bots may not heal face-to-face with an enemy, even when marked indoors.
+- Potato destruction uses a usable gun slot so that slot can be rerolled.
+- A fast loot circle cannot tunnel through a 0.08-unit thin wall.
+- All-room auto-fill reserves one bot per two-second scheduler tick; the scheduler no longer excludes private rooms, and 50v50 remains capped at 20+20 server AI.
+
+CLIENT PRODUCTION BUNDLE NOTE
+- `npx tsc --noEmit` passed.
+- `npm run build` reached Vite/Rollup but could not complete in this Linux container because the inherited project dependencies contain the Windows native binding `@rollup/rollup-win32-x64-msvc`, not the Linux binding `@rollup/rollup-linux-x64-gnu`.
+- This is a host-platform dependency mismatch, not a TypeScript source failure. The target is Windows; run the client build there when producing a fresh static `client/dist` bundle. Vite development mode recompiles the changed source after restart.
+
+The raw command output is included as ROLE_NAVIGATION_POTATO_LOOT_V13_VALIDATION_RAW.txt.

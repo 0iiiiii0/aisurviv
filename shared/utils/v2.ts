@@ -89,6 +89,10 @@ export const v2 = {
         };
     },
 
+    reverse(a: Vec2): Vec2 {
+        return { x: -a.x, y: -a.x };
+    },
+
     dot(a: Vec2, b: Vec2): number {
         return a.x * b.x + a.y * b.y;
     },

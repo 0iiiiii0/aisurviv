@@ -1,0 +1,21 @@
+V18 validation summary
+======================
+
+Passed:
+- Server TypeScript build (`npm run build`)
+- Spectator message/free-camera serialization smoke test
+- Human-first spectator ordering test
+- Mixed normal/hard/pro bot rotation test
+- Removal of easy and acceptance of pro difficulty
+- Spectator initial binding, switching and disconnect fallback test
+- 1v1 game smoke test
+- 1v1 lobby AI difficulty/customization flow test
+- Password-protected admin regression test
+- 47 playlists / 17 maps all-mode regression test
+- 50v50 faction auto-fill and team-balance regression test
+- Empty-room lifecycle regression test
+- Client TypeScript check (`npx tsc --noEmit`)
+- Git whitespace/error check (`git diff --check`)
+
+Not completed in this Linux container:
+- Vite production bundle rebuild. The inherited client/node_modules contains the Windows Rollup native package, while the Linux optional native package is unavailable offline. The supplied Windows launcher uses `npm run dev`, so it loads the changed source files directly. Static `client/dist` users must run `npm run build` from client/ on Windows.

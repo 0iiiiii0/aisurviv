@@ -1,0 +1,28 @@
+AI Aim and Reload Tracking V9 validation
+=========================================
+
+Build:
+- npm run build: PASS
+
+New aim test:
+- npm run test:aim-control: PASS
+- verifies shortest-angle rotation
+- verifies a 16 ms frame cannot snap 180 degrees
+- verifies a delayed 1000 ms tick is capped to a 100 ms turn step
+- verifies repeated limited turns converge without overshoot
+- verifies reload target prediction
+- verifies gunfire alignment gating
+
+Regression tests:
+- npm run test:bot-input: PASS
+- npm run test:bot-combat-heal: PASS
+- npm run test:bot-brain: PASS
+- npm run test:all-modes: PASS (47 playlists / 17 maps)
+- npm run test:resource-sweep: PASS
+- npm run test:loot-safety: PASS
+- npm run test:spectator-autofill: PASS
+- npm run test:faction-autofill: PASS
+- npm run test:loot-ai: PASS
+- npm run test:duel: PASS
+- npm run test:duel-lobby: PASS
+- npm run test:duel-vision: PASS

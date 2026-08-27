@@ -1,0 +1,79 @@
+Surviv.io AI V26 validation
+============================
+
+Uploaded recording archive
+--------------------------
+ai-match-recordings(3).zip
+
+Full log traversal
+------------------
+Passes completed: 3
+Files read: 60
+JSONL files read: 24
+Frame lines: 50,602
+Event lines: 30,577
+Total JSONL lines: 81,179
+Bad JSONL lines: 0
+Matches: 2 (main, faction)
+Worker sessions: 12
+
+Recorded defects reproduced
+----------------------------
+Normal match simultaneous AI peak: 23
+Faction match simultaneous AI streams: 63
+Path recovery events: 4,948
+Bad resource pursuit segments: 506
+Longest bad resource pursuit: 209,649 ms
+Faction one-second buckets with >=3 bots on one target: 419
+Maximum bots on one recorded target: 10
+
+Build and static checks
+-----------------------
+server: npm run build                         PASS
+client: npx tsc -p client/tsconfig.json --noEmit PASS
+production client JS: node --check            PASS
+
+Server test suite
+-----------------
+Batch 1: 13/13 PASS
+Batch 2: 13/13 PASS
+Batch 3: 12/12 PASS
+Total: 38/38 PASS
+
+Additional validation
+---------------------
+npm run test:mode-isolation                   PASS
+npm run test:v26-sim                          PASS
+npm run test:all-modes                        PASS
+
+V26 deterministic simulation
+----------------------------
+Solo:    15/15 acquired reachable resource, <= 8.0s
+Duo:     20/20 acquired reachable resource, <= 8.5s
+Squad:   20/20 acquired reachable resource, <= 8.0s
+Duel:    fixed loadout, 0 loot attempts
+Faction: 40/40 acquired reachable resource, <= 8.5s
+Potato:  15/15 acquired reachable resource, <= 8.0s
+All deliberately unreachable targets abandoned: PASS
+Faction lifetime capacity after cap: 0
+Human ammo request fallback claim: 6.5s
+Cross-group same-faction Gift world route: faction
+
+Log policy replay
+-----------------
+Segments replayed: 506
+Old total pursuit time: 5,554,277 ms
+V26 policy replay pursuit time: 2,354,870 ms
+Reduction: 57.6%
+Old longest segment: 209,649 ms
+V26 replay longest segment: 12,150 ms
+Old segments >30s: 27
+V26 replay segments >30s: 0
+
+Production bundle caveat
+------------------------
+Full Vite production rebuild could not run in the Linux sandbox because the
+uploaded node_modules contains Windows Rollup binaries and lacks
+@rollup/rollup-linux-x64-gnu. The TypeScript source passed type checking, and
+the existing production JS bundle was synchronized manually and passed
+node --check.

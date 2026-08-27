@@ -1,0 +1,897 @@
+{
+  "archive": {
+    "frameFiles": 49,
+    "sessionCount": 58,
+    "manifestFiles": 58,
+    "mapFiles": 57,
+    "eventFiles": 47,
+    "eventLines": 71709,
+    "eventParseErrors": 0,
+    "totalFiles": 269
+  },
+  "aggregate": {
+    "frames": 123131,
+    "shotFrames": 3204,
+    "visibleTargetFrames": 9528,
+    "visibleOutsideAcquisitionFrames": 4957,
+    "visibleShotFrames": 1820,
+    "offscreenShotFramesBlockedByV34": 767
+  },
+  "byDifficulty": {
+    "hard": {
+      "visibleOutsideAcquisitionFrames": 992,
+      "offscreenShotFramesBlockedByV34": 176
+    },
+    "pro": {
+      "visibleOutsideAcquisitionFrames": 1132,
+      "offscreenShotFramesBlockedByV34": 88
+    },
+    "normal": {
+      "visibleOutsideAcquisitionFrames": 2061,
+      "offscreenShotFramesBlockedByV34": 293
+    },
+    "legit": {
+      "visibleOutsideAcquisitionFrames": 625,
+      "offscreenShotFramesBlockedByV34": 175
+    },
+    "forbidden": {
+      "visibleOutsideAcquisitionFrames": 147,
+      "offscreenShotFramesBlockedByV34": 35
+    }
+  },
+  "byZoom": {
+    "28": {
+      "visibleOutsideAcquisitionFrames": 2834,
+      "offscreenShotFramesBlockedByV34": 356
+    },
+    "48": {
+      "visibleOutsideAcquisitionFrames": 1322,
+      "offscreenShotFramesBlockedByV34": 242
+    },
+    "36": {
+      "visibleOutsideAcquisitionFrames": 416,
+      "offscreenShotFramesBlockedByV34": 54
+    },
+    "68": {
+      "visibleOutsideAcquisitionFrames": 385,
+      "offscreenShotFramesBlockedByV34": 115
+    }
+  },
+  "nearVisibleNoShootSequences": 91,
+  "legalVisibleNoShootSequences": 35,
+  "topNear": [
+    {
+      "session": "2026-07-27T06-18-29-463Z_pid-10264",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 10,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785133420826,
+      "minDistance": 1.0156404974441102,
+      "maxDistance": 7.93546774235996,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m93r",
+      "end": 1785133493388,
+      "durationMs": 72562
+    },
+    {
+      "session": "2026-07-27T06-38-57-991Z_pid-8376",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 39,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785134679950,
+      "minDistance": 1.5081390763778013,
+      "maxDistance": 17.05833120043124,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m870",
+      "end": 1785134694026,
+      "durationMs": 14076
+    },
+    {
+      "session": "2026-07-27T06-55-34-765Z_pid-10772",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 17,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785135713946,
+      "minDistance": 3.66860500405549,
+      "maxDistance": 17.832340572639087,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m249",
+      "end": 1785135725334,
+      "durationMs": 11388
+    },
+    {
+      "session": "2026-07-27T06-55-30-448Z_pid-7516",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 14,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135730465,
+      "minDistance": 12.357676962179163,
+      "maxDistance": 17.838808542898114,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m249",
+      "end": 1785135737995,
+      "durationMs": 7530
+    },
+    {
+      "session": "2026-07-27T06-18-32-678Z_pid-4108",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 23,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785133495820,
+      "minDistance": 4.255862914577166,
+      "maxDistance": 17.913945726937623,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "ak47",
+      "end": 1785133502872,
+      "durationMs": 7052
+    },
+    {
+      "session": "2026-07-27T06-47-32-395Z_pid-6308",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 30,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785135052088,
+      "minDistance": 0.25627296458474447,
+      "maxDistance": 16.22246687752893,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m93r",
+      "end": 1785135058398,
+      "durationMs": 6310
+    },
+    {
+      "session": "2026-07-27T06-18-58-496Z_pid-9932",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 38,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785133453979,
+      "minDistance": 6.707177956618678,
+      "maxDistance": 16.031738287778428,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "famas",
+      "end": 1785133460209,
+      "durationMs": 6230
+    },
+    {
+      "session": "2026-07-27T06-55-34-765Z_pid-10772",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 19,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135727613,
+      "minDistance": 3.4591468879714875,
+      "maxDistance": 17.53797809350279,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m249",
+      "end": 1785135733791,
+      "durationMs": 6178
+    },
+    {
+      "session": "2026-07-27T06-47-12-236Z_pid-3480",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 16,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135227492,
+      "minDistance": 7.699184616298292,
+      "maxDistance": 17.684298044853673,
+      "maxLegalShotForMs": 12754.0,
+      "weapon": "pkp",
+      "end": 1785135233254,
+      "durationMs": 5762
+    },
+    {
+      "session": "2026-07-27T06-38-28-481Z_pid-7424",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 10,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785134575943,
+      "minDistance": 7.798183779821085,
+      "maxDistance": 16.65549273764658,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "grozas",
+      "end": 1785134581250,
+      "durationMs": 5307
+    },
+    {
+      "session": "2026-07-27T06-55-34-765Z_pid-10772",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 19,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135498267,
+      "minDistance": 8.136129314522469,
+      "maxDistance": 15.033801853326864,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m870",
+      "end": 1785135503021,
+      "durationMs": 4754
+    },
+    {
+      "session": "2026-07-27T06-55-34-765Z_pid-10772",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 18,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785135497379,
+      "minDistance": 4.043587099723882,
+      "maxDistance": 13.084157054554073,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m9",
+      "end": 1785135502118,
+      "durationMs": 4739
+    },
+    {
+      "session": "2026-07-27T06-37-59-508Z_pid-10460",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 6,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785134622897,
+      "minDistance": 3.4448247011834465,
+      "maxDistance": 10.49180948748158,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "an94",
+      "end": 1785134626929,
+      "durationMs": 4032
+    },
+    {
+      "session": "2026-07-27T06-18-32-678Z_pid-4108",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 23,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785133490305,
+      "minDistance": 1.631098274617459,
+      "maxDistance": 13.083028086458853,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "ak47",
+      "end": 1785133494313,
+      "durationMs": 4008
+    },
+    {
+      "session": "2026-07-27T06-18-29-463Z_pid-10264",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 11,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785133309378,
+      "minDistance": 5.729692051574508,
+      "maxDistance": 15.351532351023527,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m1014",
+      "end": 1785133313109,
+      "durationMs": 3731
+    },
+    {
+      "session": "2026-07-27T06-18-29-463Z_pid-10264",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 16,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785133457776,
+      "minDistance": 8.1758826747836,
+      "maxDistance": 16.841687714624552,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "garand",
+      "end": 1785133461389,
+      "durationMs": 3613
+    },
+    {
+      "session": "2026-07-27T06-38-31-745Z_pid-6952",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 18,
+      "difficulty": "legit",
+      "modeSystem": "faction:faction",
+      "start": 1785134562082,
+      "minDistance": 2.8801769337657204,
+      "maxDistance": 10.294376198503143,
+      "maxLegalShotForMs": 3543.0,
+      "weapon": "ump9",
+      "end": 1785134565243,
+      "durationMs": 3161
+    },
+    {
+      "session": "2026-07-27T06-18-49-195Z_pid-4776",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 30,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785133284110,
+      "minDistance": 9.078747596962582,
+      "maxDistance": 14.932120752917873,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m870",
+      "end": 1785133287262,
+      "durationMs": 3152
+    },
+    {
+      "session": "2026-07-27T06-18-58-496Z_pid-9932",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 38,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785133460752,
+      "minDistance": 7.733782748274712,
+      "maxDistance": 17.796103935244346,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "famas",
+      "end": 1785133463896,
+      "durationMs": 3144
+    },
+    {
+      "session": "2026-07-27T06-38-57-991Z_pid-8376",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 39,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785134675922,
+      "minDistance": 13.137583015414155,
+      "maxDistance": 16.93220077643235,
+      "maxLegalShotForMs": 0.0,
+      "weapon": "m870",
+      "end": 1785134678943,
+      "durationMs": 3021
+    }
+  ],
+  "topLegal": [
+    {
+      "session": "2026-07-27T06-47-12-236Z_pid-3480",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 16,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135225958,
+      "minDistance": 7.699184616298292,
+      "maxDistance": 22.279009375248922,
+      "maxLegalShotForMs": 12754.0,
+      "weapon": "pkp",
+      "state": "gas",
+      "end": 1785135233254,
+      "durationMs": 7296
+    },
+    {
+      "session": "2026-07-27T06-33-45-536Z_pid-10704",
+      "matchId": "d0104b65e6bd427f3a2edbf1f85aeef030688324",
+      "botId": 1,
+      "difficulty": "normal",
+      "modeSystem": "duel",
+      "start": 1785134035127,
+      "minDistance": 30.227244838834796,
+      "maxDistance": 46.66691633103865,
+      "maxLegalShotForMs": 6490.0,
+      "weapon": "m39",
+      "state": "counterfire",
+      "end": 1785134040273,
+      "durationMs": 5146
+    },
+    {
+      "session": "2026-07-27T06-38-28-481Z_pid-7424",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 16,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785134619779,
+      "minDistance": 16.024434296510382,
+      "maxDistance": 25.87213464603783,
+      "maxLegalShotForMs": 34283.0,
+      "weapon": "m1100",
+      "state": "regroup",
+      "end": 1785134623849,
+      "durationMs": 4070
+    },
+    {
+      "session": "2026-07-27T06-47-17-642Z_pid-9980",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 19,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135255427,
+      "minDistance": 16.170272297272778,
+      "maxDistance": 25.897129878505666,
+      "maxLegalShotForMs": 14296.0,
+      "weapon": "m870",
+      "state": "gas",
+      "end": 1785135259441,
+      "durationMs": 4014
+    },
+    {
+      "session": "2026-07-27T06-38-31-745Z_pid-6952",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 24,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785134667044,
+      "minDistance": 28.42704998317647,
+      "maxDistance": 30.80898040343925,
+      "maxLegalShotForMs": 4134.0,
+      "weapon": "pkp",
+      "state": "counterfire",
+      "end": 1785134670056,
+      "durationMs": 3012
+    },
+    {
+      "session": "2026-07-27T06-46-29-653Z_pid-4956",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 4,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785135027023,
+      "minDistance": 10.065673808324178,
+      "maxDistance": 17.334411618443895,
+      "maxLegalShotForMs": 8163.0,
+      "weapon": "an94",
+      "state": "regroup",
+      "end": 1785135029700,
+      "durationMs": 2677
+    },
+    {
+      "session": "2026-07-27T06-38-31-745Z_pid-6952",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 18,
+      "difficulty": "legit",
+      "modeSystem": "faction:faction",
+      "start": 1785134562602,
+      "minDistance": 2.8801769337657204,
+      "maxDistance": 4.776009466204655,
+      "maxLegalShotForMs": 3543.0,
+      "weapon": "ump9",
+      "state": "combat",
+      "end": 1785134565243,
+      "durationMs": 2641
+    },
+    {
+      "session": "2026-07-27T06-38-31-745Z_pid-6952",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 20,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785134493078,
+      "minDistance": 17.71008941237866,
+      "maxDistance": 25.902564326250268,
+      "maxLegalShotForMs": 4668.0,
+      "weapon": "famas",
+      "state": "counterfire",
+      "end": 1785134495701,
+      "durationMs": 2623
+    },
+    {
+      "session": "2026-07-27T06-46-29-653Z_pid-4956",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 6,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135129487,
+      "minDistance": 4.864646409185916,
+      "maxDistance": 19.34586255656062,
+      "maxLegalShotForMs": 4575.0,
+      "weapon": "sv98",
+      "state": "regroup",
+      "end": 1785135132109,
+      "durationMs": 2622
+    },
+    {
+      "session": "2026-07-27T06-38-31-745Z_pid-6952",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 20,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785134502037,
+      "minDistance": 2.5351919245194177,
+      "maxDistance": 14.203719889347784,
+      "maxLegalShotForMs": 5594.0,
+      "weapon": "famas",
+      "state": "regroup",
+      "end": 1785134504650,
+      "durationMs": 2613
+    },
+    {
+      "session": "2026-07-27T06-38-28-481Z_pid-7424",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 16,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785134616683,
+      "minDistance": 17.206821590353684,
+      "maxDistance": 24.09795271975729,
+      "maxLegalShotForMs": 29683.0,
+      "weapon": "m1100",
+      "state": "regroup",
+      "end": 1785134619261,
+      "durationMs": 2578
+    },
+    {
+      "session": "2026-07-27T06-47-12-236Z_pid-3480",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 10,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785134958914,
+      "minDistance": 3.285947146576414,
+      "maxDistance": 4.27757846651218,
+      "maxLegalShotForMs": 15346.0,
+      "weapon": "grozas",
+      "state": "regroup",
+      "end": 1785134961473,
+      "durationMs": 2559
+    },
+    {
+      "session": "2026-07-27T06-46-29-653Z_pid-4956",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 4,
+      "difficulty": "hard",
+      "modeSystem": "faction:faction",
+      "start": 1785135011164,
+      "minDistance": 62.309485621079986,
+      "maxDistance": 71.9038635417361,
+      "maxLegalShotForMs": 3835.0,
+      "weapon": "an94",
+      "state": "flush",
+      "end": 1785135013304,
+      "durationMs": 2140
+    },
+    {
+      "session": "2026-07-27T06-18-32-678Z_pid-4108",
+      "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+      "botId": 18,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785133362842,
+      "minDistance": 18.036892977202672,
+      "maxDistance": 20.754293149242432,
+      "maxLegalShotForMs": 3123.0,
+      "weapon": "mosin",
+      "state": "counterfire",
+      "end": 1785133364963,
+      "durationMs": 2121
+    },
+    {
+      "session": "2026-07-27T06-55-30-448Z_pid-7516",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 11,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135598035,
+      "minDistance": 22.03468884108061,
+      "maxDistance": 25.053616625582038,
+      "maxLegalShotForMs": 21583.0,
+      "weapon": "mp220",
+      "state": "counterfire",
+      "end": 1785135600137,
+      "durationMs": 2102
+    },
+    {
+      "session": "2026-07-27T06-38-57-991Z_pid-8376",
+      "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+      "botId": 38,
+      "difficulty": "legit",
+      "modeSystem": "faction:faction",
+      "start": 1785134606414,
+      "minDistance": 10.501985330778687,
+      "maxDistance": 12.28992298850718,
+      "maxLegalShotForMs": 3860.0,
+      "weapon": "m93r",
+      "state": "regroup",
+      "end": 1785134608444,
+      "durationMs": 2030
+    },
+    {
+      "session": "2026-07-27T06-47-12-236Z_pid-3480",
+      "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+      "botId": 10,
+      "difficulty": "pro",
+      "modeSystem": "faction:faction",
+      "start": 1785134951439,
+      "minDistance": 20.89026592567899,
+      "maxDistance": 26.637915444323294,
+      "maxLegalShotForMs": 6375.0,
+      "weapon": "ot38",
+      "state": "counterfire",
+      "end": 1785134953032,
+      "durationMs": 1593
+    },
+    {
+      "session": "2026-07-27T06-55-30-448Z_pid-7516",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 11,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135668148,
+      "minDistance": 25.99734005543041,
+      "maxDistance": 35.65104541817307,
+      "maxLegalShotForMs": 2987.0,
+      "weapon": "mp220",
+      "state": "counterfire",
+      "end": 1785135669736,
+      "durationMs": 1588
+    },
+    {
+      "session": "2026-07-27T06-55-30-448Z_pid-7516",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 11,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135602792,
+      "minDistance": 22.314033117816454,
+      "maxDistance": 23.093679508971167,
+      "maxLegalShotForMs": 25785.0,
+      "weapon": "mp220",
+      "state": "counterfire",
+      "end": 1785135604372,
+      "durationMs": 1580
+    },
+    {
+      "session": "2026-07-27T06-55-30-448Z_pid-7516",
+      "matchId": "7cc92fa5122c6032bfbbddca603f8a29ab669eea",
+      "botId": 11,
+      "difficulty": "normal",
+      "modeSystem": "faction:faction",
+      "start": 1785135581338,
+      "minDistance": 21.91196662396834,
+      "maxDistance": 25.33961347537307,
+      "maxLegalShotForMs": 4338.0,
+      "weapon": "mp220",
+      "state": "counterfire",
+      "end": 1785135582900,
+      "durationMs": 1562
+    }
+  ],
+  "disconnectAnalysis": {
+    "matchesWithSocketClose": 12,
+    "abruptRoomLevelClusters": [
+      {
+        "matchId": "79ccc5aeeb918a34ae64369ac756ee1e7edea508",
+        "count": 9,
+        "startAt": 1785135632518,
+        "spanMs": 44,
+        "nearGameOver": false
+      },
+      {
+        "matchId": "ed57207b3c1eee98347394e2b6ed954dad63fc72",
+        "count": 14,
+        "startAt": 1785134820959,
+        "spanMs": 146,
+        "nearGameOver": false
+      },
+      {
+        "matchId": "2f7c4cbd7863ec1c22c1b4f70ebe4f72c4dc587c",
+        "count": 10,
+        "startAt": 1785135233607,
+        "spanMs": 159,
+        "nearGameOver": false
+      },
+      {
+        "matchId": "2f7c4cbd7863ec1c22c1b4f70ebe4f72c4dc587c",
+        "count": 11,
+        "startAt": 1785135249834,
+        "spanMs": 22,
+        "nearGameOver": false
+      }
+    ],
+    "allMatches": [
+      {
+        "matchId": "32a1958891ac404871fcd9d098a1b331c2f4da38",
+        "sessionCount": 1,
+        "botCount": 8,
+        "socketCloseCount": 1,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 0,
+        "clusters": [
+          {
+            "count": 1,
+            "startAt": 1785135367832,
+            "spanMs": 0,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "79ccc5aeeb918a34ae64369ac756ee1e7edea508",
+        "sessionCount": 2,
+        "botCount": 9,
+        "socketCloseCount": 9,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 44,
+        "clusters": [
+          {
+            "count": 9,
+            "startAt": 1785135632518,
+            "spanMs": 44,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "c52734067ea46b4da461c649cd949798af4e70fc",
+        "sessionCount": 5,
+        "botCount": 40,
+        "socketCloseCount": 5,
+        "gameOverCount": 35,
+        "normalFinishCount": 34,
+        "closeSpanMs": 51,
+        "clusters": [
+          {
+            "count": 5,
+            "startAt": 1785134777801,
+            "spanMs": 51,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "e7505d0219cdf49c8629875911c51f3f34b0273f",
+        "sessionCount": 1,
+        "botCount": 8,
+        "socketCloseCount": 1,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 0,
+        "clusters": [
+          {
+            "count": 1,
+            "startAt": 1785135383958,
+            "spanMs": 0,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "0731331574fe1ceae0c9c73cb03494f511030647",
+        "sessionCount": 5,
+        "botCount": 40,
+        "socketCloseCount": 3,
+        "gameOverCount": 37,
+        "normalFinishCount": 37,
+        "closeSpanMs": 17,
+        "clusters": [
+          {
+            "count": 3,
+            "startAt": 1785133572988,
+            "spanMs": 17,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "ed57207b3c1eee98347394e2b6ed954dad63fc72",
+        "sessionCount": 5,
+        "botCount": 40,
+        "socketCloseCount": 16,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 41743,
+        "clusters": [
+          {
+            "count": 2,
+            "startAt": 1785134779362,
+            "spanMs": 32,
+            "nearGameOver": false
+          },
+          {
+            "count": 14,
+            "startAt": 1785134820959,
+            "spanMs": 146,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "ba828b411a5c659472f6cc267daac808d66ca2ca",
+        "sessionCount": 5,
+        "botCount": 40,
+        "socketCloseCount": 4,
+        "gameOverCount": 35,
+        "normalFinishCount": 35,
+        "closeSpanMs": 88,
+        "clusters": [
+          {
+            "count": 4,
+            "startAt": 1785135269281,
+            "spanMs": 88,
+            "nearGameOver": true
+          }
+        ]
+      },
+      {
+        "matchId": "15ee2dafde1be05b3c2446f70a0565280aabddd3",
+        "sessionCount": 1,
+        "botCount": 1,
+        "socketCloseCount": 1,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 0,
+        "clusters": [
+          {
+            "count": 1,
+            "startAt": 1785132975779,
+            "spanMs": 0,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "2f7c4cbd7863ec1c22c1b4f70ebe4f72c4dc587c",
+        "sessionCount": 5,
+        "botCount": 40,
+        "socketCloseCount": 21,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 16249,
+        "clusters": [
+          {
+            "count": 10,
+            "startAt": 1785135233607,
+            "spanMs": 159,
+            "nearGameOver": false
+          },
+          {
+            "count": 11,
+            "startAt": 1785135249834,
+            "spanMs": 22,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "a3a645506f0462b40bdddc9c49c6a0c37f31c093",
+        "sessionCount": 1,
+        "botCount": 8,
+        "socketCloseCount": 1,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 0,
+        "clusters": [
+          {
+            "count": 1,
+            "startAt": 1785134113935,
+            "spanMs": 0,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "17ddbd2a02edbb744f41e814aa3bece7864e3650",
+        "sessionCount": 1,
+        "botCount": 8,
+        "socketCloseCount": 1,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 0,
+        "clusters": [
+          {
+            "count": 1,
+            "startAt": 1785135470120,
+            "spanMs": 0,
+            "nearGameOver": false
+          }
+        ]
+      },
+      {
+        "matchId": "f182a076178e4466a209c20fd6153c89d253e863",
+        "sessionCount": 1,
+        "botCount": 1,
+        "socketCloseCount": 1,
+        "gameOverCount": 0,
+        "normalFinishCount": 0,
+        "closeSpanMs": 0,
+        "clusters": [
+          {
+            "count": 1,
+            "startAt": 1785133028692,
+            "spanMs": 0,
+            "nearGameOver": false
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-img {
+﻿img {
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -32,6 +32,13 @@ img {
   padding: 0;
   overflow: hidden;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+/* Hidden elements must really hide: author display rules (e.g. the
+   Sandevistan skill slot's display:flex) would otherwise override the
+   browser's [hidden] UA style and leave the HUD visible in other modes. */
+[hidden] {
+  display: none !important;
 }
 
 #game-touch-area {
@@ -893,7 +900,7 @@ img {
 
 #ui-stats-logo {
   /* Game over logo, don't forget there's main menu logo in app.css */
-  background-image: url("/img/survev_logo_full.png");
+  background-image: url("/img/surviv_logo_full.png");
   background-repeat: no-repeat;
   /* In case of logo change, update this value to width divided by 3 ceiled  */
   background-size: 264px;
@@ -1009,6 +1016,120 @@ img {
   text-align: center;
   width: 100vw;
   padding: 8px;
+}
+
+#ui-duel-score {
+  display: none;
+  position: relative;
+  top: -28px;
+  width: min(294px, calc(100vw - 18px));
+  min-width: 0;
+  padding: 4px 10px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 14, 20, 0.62);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  text-align: center;
+  text-shadow: 1px 1px 2px #000;
+}
+
+#ui-duel-score.has-status {
+  border-radius: 11px;
+  padding-bottom: 4px;
+}
+
+#ui-duel-round {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 14, 20, 0.86);
+  color: #cbd6e0;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.35px;
+  white-space: nowrap;
+}
+
+#ui-duel-players {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21px 9px 21px minmax(0, 1fr);
+  align-items: center;
+  gap: 3px;
+  min-height: 23px;
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#ui-duel-player-left,
+#ui-duel-player-right {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ui-duel-player-left {
+  color: #ff827c;
+  text-align: right;
+}
+
+#ui-duel-player-right {
+  color: #82b6ff;
+  text-align: left;
+}
+
+#ui-duel-score-left,
+#ui-duel-score-right {
+  font-size: 18px;
+  line-height: 20px;
+}
+
+#ui-duel-score-divider {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+}
+
+#ui-duel-status {
+  display: none;
+  overflow: hidden;
+  margin-top: -1px;
+  color: #78e8aa;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ui-duel-score.has-status #ui-duel-status {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  #ui-duel-score {
+    top: -32px;
+    width: min(260px, calc(100vw - 12px));
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  #ui-duel-players {
+    grid-template-columns: minmax(0, 1fr) 19px 7px 19px minmax(0, 1fr);
+    gap: 2px;
+    font-size: 10px;
+  }
+
+  #ui-duel-score-left,
+  #ui-duel-score-right {
+    font-size: 16px;
+  }
 }
 
 #ui-waiting-text {
@@ -1484,6 +1605,10 @@ img {
   left: 12px;
   position: absolute;
   top: 12px;
+  /* 观战面板（含聊天输入框）必须盖在游戏 HUD 之上、且不被打进
+   * 手机端触摸移动/瞄准系统（配合 index.html 的 data-game-input-blocker）。 */
+  pointer-events: auto;
+  z-index: 20;
 }
 
 @media (max-height: 768px), (max-width: 1200px) {
@@ -1517,8 +1642,16 @@ img {
   cursor: pointer;
 }
 
-#btn-spectate-prev-player {
-  margin-bottom: 24px;
+#btn-spectate-free-camera {
+  margin-bottom: 8px;
+}
+
+#btn-spectate-free-camera.active,
+#btn-spectate-players-only.active,
+#btn-spectate-transparent-obstacles.active {
+  background: #d69a30;
+  border-bottom-color: #94691f;
+  box-shadow: inset 0 -2px #94691f;
 }
 
 #ui-spectate-stats {
@@ -1903,10 +2036,31 @@ img {
 #ui-upper-center {
   position: absolute;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   color: #fff;
   top: 180px;
   left: 50%;
   transform: translateX(-50%);
+}
+
+#ui-live-announcement {
+  display: none;
+  box-sizing: border-box;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 9px 18px;
+  border: 1px solid rgba(255, 219, 91, 0.8);
+  border-radius: 8px;
+  background: rgba(12, 18, 24, 0.88);
+  color: #ffe36d;
+  font-size: 19px;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 #ui-announcement {
@@ -2030,6 +2184,26 @@ img {
   text-align: center;
   bottom: 10px;
   left: 0px;
+}
+
+#ui-match-timer {
+  position: absolute;
+  display: block;
+  width: 100px;
+  bottom: 40px;
+  left: 0px;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 5px;
+  padding: 2px 0;
+  pointer-events: none;
+}
+
+#ui-match-timer.urgent {
+  color: #ff5a5a;
 }
 
 #ui-spec-counter {
@@ -2527,6 +2701,22 @@ img {
 }
 #ui-perk-3 {
   right: 120px;
+}
+
+#ui-perk-3 {
+  right: 120px;
+}
+
+#ui-perk-4 {
+  right: 180px;
+}
+
+#ui-perk-5 {
+  right: 240px;
+}
+
+#ui-perk-6 {
+  right: 300px;
 }
 
 .ui-perk-no-drop {
@@ -3109,6 +3299,54 @@ span.ui-stats-header-value {
   position: absolute;
   transform: translateX(-50%);
   width: 125px;
+}
+
+.ui-equipment-return {
+  position: absolute;
+  top: 58px;
+  left: 50%;
+  width: min(340px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 6px;
+}
+
+.ui-equipment-return-reason {
+  min-height: 54px;
+  resize: vertical;
+  padding: 7px 9px;
+  border: 1px solid rgba(126, 190, 224, 0.5);
+  border-radius: 5px;
+  background: rgba(15, 28, 38, 0.92);
+  color: #fff;
+  font: inherit;
+  touch-action: manipulation;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.ui-equipment-return-submit {
+  min-height: 34px;
+  border: 1px solid rgba(126, 190, 224, 0.55);
+  border-radius: 5px;
+  background: #367ea4;
+  color: #fff;
+  cursor: pointer;
+}
+
+.ui-equipment-return-submit:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.ui-equipment-return-status {
+  min-height: 16px;
+  color: #8fffb0;
+  font-size: 12px;
+}
+
+.ui-equipment-return-status.error {
+  color: #ff8080;
 }
 
 .ui-stats-ad-container {
@@ -3884,11 +4122,7 @@ span.ui-stats-header-value {
     cursor: pointer;
   }
 
-  #btn-spectate-prev-player {
-    margin-bottom: 12px !important;
-  }
-
-  #btn-spectate-view-stats {
+  #btn-spectate-free-camera {
     margin-bottom: 12px !important;
   }
 
@@ -5516,5 +5750,390 @@ span.ui-stats-header-value {
     top: -20px;
     left: 84px;
     transform: scale(0.7);
+  }
+}
+
+/* v22.1 spectator duel HUD separation
+ * Keep the 1v1 score readable while the spectator/free-camera label is visible.
+ * The arena code sets an inline display:block style when the score is active,
+ * so this remains isolated to duel matches without adding client protocol state.
+ */
+#ui-duel-score {
+  z-index: 4;
+}
+
+#ui-duel-score[style*="block"] ~ #ui-spectate-text {
+  box-sizing: border-box;
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  z-index: 3;
+  width: auto;
+  max-width: min(360px, calc(100vw - 20px));
+  padding: 2px 9px 3px;
+  border: 1px solid rgba(126, 232, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(8, 14, 20, 0.52);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(3px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#ui-duel-score.has-status[style*="block"] ~ #ui-spectate-text {
+  top: 37px;
+}
+
+#ui-duel-score[style*="block"] ~ #ui-spectate-text .spectate-text {
+  display: inline-block;
+  height: 16px;
+  max-width: none;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 2px #000;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+#ui-duel-score[style*="block"] ~ #ui-spectate-text .spectate-desc {
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+}
+
+#ui-duel-score[style*="block"] ~ #ui-spectate-text #spectate-player {
+  max-width: 260px;
+  color: #82e6f5;
+}
+
+@media (max-width: 640px) {
+  #ui-duel-score[style*="block"] ~ #ui-spectate-text {
+    top: 20px;
+    max-width: calc(100vw - 14px);
+    padding: 1px 7px 2px;
+  }
+
+  #ui-duel-score.has-status[style*="block"] ~ #ui-spectate-text {
+    top: 32px;
+  }
+
+  #ui-duel-score[style*="block"] ~ #ui-spectate-text .spectate-desc {
+    display: none;
+  }
+
+  #ui-duel-score[style*="block"] ~ #ui-spectate-text .spectate-text {
+    height: 14px;
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  #ui-duel-score[style*="block"] ~ #ui-spectate-text #spectate-player {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* V41 shared spectator controls */
+.spectate-layer-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 7px 9px;
+  color: #fff;
+  font: bold 12px Arial, sans-serif;
+}
+.spectate-layer-controls input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: #d69a30;
+  cursor: pointer;
+}
+.spectator-chat-panel button {
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+  min-width: 28px;
+  min-height: 26px;
+  touch-action: manipulation;
+}
+
+/* A free observer has no player state of their own. Avoid leaving the
+ * previously watched player's health, ammo and equipment frozen on screen. */
+.spectator-free-camera #ui-equipped-ammo-wrapper,
+.spectator-free-camera #ui-bottom-center-0,
+.spectator-free-camera #ui-bottom-center-1,
+.spectator-free-camera #ui-bottom-center-left,
+.spectator-free-camera #ui-bottom-center-right,
+.spectator-free-camera #ui-bottom-right,
+.spectator-free-camera #ui-right-center,
+.spectator-free-camera #ui-interaction-press,
+.spectator-free-camera #ui-interaction {
+  display: none !important;
+}
+.spectator-chat-panel {
+  margin-top: 6px;
+  width: 290px;
+  padding: 7px;
+  pointer-events: auto;
+}
+#ui-spectator-chat-feed {
+  max-height: 92px;
+  overflow-y: auto;
+  color: #fff;
+  font: 12px Arial, sans-serif;
+  line-height: 1.35;
+  margin-bottom: 5px;
+}
+#ui-spectator-chat-feed .spectator-chat-line {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+.spectator-chat-input-row {
+  display: flex;
+  gap: 5px;
+}
+#ui-spectator-chat-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 3px;
+  padding: 6px 7px;
+  touch-action: manipulation;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+@media (pointer: coarse) {
+  #ui-spectator-chat-input,
+  .ui-equipment-return-reason {
+    /* iOS zooms editors below 16px, which can move the field out from under
+       the finger and cancel the first edit gesture. */
+    font-size: 16px;
+  }
+}
+
+#ui-spectator-inbox {
+  position: absolute;
+  top: 112px;
+  left: 50%;
+  z-index: 130;
+  max-width: min(520px, calc(100vw - 40px));
+  padding: 9px 13px;
+  transform: translate(-50%, -10px);
+  opacity: 0;
+  pointer-events: none;
+  color: #fff;
+  font: 600 14px Arial, sans-serif;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+#ui-spectator-inbox.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+
+/* ============================================================
+   Sandevistan implant HUD (V87 stage 2)
+   ============================================================ */
+#ui-sandevistan-skill {
+    position: absolute;
+    left: 50%;
+    bottom: 112px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid rgba(122, 92, 216, .55);
+    border-radius: 10px;
+    background: rgba(10, 14, 24, .72);
+    pointer-events: none;
+}
+#ui-sandevistan-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #7a5cd8;
+    border-radius: 50%;
+    background: #1d1530;
+    color: #c3a6ff;
+    font-weight: 900;
+    font-size: 13px;
+    transition: background .25s ease, box-shadow .25s ease;
+}
+#ui-sandevistan-icon.active {
+    background: #2a1f4a;
+    box-shadow: 0 0 16px rgba(122, 92, 216, .75);
+}
+#ui-sandevistan-status strong {
+    display: block;
+    font-size: 10px;
+    color: #b9aef0;
+    letter-spacing: .04em;
+}
+#ui-sandevistan-timer {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #e4daff;
+    font-variant-numeric: tabular-nums;
+}
+#ui-sandevistan-cooldown-bar {
+    width: 90px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, .12);
+    overflow: hidden;
+}
+#ui-sandevistan-cooldown-fill {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #7a5cd8, #3ea6ff);
+    transform-origin: left center;
+    transition: transform .1s linear;
+}
+#sandevistan-filter {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: rgba(45, 95, 225, 0.20);
+    opacity: 0;
+    transition: opacity .35s ease;
+}
+#sandevistan-filter.active { opacity: 1; }
+
+.sandevistan-key-hint { color: #8fa3d9; font-size: 9px; font-weight: 700; }
+
+/* Mobile: the skill slot becomes a dedicated activation button above the
+   right aim pad. Tap to activate; the desktop key hint is hidden. */
+#ui-sandevistan-skill.sandevistan-mobile {
+  left: auto;
+  right: 26px;
+  bottom: 236px;
+  transform: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 14px;
+}
+#ui-sandevistan-skill.sandevistan-mobile:active {
+  background: rgba(42, 31, 74, 0.95);
+  box-shadow: 0 0 20px rgba(122, 92, 216, 0.85);
+  transform: scale(0.94);
+}
+#ui-sandevistan-skill.sandevistan-mobile #ui-sandevistan-icon {
+  width: 50px;
+  height: 50px;
+  flex-basis: 50px;
+  font-size: 18px;
+}
+#ui-sandevistan-skill.sandevistan-mobile #ui-sandevistan-status strong {
+  display: none;
+}
+#ui-sandevistan-skill.sandevistan-mobile #ui-sandevistan-timer {
+  margin-top: 0;
+  min-width: 40px;
+  font-size: 12px;
+  text-align: center;
+}
+#ui-sandevistan-skill.sandevistan-mobile #ui-sandevistan-cooldown-bar {
+  width: 50px;
+}
+/* 搜打撤 extraction HUD */
+#extraction-hud {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(34, 221, 85, 0.9);
+  color: #7dffa8;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+  z-index: 40;
+}
+
+#zombie-mission-hud {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 310px;
+  padding: 9px 18px;
+  border: 1px solid rgba(255, 196, 64, 0.95);
+  border-radius: 7px;
+  background: rgba(12, 10, 5, 0.72);
+  color: #ffe69a;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+  z-index: 41;
+}
+
+#zombie-mission-hud.danger {
+  border-color: #ff4545;
+  color: #ff8989;
+}
+@media (max-height: 500px) {
+  #ui-sandevistan-skill.sandevistan-mobile {
+    bottom: 196px;
+  }
+}
+
+/* ============ V260.10 mobile safe-area / dynamic viewport fixes ============ */
+@media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx), (pointer: coarse) {
+  #ui-role-menu-wrapper,
+  #ui-stats-bg {
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  #ui-bottom-right {
+    right: max(6px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  #ui-bottom-center-right {
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(9px, env(safe-area-inset-bottom));
+  }
+
+  #ui-team {
+    top: max(40px, calc(env(safe-area-inset-top) + 8px));
+    left: max(6px, env(safe-area-inset-left));
+  }
+
+  #big-map-close {
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
   }
 }

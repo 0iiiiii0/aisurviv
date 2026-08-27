@@ -68,6 +68,19 @@ class BasePlayerGroup {
     /**
      * true if all ALIVE teammates besides the passed in player are downed
      */
+    /**
+     * true when any living member can still self-revive. A squad whose last
+     * survivors are all downed is only eliminated once every self-revive
+     * member has died or used up their comeback.
+     */
+    checkSelfRevive() {
+        for (const p of this.livingPlayers) {
+            if (p.disconnected) continue;
+            if (p.hasPerk("self_revive")) return true;
+        }
+        return false;
+    }
+
     checkAllDowned(player: Player) {
         for (const p of this.players) {
             if (p === player) continue;
@@ -77,20 +90,6 @@ class BasePlayerGroup {
             return false;
         }
         return true;
-    }
-
-    /**
-     * checks if any players in the group have the self revive perk
-     * @returns true if any players in the group have the self revive perk
-     */
-    checkSelfRevive() {
-        for (const p of this.livingPlayers) {
-            if (p.disconnected) continue;
-            if (p.hasPerk("self_revive")) {
-                return true;
-            }
-        }
-        return false;
     }
 }
 
@@ -117,10 +116,11 @@ export class Group extends BasePlayerGroup {
     }
 
     canJoin(players: number) {
-        return (
-            this.maxPlayers - this.reservedSlots - players >= 0
-            && !this.allDeadOrDisconnected
-        );
+        // `reservedSlots` protects the remaining members of a shared team-menu
+        // join token. Count connected players and seats reserved for that party
+        // before allowing another auto-fill token into this group.
+        return this.players.length + this.reservedSlots + players <= this.maxPlayers
+            && !this.allDeadOrDisconnected;
     }
 }
 

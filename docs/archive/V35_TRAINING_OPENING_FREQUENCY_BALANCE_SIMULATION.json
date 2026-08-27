@@ -1,0 +1,87 @@
+{
+  "aimTraining": {
+    "lockPlayersUntilFull": false,
+    "startCondition": "first human contestant",
+    "roleBasedSpawnOrder": true,
+    "persistentWithOneHuman": true
+  },
+  "independentThinkIntervalsMs": {
+    "normal": 150,
+    "hard": 72,
+    "pro": 30,
+    "legit": 6,
+    "forbidden": 3
+  },
+  "openingWeaponSearch": {
+    "opening": {
+      "opening": true,
+      "gunUrgency": 1380,
+      "gunRange": 108,
+      "lootLockMs": 5200,
+      "crateRangeMultiplier": 2.05
+    },
+    "postOpening": {
+      "opening": false,
+      "gunUrgency": 900,
+      "gunRange": 72,
+      "lootLockMs": 3800,
+      "crateRangeMultiplier": 1.55
+    },
+    "rangeIncreasePercent": 50
+  },
+  "sniperShotgunQuickSwitch": {
+    "sniperToShotgun": {
+      "useful": true,
+      "reason": "ready",
+      "estimatedAdvanceMs": 1470
+    },
+    "shotgunToSniper": {
+      "useful": true,
+      "reason": "ready",
+      "estimatedAdvanceMs": 620
+    },
+    "requiresConfirmedShotBeforeEachSwitch": true
+  },
+  "difficultySummary": {
+    "normal": {
+      "decisionsPerSecond": 6.7,
+      "reactionMs": 230,
+      "forcedTriggerDeadlineMs": 1210,
+      "aimJitterRad": 0.065,
+      "shootConfidence": 0.75,
+      "targetMemoryMs": 900
+    },
+    "hard": {
+      "decisionsPerSecond": 16.7,
+      "reactionMs": 55,
+      "forcedTriggerDeadlineMs": 475,
+      "aimJitterRad": 0.012,
+      "shootConfidence": 0.98,
+      "targetMemoryMs": 2100
+    },
+    "pro": {
+      "decisionsPerSecond": 35.7,
+      "reactionMs": 12,
+      "forcedTriggerDeadlineMs": 192,
+      "aimJitterRad": 0.0024,
+      "shootConfidence": 0.999,
+      "targetMemoryMs": 3200
+    },
+    "legit": {
+      "decisionsPerSecond": 166.7,
+      "reactionMs": 0,
+      "forcedTriggerDeadlineMs": 120,
+      "aimJitterRad": 0,
+      "shootConfidence": 1,
+      "targetMemoryMs": 4500
+    },
+    "forbidden": {
+      "decisionsPerSecond": 250,
+      "reactionMs": 0,
+      "forcedTriggerDeadlineMs": 120,
+      "aimJitterRad": 0,
+      "shootConfidence": 1,
+      "targetMemoryMs": 60000
+    }
+  }
+}

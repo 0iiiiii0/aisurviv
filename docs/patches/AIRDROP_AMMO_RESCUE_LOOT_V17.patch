@@ -1,0 +1,619 @@
+diff --git a/server/src/bot/integratedLogicSpec.ts b/server/src/bot/integratedLogicSpec.ts
+index 7e9946b..0dc5e9d 100644
+--- a/server/src/bot/integratedLogicSpec.ts
++++ b/server/src/bot/integratedLogicSpec.ts
+@@ -195,8 +195,24 @@ export const AMMO_REQUEST_EMOTE_TO_TYPE: Readonly<Record<string, string>> = {
+     emote_ammo45acp: "45acp",
+ };
+ 
+-export function ammoTypeForRequestEmote(emoteType: string): string | null {
+-    return AMMO_REQUEST_EMOTE_TO_TYPE[emoteType] ?? null;
++const AMMO_REQUEST_TYPES = new Set(Object.values(AMMO_REQUEST_EMOTE_TO_TYPE));
++
++/**
++ * Resolves both the dedicated ammo emotes and the generic ammo-request wheel
++ * entry. Some clients send `emote_ammo` and expect recipients to infer the
++ * calibre from the requester's active weapon, so only matching the eight
++ * dedicated emote names silently drops valid human requests.
++ */
++export function ammoTypeForRequestEmote(
++    emoteType: string,
++    itemType = "",
++    activeWeaponAmmo = "",
++): string | null {
++    const dedicated = AMMO_REQUEST_EMOTE_TO_TYPE[emoteType];
++    if (dedicated) return dedicated;
++    if (emoteType !== "emote_ammo") return null;
++    if (AMMO_REQUEST_TYPES.has(itemType)) return itemType;
++    return AMMO_REQUEST_TYPES.has(activeWeaponAmmo) ? activeWeaponAmmo : null;
+ }
+ 
+ /** Mirrors Player.dropItem's ammo split so donors can preserve one magazine. */
+diff --git a/server/src/bot/interactionGeometry.ts b/server/src/bot/interactionGeometry.ts
+new file mode 100644
+index 0000000..95f6ac3
+--- /dev/null
++++ b/server/src/bot/interactionGeometry.ts
+@@ -0,0 +1,150 @@
++import type { Vec2 } from "../../../shared/utils/v2";
++
++interface CollisionLike {
++    type?: number;
++    pos?: Vec2;
++    rad?: number;
++    min?: Vec2;
++    max?: Vec2;
++}
++
++interface InteractableDefinitionLike {
++    collision?: CollisionLike;
++    button?: { interactionRad?: number };
++    door?: { interactionRad?: number };
++}
++
++export interface InteractionApproachPlan {
++    approachPoint: Vec2;
++    surfaceDistance: number;
++    interactionReach: number;
++    canInteract: boolean;
++}
++
++const rotate = (value: Vec2, radians: number): Vec2 => ({
++    x: value.x * Math.cos(radians) - value.y * Math.sin(radians),
++    y: value.x * Math.sin(radians) + value.y * Math.cos(radians),
++});
++
++const normalize = (value: Vec2, fallback: Vec2 = { x: 1, y: 0 }): Vec2 => {
++    const len = Math.hypot(value.x, value.y);
++    return len > 1e-6 ? { x: value.x / len, y: value.y / len } : fallback;
++};
++
++const clamp = (value: number, min: number, max: number): number =>
++    Math.max(min, Math.min(max, value));
++
++/**
++ * Builds a point just outside an interactable obstacle's real collider.
++ *
++ * Steering to the obstacle centre fails for large airdrop shells because the
++ * player collider can never reach the centre. The authoritative server tests
++ * the player circle against the obstacle collider expanded by interactionRad,
++ * so the bot must reason about distance to the collider surface instead.
++ */
++export function interactionApproachPlan(input: {
++    definition: InteractableDefinitionLike | undefined;
++    objectPos: Vec2;
++    objectOri?: number;
++    objectScale?: number;
++    actorPos: Vec2;
++    actorRadius: number;
++    margin?: number;
++}): InteractionApproachPlan {
++    const definition = input.definition;
++    const collision = definition?.collision;
++    const scale = Math.max(0.05, Number(input.objectScale ?? 1));
++    const radians = (Number(input.objectOri ?? 0) % 4) * Math.PI * 0.5;
++    const interactionRad = Math.max(
++        0,
++        Number(definition?.button?.interactionRad ?? definition?.door?.interactionRad ?? 0),
++    );
++    const margin = Math.max(0.05, Number(input.margin ?? 0.18));
++    const interactionReach = Math.max(0.1, input.actorRadius + interactionRad - margin);
++
++    const actorDeltaWorld = {
++        x: input.actorPos.x - input.objectPos.x,
++        y: input.actorPos.y - input.objectPos.y,
++    };
++    const actorLocalScaled = rotate(actorDeltaWorld, -radians);
++    const actorLocal = {
++        x: actorLocalScaled.x / scale,
++        y: actorLocalScaled.y / scale,
++    };
++
++    let closestLocal: Vec2 = { x: 0, y: 0 };
++    let outwardLocal: Vec2 = normalize(actorLocal);
++    let surfaceDistance = Math.hypot(actorDeltaWorld.x, actorDeltaWorld.y);
++
++    if (collision && typeof collision.rad === "number") {
++        const center = collision.pos ?? { x: 0, y: 0 };
++        const radial = {
++            x: actorLocal.x - center.x,
++            y: actorLocal.y - center.y,
++        };
++        outwardLocal = normalize(radial);
++        closestLocal = {
++            x: center.x + outwardLocal.x * Math.max(0, collision.rad),
++            y: center.y + outwardLocal.y * Math.max(0, collision.rad),
++        };
++        surfaceDistance = Math.max(0, Math.hypot(radial.x, radial.y) - collision.rad) * scale;
++    } else if (collision?.min && collision.max) {
++        const min = collision.min;
++        const max = collision.max;
++        closestLocal = {
++            x: clamp(actorLocal.x, min.x, max.x),
++            y: clamp(actorLocal.y, min.y, max.y),
++        };
++        let delta = {
++            x: actorLocal.x - closestLocal.x,
++            y: actorLocal.y - closestLocal.y,
++        };
++
++        // If the actor is numerically inside the collider, choose the nearest face
++        // and push outward from that face. This also handles a stale position after
++        // a lag spike without producing NaN steering.
++        if (Math.abs(delta.x) + Math.abs(delta.y) < 1e-6) {
++            const distances = [
++                { value: Math.abs(actorLocal.x - min.x), normal: { x: -1, y: 0 }, point: { x: min.x, y: actorLocal.y } },
++                { value: Math.abs(max.x - actorLocal.x), normal: { x: 1, y: 0 }, point: { x: max.x, y: actorLocal.y } },
++                { value: Math.abs(actorLocal.y - min.y), normal: { x: 0, y: -1 }, point: { x: actorLocal.x, y: min.y } },
++                { value: Math.abs(max.y - actorLocal.y), normal: { x: 0, y: 1 }, point: { x: actorLocal.x, y: max.y } },
++            ].sort((a, b) => a.value - b.value);
++            closestLocal = distances[0].point;
++            outwardLocal = distances[0].normal;
++            surfaceDistance = 0;
++        } else {
++            outwardLocal = normalize(delta);
++            surfaceDistance = Math.hypot(delta.x, delta.y) * scale;
++        }
++    } else {
++        // Conservative fallback for definitions without a collider.
++        const fallbackRadius = 1.25;
++        outwardLocal = normalize(actorLocal);
++        closestLocal = {
++            x: outwardLocal.x * fallbackRadius,
++            y: outwardLocal.y * fallbackRadius,
++        };
++        surfaceDistance = Math.max(0, Math.hypot(actorLocal.x, actorLocal.y) - fallbackRadius) * scale;
++    }
++
++    const approachLocal = {
++        x: closestLocal.x + outwardLocal.x * (interactionReach / scale),
++        y: closestLocal.y + outwardLocal.y * (interactionReach / scale),
++    };
++    const approachWorldOffset = rotate(
++        { x: approachLocal.x * scale, y: approachLocal.y * scale },
++        radians,
++    );
++    const approachPoint = {
++        x: input.objectPos.x + approachWorldOffset.x,
++        y: input.objectPos.y + approachWorldOffset.y,
++    };
++
++    return {
++        approachPoint,
++        surfaceDistance,
++        interactionReach,
++        canInteract: surfaceDistance <= interactionReach,
++    };
++}
+diff --git a/server/src/bot/reviveCoordination.ts b/server/src/bot/reviveCoordination.ts
+new file mode 100644
+index 0000000..c28573d
+--- /dev/null
++++ b/server/src/bot/reviveCoordination.ts
+@@ -0,0 +1,26 @@
++export interface ReviveActorLike {
++    id: number;
++    dead: boolean;
++    disconnected: boolean;
++    actionType: number;
++    actionTargetId: number;
++    reviveTargetId: number;
++}
++
++/** Returns the actor that already owns the revive, excluding the caller. */
++export function activeReviverFor(
++    actors: readonly ReviveActorLike[],
++    callerId: number,
++    targetId: number,
++    reviveActionType: number,
++): ReviveActorLike | undefined {
++    return actors.find(
++        (actor) =>
++            actor.id !== callerId &&
++            !actor.dead &&
++            !actor.disconnected &&
++            actor.actionType === reviveActionType &&
++            actor.actionTargetId === targetId &&
++            actor.reviveTargetId === targetId,
++    );
++}
+diff --git a/server/src/factionAirdropContainerSmokeTest.ts b/server/src/factionAirdropContainerSmokeTest.ts
+index 2933fb8..321ad09 100644
+--- a/server/src/factionAirdropContainerSmokeTest.ts
++++ b/server/src/factionAirdropContainerSmokeTest.ts
+@@ -3,6 +3,7 @@ import assert from "assert/strict";
+ import { MapObjectDefs } from "../../shared/defs/mapObjectDefs";
+ import { v2 } from "../../shared/utils/v2";
+ import { resourceBreakPlan } from "./bot/lootStrategy";
++import { interactionApproachPlan } from "./bot/interactionGeometry";
+ import {
+     isSafeContainerEntryBlocker,
+     shippingContainerRoute,
+@@ -15,6 +16,30 @@ assert.equal(militaryDrop.button?.destroyOnUse, true, "opening must replace the
+ assert.equal(militaryDrop.button?.useDelay, 2.5, "opener must remain committed through the server unlock delay");
+ 
+ 
++
++const outsideMilitaryShell = interactionApproachPlan({
++    definition: militaryDrop as any,
++    objectPos: v2.create(100, 100),
++    objectOri: 0,
++    objectScale: 1,
++    actorPos: v2.create(110, 100),
++    actorRadius: 0.75,
++});
++assert.equal(outsideMilitaryShell.canInteract, false);
++assert.ok(
++    outsideMilitaryShell.approachPoint.x > 104.5 && outsideMilitaryShell.approachPoint.x < 106.5,
++    "the opener must approach the metal shell edge instead of steering into its unreachable centre",
++);
++const atMilitaryShellEdge = interactionApproachPlan({
++    definition: militaryDrop as any,
++    objectPos: v2.create(100, 100),
++    objectOri: 0,
++    objectScale: 1,
++    actorPos: outsideMilitaryShell.approachPoint,
++    actorRadius: 0.75,
++});
++assert.equal(atMilitaryShellEdge.canInteract, true, "the planned edge point must be inside the authoritative interaction reach");
++
+ const militaryPayloadPlan = resourceBreakPlan("fists", "crate_12", 1, 1, 28);
+ assert.ok(
+     militaryPayloadPlan?.feasible,
+diff --git a/server/src/game/objects/player.ts b/server/src/game/objects/player.ts
+index 65a719f..8e8fd43 100644
+--- a/server/src/game/objects/player.ts
++++ b/server/src/game/objects/player.ts
+@@ -30,6 +30,7 @@ import { collider } from "../../../../shared/utils/collider";
+ import { math } from "../../../../shared/utils/math";
+ import { assert, util } from "../../../../shared/utils/util";
+ import { type Vec2, v2 } from "../../../../shared/utils/v2";
++import { activeReviverFor } from "../../bot/reviveCoordination";
+ import { IDAllocator } from "../../utils/IDAllocator";
+ import { checkForBadWords } from "../../utils/serverHelpers";
+ import type { Game, JoinTokenData } from "../game";
+@@ -2655,6 +2656,25 @@ export class Player extends BaseGameObject {
+         );
+     }
+ 
++    private getActiveReviverFor(target: Player): Player | undefined {
++        const match = activeReviverFor(
++            this.game.playerBarn.livingPlayers.map((candidate) => ({
++                id: candidate.__id,
++                dead: candidate.dead,
++                disconnected: candidate.disconnected,
++                actionType: candidate.actionType,
++                actionTargetId: candidate.action.targetId,
++                reviveTargetId: candidate.playerBeingRevived?.__id ?? 0,
++            })),
++            this.__id,
++            target.__id,
++            GameConfig.Action.Revive,
++        );
++        return match
++            ? this.game.playerBarn.livingPlayers.find((candidate) => candidate.__id === match.id)
++            : undefined;
++    }
++
+     /** returns player to revive if can revive */
+     getPlayerToRevive(): Player | undefined {
+         if (this.actionType != GameConfig.Action.None) {
+@@ -2685,6 +2705,13 @@ export class Player extends BaseGameObject {
+             if (!util.sameLayer(this.layer, teammate.layer)) {
+                 continue;
+             }
++            // Revive is server-authoritative and exclusive. Without this guard,
++            // several AI clients can repeatedly call doAction() on the same downed
++            // player, resetting the target's revive timer and making the rescue take
++            // longer instead of faster.
++            if (this.getActiveReviverFor(teammate)) {
++                continue;
++            }
+             const dist = v2.distance(this.pos, teammate.pos);
+             if (dist <= GameConfig.player.reviveRange && dist < closestDist) {
+                 playerToRevive = teammate;
+@@ -2697,6 +2724,7 @@ export class Player extends BaseGameObject {
+ 
+     revive(playerToRevive: Player | undefined) {
+         if (!playerToRevive) return;
++        if (this.getActiveReviverFor(playerToRevive)) return;
+ 
+         this.playerBeingRevived = playerToRevive;
+         if (this.downed && this.hasPerk("self_revive")) {
+diff --git a/server/src/integratedLogicSpecSmokeTest.ts b/server/src/integratedLogicSpecSmokeTest.ts
+index ecd5472..0541685 100644
+--- a/server/src/integratedLogicSpecSmokeTest.ts
++++ b/server/src/integratedLogicSpecSmokeTest.ts
+@@ -119,6 +119,9 @@ assert.equal(isUtilityOnlyWeapon("ak47", "AK-47"), false);
+ assert.equal(Object.keys(AMMO_REQUEST_EMOTE_TO_TYPE).length, 8);
+ assert.equal(ammoTypeForRequestEmote("emote_ammo556mm"), "556mm");
+ assert.equal(ammoTypeForRequestEmote("emote_ammoflare"), "flare");
++assert.equal(ammoTypeForRequestEmote("emote_ammo", "", "556mm"), "556mm");
++assert.equal(ammoTypeForRequestEmote("emote_ammo", "762mm", "9mm"), "762mm");
++assert.equal(ammoTypeForRequestEmote("emote_ammo", "", ""), null);
+ assert.equal(ammoTypeForRequestEmote("emote_happyface"), null);
+ assert.equal(predictedAmmoDropAmount(90), 45);
+ assert.equal(predictedAmmoDropAmount(5), 5);
+diff --git a/server/src/reviveCoordinationSmokeTest.ts b/server/src/reviveCoordinationSmokeTest.ts
+new file mode 100644
+index 0000000..2d030e2
+--- /dev/null
++++ b/server/src/reviveCoordinationSmokeTest.ts
+@@ -0,0 +1,31 @@
++import assert from "assert/strict";
++
++import { activeReviverFor } from "./bot/reviveCoordination";
++
++const actors = [
++    {
++        id: 1,
++        dead: false,
++        disconnected: false,
++        actionType: 4,
++        actionTargetId: 99,
++        reviveTargetId: 99,
++    },
++    {
++        id: 2,
++        dead: false,
++        disconnected: false,
++        actionType: 0,
++        actionTargetId: 0,
++        reviveTargetId: 0,
++    },
++];
++assert.equal(activeReviverFor(actors, 2, 99, 4)?.id, 1);
++assert.equal(activeReviverFor(actors, 1, 99, 4), undefined, "the current rescuer keeps its own lock");
++assert.equal(
++    activeReviverFor([{ ...actors[0], disconnected: true }], 2, 99, 4),
++    undefined,
++    "a disconnected rescuer must not block takeover",
++);
++
++console.log("revive coordination smoke test passed");
+diff --git a/server/src/smartBot.ts b/server/src/smartBot.ts
+index dae5ba3..2b9f364 100644
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -111,6 +111,7 @@ import {
+ } from "./bot/containerNavigation";
+ import { assessHealSafety, type HealSafetyDecision } from "./bot/healSafety";
+ import { movementInputFromDirection } from "./bot/movementInput";
++import { interactionApproachPlan } from "./bot/interactionGeometry";
+ import {
+     adrenalineMovementPlan,
+     chooseAdrenalineConsumable as chooseAdrenalineItem,
+@@ -1632,17 +1633,31 @@ class TacticalBot {
+     }
+ 
+     private processTeamEmotes(
+-        emotes: ReadonlyArray<{ playerId: number; type: string }>,
++        emotes: ReadonlyArray<{
++            playerId: number;
++            type: string;
++            itemType?: string;
++            isPing?: boolean;
++            pos?: Vec2;
++        }>,
+         timestamp: number,
+     ): void {
+         for (const emote of emotes) {
+             if (emote.playerId === this.activePlayerId || !this.isTeammate(emote.playerId)) {
+                 continue;
+             }
+-            const ammoType = ammoTypeForRequestEmote(String(emote.type ?? ""));
+-            if (!ammoType) continue;
+             const player = this.objectPool.getObjById(emote.playerId);
+-            const pos = player?.data.pos as Vec2 | undefined;
++            const activeWeapon = String(player?.data.activeWeapon ?? "");
++            const activeWeaponAmmo = String(gameDef(activeWeapon)?.ammo ?? "");
++            const ammoType = ammoTypeForRequestEmote(
++                String(emote.type ?? ""),
++                String(emote.itemType ?? ""),
++                activeWeaponAmmo,
++            );
++            if (!ammoType) continue;
++            const pos =
++                (player?.data.pos as Vec2 | undefined) ??
++                (emote.pos ? v2.create(emote.pos.x, emote.pos.y) : undefined);
+             if (!pos) continue;
+             const teamId = this.myTeamId();
+             if (this.factionModeActive() && teamId > 0) {
+@@ -3177,11 +3192,28 @@ class TacticalBot {
+         }
+         const pos = object.data.pos as Vec2;
+         const dist = distance(myPos, pos);
++        const definition = MapObjectDefs[String(object.data.type ?? "")] as AnyDef | undefined;
++        const interaction = interactionApproachPlan({
++            definition,
++            objectPos: pos,
++            objectOri: Number(object.data.ori ?? 0),
++            objectScale: Number(object.data.scale ?? 1),
++            actorPos: myPos,
++            actorRadius: GameConfig.player.radius,
++        });
+         this.output.aimDir = normalize(sub(pos, myPos), this.output.aimDir);
+         this.output.mouseLen = clamp(dist * 8, 10, net.Constants.MouseMaxDist);
+-        const interactionDistance = GameConfig.player.radius + 2.25;
+-        if (dist > interactionDistance) {
+-            this.moveDirection(this.steerToward(myPos, pos, timestamp, object.__id, object.__id));
++        if (!interaction.canInteract) {
++            this.moveDirection(
++                this.steerToward(
++                    myPos,
++                    interaction.approachPoint,
++                    timestamp,
++                    object.__id,
++                    object.__id,
++                    true,
++                ),
++            );
+             return true;
+         }
+         this.output.movement = EMPTY_MOVEMENT();
+@@ -4592,6 +4624,31 @@ class TacticalBot {
+         const targetPos = target?.data.pos as Vec2 | undefined;
+         if (!target || !targetPos || target.data.dead || !target.data.downed) return;
+ 
++        const otherReviver = this.objectPool.values(ObjectType.Player).find((player) => {
++            if (
++                player.__id === this.activePlayerId ||
++                player.__id === rescue.targetPlayerId ||
++                !this.isTeammate(player.__id) ||
++                player.data.dead ||
++                player.data.downed ||
++                Number(player.data.actionType ?? GameConfig.Action.None) !== GameConfig.Action.Revive
++            ) {
++                return false;
++            }
++            const reviverPos = player.data.pos as Vec2 | undefined;
++            return Boolean(
++                reviverPos &&
++                    distance(reviverPos, targetPos) <= GameConfig.player.reviveRange + 1.1,
++            );
++        });
++        if (otherReviver) {
++            // The authoritative server has already granted the revive to another
++            // teammate. Switch to protection rather than crowding the target and
++            // repeatedly sending Revive from every bot process.
++            this.coverRescue(myPos, rescue);
++            return;
++        }
++
+         const dist = distance(myPos, targetPos);
+         this.lastRescueTargetId = rescue.targetPlayerId;
+         this.lastRescueTargetPos = v2.create(targetPos.x, targetPos.y);
+@@ -7049,12 +7106,26 @@ class TacticalBot {
+         const gunSlots = [GameConfig.WeaponSlot.Primary, GameConfig.WeaponSlot.Secondary];
+         const ownedTypes = gunSlots.map((slot) => this.local.weapons[slot]?.type ?? "");
+ 
+-        // A second copy is useful only for definitions that explicitly support
+-        // dual wielding. Otherwise it creates an endless drop/pickup loop.
+-        if (ownedTypes.includes(gunType) && !gameDef(gunType)?.dualWieldType) return null;
+-
+         const incomingDef = gameDef(gunType);
+         if (!incomingDef || incomingDef.type !== "gun") return null;
++        const incomingAmmo = String(incomingDef.ammo ?? "");
++        const incomingReserve = Number(this.local.inventory[incomingAmmo] ?? 0);
++
++        // A second copy is useful only for definitions that explicitly support
++        // dual wielding. One exception is a preloaded ground gun replacing an
++        // identical but completely dry copy; rejecting that case leaves the bot
++        // staring at usable ammunition packaged inside the dropped gun.
++        if (ownedTypes.includes(gunType) && !incomingDef.dualWieldType) {
++            const existingSameTypeWorks = gunSlots.some((slot) => {
++                const weapon = this.local.weapons[slot];
++                return (
++                    weapon?.type === gunType &&
++                    (Number(weapon.ammo ?? 0) > 0 || incomingReserve > 0)
++                );
++            });
++            if (existingSameTypeWorks || !isPreloadedGun) return null;
++        }
++
+         const utilityOnly = isUtilityOnlyWeapon(gunType, String(incomingDef.name ?? ""));
+         if (/^flare_gun(?:_dual)?$/.test(gunType)) {
+             const visibleFlareAmmo = this.objectPool
+@@ -7069,7 +7140,10 @@ class TacticalBot {
+             }
+         }
+ 
+-        const emptySlot = gunSlots.find((slot) => !this.local.weapons[slot]?.type);
++        const emptySlot = gunSlots.find((slot) => {
++            const currentType = String(this.local.weapons[slot]?.type ?? "");
++            return !currentType || gameDef(currentType)?.type !== "gun";
++        });
+         if (emptySlot !== undefined) {
+             return { slot: emptySlot, improvement: utilityOnly ? 42 : 120, emptySlot: true };
+         }
+@@ -7077,13 +7151,54 @@ class TacticalBot {
+         // replace a real damage weapon in the main loadout.
+         if (utilityOnly) return null;
+ 
+-        const incomingAmmo = String(incomingDef.ammo ?? "");
+-        const incomingReserve = Number(this.local.inventory[incomingAmmo] ?? 0);
+         const incomingEffective =
+             gunScore(gunType, 35) +
+             (isPreloadedGun ? 18 : 0) +
+             (incomingReserve > 0 ? 8 : -8);
+ 
++        const functionalSlots = gunSlots.filter((slot) => {
++            const weapon = this.local.weapons[slot];
++            const currentType = String(weapon?.type ?? "");
++            const currentDef = gameDef(currentType);
++            if (currentDef?.type !== "gun") return false;
++            if (isUtilityOnlyWeapon(currentType, String(currentDef.name ?? ""))) return false;
++            const reserve = Number(this.local.inventory[String(currentDef.ammo ?? "")] ?? 0);
++            return Number(weapon?.ammo ?? 0) > 0 || reserve > 0;
++        });
++
++        // Treat utility tools and completely dry guns as disposable slots while
++        // the bot has fewer than two functional firearms. Previously both slots
++        // could be technically occupied, causing the pickup planner to reject a
++        // nearby real gun and leave the AI effectively unarmed.
++        if (functionalSlots.length < 2) {
++            let disposableSlot = -1;
++            let disposableScore = Infinity;
++            for (const slot of gunSlots) {
++                if (functionalSlots.includes(slot)) continue;
++                const weapon = this.local.weapons[slot];
++                const currentType = String(weapon?.type ?? "");
++                const currentDef = gameDef(currentType);
++                if (currentDef?.noDrop) continue;
++                const score = currentDef?.type === "gun" ? gunScore(currentType, 20) : -100;
++                if (score < disposableScore) {
++                    disposableScore = score;
++                    disposableSlot = slot;
++                }
++            }
++            if (disposableSlot >= 0) {
++                const improvement = incomingEffective - disposableScore;
++                // With no functional weapon, accept any real gun that is not a
++                // clear downgrade. With one working gun, fill the dead/utility slot.
++                if (functionalSlots.length === 0 || improvement >= -4) {
++                    return {
++                        slot: disposableSlot,
++                        improvement: Math.max(18, improvement),
++                        emptySlot: false,
++                    };
++                }
++            }
++        }
++
+         let weakestSlot = -1;
+         let weakestEffective = Infinity;
+         for (const slot of gunSlots) {
+@@ -7525,14 +7640,17 @@ class TacticalBot {
+             this.lastLootAttemptAt = 0;
+             this.lootAttemptCount = 0;
+         } else if (
+-            this.lootAttemptCount >= 4 &&
++            this.lootAttemptCount >= (itemDef?.type === "gun" ? 10 : 4) &&
+             this.lastLootAttemptAt > 0 &&
+             timestamp - this.lastLootAttemptAt >= 650
+         ) {
+             // The nearest-loot protocol can fail when another stack steals the
+             // interaction or the server rejects a full inventory. Do not freeze
+             // forever on one object: blacklist it briefly and re-plan.
+-            this.ignoredLootUntil.set(choice.object.__id, timestamp + 2200);
++            this.ignoredLootUntil.set(
++                choice.object.__id,
++                timestamp + (itemDef?.type === "gun" ? 900 : 2200),
++            );
+             this.squad.releaseLoot(choice.object.__id, this.id);
+             if (this.currentLootId === choice.object.__id) this.currentLootId = 0;
+             this.lastLootAttemptId = 0;
+diff --git a/server/package.json b/server/package.json
+index b1a0e2e..2cdfac1 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -31,7 +31,8 @@
+         "test:admin-auth": "node -r ts-node/register src/adminAuthSmokeTest.ts",
+         "test:bot-autofill-config": "node -r ts-node/register src/botAutoFillConfigSmokeTest.ts",
+         "test:navigation-recovery": "node -r ts-node/register src/navigationRecoverySmokeTest.ts",
+-        "test:room-lifecycle": "node -r ts-node/register src/roomLifecycleSmokeTest.ts"
++        "test:room-lifecycle": "node -r ts-node/register src/roomLifecycleSmokeTest.ts",
++        "test:revive-coordination": "node -r ts-node/register src/reviveCoordinationSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",

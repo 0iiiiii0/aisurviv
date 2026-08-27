@@ -5,10 +5,11 @@ import type { BoostDef, HealDef } from "./../../../shared/defs/gameObjects/gearD
 import type { GunDef } from "../../../shared/defs/gameObjects/gunDefs.ts";
 import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
 import type { ThrowableDef } from "../../../shared/defs/gameObjects/throwableDefs.ts";
-import type { ObstacleDef } from "../../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
+import type { ObstacleDef } from "../../../shared/defs/mapObjectsTyping.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
 import { Action, Anim, GameConfig, HasteType, Input, type WeaponSlot } from "../../../shared/gameConfig.ts";
 import type { ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
+import type { SpectatorOverlayEntry } from "../../../shared/net/spectatorOverlayMsg.ts";
 import {
     getPlayerStatusUpdateRate,
     type GroupStatus,
@@ -340,6 +341,7 @@ export class Player implements AbstractObject {
     m_localData!: {
         m_health: number;
         m_zoom: number;
+        m_indoors: boolean;
         m_boost: number;
         m_scope: string;
         m_curWeapIdx: number;
@@ -349,7 +351,28 @@ export class Player implements AbstractObject {
             ammo: number;
         }>;
         m_spectatorCount: number;
+        m_sandevistanActive: boolean;
+        m_sandevistanRemaining: number;
+        m_sandevistanCooldown: number;
     };
+
+    /** Read-only bridge for custom UI modules while their protocol fields use m_* internally. */
+    get localData() {
+        return {
+            health: this.m_localData.m_health,
+            zoom: this.m_localData.m_zoom,
+            indoors: this.m_localData.m_indoors,
+            boost: this.m_localData.m_boost,
+            scope: this.m_localData.m_scope,
+            curWeapIdx: this.m_localData.m_curWeapIdx,
+            inventory: this.m_localData.m_inventory,
+            weapons: this.m_localData.m_weapons,
+            spectatorCount: this.m_localData.m_spectatorCount,
+            sandevistanActive: this.m_localData.m_sandevistanActive,
+            sandevistanRemaining: this.m_localData.m_sandevistanRemaining,
+            sandevistanCooldown: this.m_localData.m_sandevistanCooldown,
+        };
+    }
 
     throwableStatePrev!: string;
 
@@ -367,6 +390,9 @@ export class Player implements AbstractObject {
     dirInterpolationTicker = 0;
     layer = 0;
     isLoadoutAvatar = false;
+    /** 服务端分配的固定撤离点索引（-1 = 尚未同步）。 */
+    extractionPointIndex = -1;
+    suppressEquipSfx = false;
     playActionStartSfx = true;
 
     isNew!: boolean;
@@ -491,12 +517,16 @@ export class Player implements AbstractObject {
         this.m_localData = {
             m_health: GameConfig.player.health,
             m_zoom: 0,
+            m_indoors: false,
             m_boost: 0,
             m_scope: "",
             m_curWeapIdx: 0,
             m_inventory: {},
             m_weapons: [],
             m_spectatorCount: 0,
+            m_sandevistanActive: false,
+            m_sandevistanRemaining: 0,
+            m_sandevistanCooldown: 0,
         };
 
         this.playAnim(Anim.None, -1);
@@ -606,6 +636,7 @@ export class Player implements AbstractObject {
             this.m_localData.m_zoom = data.zoom;
             this.zoomFast = false;
         }
+        this.m_localData.m_indoors = data.indoors;
 
         if (data.actionDirty) {
             this.m_action.time = data.action.time;
@@ -636,6 +667,11 @@ export class Player implements AbstractObject {
         if (data.spectatorCountDirty) {
             this.m_localData.m_spectatorCount = data.spectatorCount;
         }
+
+        // Sandevistan implant state (written every update on the server).
+        this.m_localData.m_sandevistanActive = Boolean(data.sandevistanActive);
+        this.m_localData.m_sandevistanRemaining = Number(data.sandevistanRemaining) || 0;
+        this.m_localData.m_sandevistanCooldown = Number(data.sandevistanCooldown) || 0;
 
         // Zoom more quickly when changing scopes
         if (this.m_localData.m_scope != scopeOld) {
@@ -671,7 +707,10 @@ export class Player implements AbstractObject {
     }
 
     m_getBagLevel() {
-        return GameObjectDefs.typeToDef(this.m_netData.m_backpack, "backpack").level;
+        if (this.m_netData.m_backpack) {
+            return GameObjectDefs.typeToDef(this.m_netData.m_backpack, "backpack").level;
+        }
+        return 0;
     }
 
     m_equippedWeaponType() {
@@ -877,8 +916,18 @@ export class Player implements AbstractObject {
         const activeGroupId = playerBarn.getPlayerInfo(activeId).groupId;
         const playerInfo = playerBarn.getPlayerInfo(this.__id);
         const inSameGroup = playerInfo.groupId == activeGroupId;
-        this.nameText.text = playerInfo.name;
-        this.nameText.visible = !isActivePlayer && inSameGroup;
+        const spectatorOverlay = playerBarn.spectatorOverlay[this.__id];
+        if (spectatorOverlay) {
+            const weaponName = (GameObjectDefs.typeToDefSafe(spectatorOverlay.weapon) as
+                | { name?: string }
+                | undefined)?.name
+                ?? spectatorOverlay.weapon;
+            this.nameText.text = `${playerInfo.name}  ${Math.round(spectatorOverlay.health)} HP  ${weaponName}`;
+            this.nameText.visible = true;
+        } else {
+            this.nameText.text = playerInfo.name;
+            this.nameText.visible = !isActivePlayer && inSameGroup;
+        }
 
         // Locate nearby obstacles that may play interaction effects
         let insideObstacle: Obstacle | null = null;
@@ -1055,6 +1104,7 @@ export class Player implements AbstractObject {
         this.fireDelay -= dt;
         if (
             isActivePlayer
+            && !this.suppressEquipSfx
             && (weapTypeDirty || this.lastSwapIdx != this.m_localData.m_curWeapIdx)
         ) {
             const lastWeapIdx = this.lastSwapIdx;
@@ -2600,6 +2650,7 @@ export class PlayerBarn {
 
     playerStatus: Record<number, PlayerStatus> = {};
     anonPlayerNames = false;
+    spectatorOverlay: Record<number, SpectatorOverlayEntry> = {};
 
     m_update(
         dt: number,
@@ -2614,6 +2665,7 @@ export class PlayerBarn {
         preventInput: boolean,
         displayingStats: boolean,
         isSpectating?: boolean,
+        globalSpectatorMap = false,
     ) {
         // Update players
         const players = this.playerPool.m_getPool();
@@ -2702,7 +2754,11 @@ export class PlayerBarn {
             // @HACK: Fix issue in non-faction mode when spectating and swapping
             // between teams. We don't want the old player indicators to fade out
             // after moving to the new team
-            if (!map.factionMode && playerInfo.teamId != activeInfo.teamId) {
+            if (
+                !globalSpectatorMap
+                && !map.factionMode
+                && playerInfo.teamId != activeInfo.teamId
+            ) {
                 status.minimapAlpha = 0;
             }
             status.minimapVisible = status.minimapAlpha > 0.01;
@@ -2736,6 +2792,7 @@ export class PlayerBarn {
             teamId: info.teamId,
             groupId: info.groupId,
             name: info.name,
+            isBot: info.isBot,
             nameTruncated: helpers.truncateString(
                 info.name || "",
                 "bold 16px arial",
@@ -2744,16 +2801,26 @@ export class PlayerBarn {
             anonName: `Player${info.playerId - 2750}`,
             loadout: util.cloneDeep(info.loadout),
         };
-        this.playerIds.push(info.playerId);
-        this.playerIds.sort((a, b) => {
-            return a - b;
-        });
+        // The server sends a full player-info snapshot for the first few syncs
+        // so a browser that is still initializing its renderer cannot miss
+        // player creation. setPlayerInfo() therefore runs multiple times for
+        // the same player; keep playerIds unique so its length always matches
+        // the server's playerStatus ordering in faction mode. Duplicated ids
+        // made updatePlayerStatus() return early and froze every teammate dot
+        // on the 50v50 minimap.
+        if (this.playerIds.indexOf(info.playerId) === -1) {
+            this.playerIds.push(info.playerId);
+            this.playerIds.sort((a, b) => {
+                return a - b;
+            });
+        }
     }
 
     deletePlayerInfo(id: number) {
-        const idx = this.playerIds.indexOf(id);
-        if (idx !== -1) {
+        let idx = this.playerIds.indexOf(id);
+        while (idx !== -1) {
             this.playerIds.splice(idx, 1);
+            idx = this.playerIds.indexOf(id);
         }
         delete this.playerInfo[id];
         delete this.playerStatus[id];
@@ -2766,6 +2833,7 @@ export class PlayerBarn {
                 group: 0,
                 teamId: 0,
                 name: "",
+                isBot: false,
                 nameTruncated: "",
                 anonName: "",
                 loadout: {},
@@ -2889,6 +2957,23 @@ export class PlayerBarn {
             status.disconnected = newStatus.disconnected;
         }
         this.playerStatus[playerId] = status;
+    }
+
+    applySpectatorOverlay(players: SpectatorOverlayEntry[]): void {
+        const next: Record<number, SpectatorOverlayEntry> = {};
+        for (const player of players) {
+            next[player.playerId] = player;
+            this.setPlayerStatus(player.playerId, {
+                pos: v2.copy(player.pos),
+                health: player.health,
+                visible: true,
+                dead: player.dead,
+                downed: player.downed,
+                disconnected: false,
+                role: this.getPlayerStatus(player.playerId)?.role ?? "",
+            });
+        }
+        this.spectatorOverlay = next;
     }
 
     getPlayerStatus(playerId: number) {

@@ -1,4 +1,5 @@
 import { type QuestDef, QuestDefs } from "../../../shared/defs/gameObjects/questDefs.ts";
+import type { ObstacleDef } from "../../../shared/defs/mapObjectsTyping.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
 import type { TeamMode } from "../../../shared/gameConfig.ts";
 import { MsgType, UpdatePassMsg } from "../../../shared/net/net.ts";
@@ -207,8 +208,8 @@ export function questDelta<E extends keyof QuestEventPayloads>(
                 return 0;
             }
 
-            const objectDef = MapObjectDefs.typeToDefSafe(p.objectType);
-            if (objectDef?.type === "obstacle" && objectDef.obstacleType) {
+            const objectDef = MapObjectDefs.typeToDefSafe(p.objectType) as ObstacleDef | undefined;
+            if (objectDef?.obstacleType) {
                 value = objectDef.obstacleType === obstacleType ? 1 : 0;
                 break;
             }

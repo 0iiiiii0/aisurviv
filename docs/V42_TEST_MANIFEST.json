@@ -1,0 +1,28 @@
+{
+  "version": "V42_AIM_TRAINING_SPECTATOR_GUARD",
+  "protocolVersion": 81,
+  "primaryTest": "server/src/v42AimTrainingSpectatorGuardSmokeTest.ts",
+  "productionFaultInjection": {
+    "mode": "NODE_ENV=production / processMode=multi",
+    "weapon": "ak47",
+    "distance": 80,
+    "infiniteMagazine": true,
+    "initialTargetPid": 3568,
+    "replacementTargetPid": 3629,
+    "humanActivePlayerId": 13,
+    "result": "pass"
+  },
+  "regressions": [
+    "test:v33-aim-brokenarrow",
+    "test:aim-training",
+    "test:v29-aim-sim",
+    "test:v31-ui-cover",
+    "test:v35-sim",
+    "test:game-process-reuse",
+    "test:v41-suite",
+    "test:v40-duel-recovery",
+    "test:forbidden-ai",
+    "test:forbidden-context",
+    "test:bot-input"
+  ]
+}

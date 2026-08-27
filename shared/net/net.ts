@@ -55,13 +55,13 @@ export class BitStream extends bb.BitStream {
     writeFloat(f: number, min: number, max: number, bits: number) {
         /* STRIP_FROM_PROD_SERVER:START */
         assert(bits > 0 && bits < 31);
-        assert(
-            f >= min && f <= max,
-            `writeFloat: value out of range: ${f}, range: [${min}, ${max}]`,
-        );
         /* STRIP_FROM_PROD_SERVER:END */
+        // 浮点累计误差可能让值略微超出范围（例如空袭区 duration 60.03 > 60）。
+        // 协议序列化必须容错：把值 clamp 到 [min, max]，绝不因边界值让整个
+        // 服务器进程抛出 uncaughtException 崩溃。
+        const safe = Number.isFinite(f) ? f : min;
+        const x = math.clamp(safe, min, max);
         const range = (1 << bits) - 1;
-        const x = math.clamp(f, min, max);
         const t = (x - min) / (max - min);
         const v = t * range + 0.5;
         this.writeBits(v, bits);
@@ -295,6 +295,17 @@ export enum MsgType {
     UpdatePass,
     AliveCounts,
     PerkModeRoleSelect,
+    ArenaRound,
+    AimTrainingStats,
+    SpectatorOverlay,
+    SpectatorChat,
+    AimTrainingSettings,
+    MatchTime,
+    ExtractionPoint,
+    /** 搜打撤真人位置提示（仅服务端 -> 机器人，浏览器不接收）。 */
+    ExtractionHumanHint,
+    ZombieMission,
+    AchievementUnlocked,
 }
 
 export enum PickupMsgType {
@@ -312,19 +323,34 @@ export class UpdatePassMsg {
     deserialize(_e: BitStream) {}
 }
 
+export { AchievementUnlockedMsg } from "./achievementUnlockedMsg.ts";
+export { AimTrainingSettingsMsg } from "./aimTrainingSettingsMsg.ts";
+export { AimTrainingStatsMsg } from "./aimTrainingStatsMsg.ts";
 export { AliveCountsMsg } from "./aliveCountsMsg.ts";
+export { ArenaRoundMsg, ArenaRoundState } from "./arenaRoundMsg.ts";
 export { DropItemMsg } from "./dropItemMsg.ts";
 export { EditMsg } from "./editMsg.ts";
 export { EmoteMsg } from "./emoteMsg.ts";
+export {
+    type ExtractionBattleOrder,
+    ExtractionBattlePhase,
+    ExtractionBattleRole,
+    ExtractionHumanHintMsg,
+} from "./extractionHumanHintMsg.ts";
+export { ExtractionPointMsg } from "./extractionPointMsg.ts";
 export { GameOverMsg } from "./gameOverMsg.ts";
 export { InputMsg } from "./inputMsg.ts";
 export { JoinedMsg } from "./joinedMsg.ts";
 export { JoinMsg } from "./joinMsg.ts";
 export { KillMsg } from "./killMsg.ts";
 export { MapMsg } from "./mapMsg.ts";
+export { MatchTimeMsg } from "./matchTimeMsg.ts";
 export { PerkModeRoleSelectMsg } from "./perkModeRoleSelectMsg.ts";
 export { PickupMsg } from "./pickupMsg.ts";
 export { PlayerStatsMsg } from "./playerStatsMsg.ts";
 export { RoleAnnouncementMsg } from "./roleAnnouncementMsg.ts";
 export { SpectateMsg } from "./spectateMsg.ts";
+export { SPECTATOR_CHAT_MAX_BYTES, SpectatorChatMsg } from "./spectatorChatMsg.ts";
+export { type SpectatorOverlayEntry, SpectatorOverlayMsg } from "./spectatorOverlayMsg.ts";
 export { getPlayerStatusUpdateRate, UpdateMsg } from "./updateMsg.ts";
+export { ZombieMissionMsg, ZombieMissionPhase } from "./zombieMissionMsg.ts";

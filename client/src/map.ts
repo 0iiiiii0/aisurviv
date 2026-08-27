@@ -1,7 +1,6 @@
 import * as PIXI from "pixi.js-legacy";
 import { type MapDef, type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import type { BuildingDef } from "../../shared/defs/mapObjects/buildings/buildingDefs.ts";
-import type { ObstacleDef } from "../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
+import type { BuildingDef, ObstacleDef } from "../../shared/defs/mapObjectsTyping.ts";
 import { MapObjectDefs } from "../../shared/defs/register.ts";
 import { GameConfig } from "../../shared/gameConfig.ts";
 import type { GroundPatch, MapMsg } from "../../shared/net/mapMsg.ts";
@@ -238,6 +237,45 @@ export class Map {
         }
         this.display.ground.clear();
         this.renderTerrain(this.display.ground, 2 / camera.m_ppu, canvasMode, false);
+        this.renderArenaDecorations();
+    }
+
+    renderArenaDecorations() {
+        const arena = this.mapDef.arena;
+        if (!arena) return;
+
+        const decorations = new PIXI.Graphics();
+        const leftSpawn = arena.playerSpawns[0];
+        const rightSpawn = arena.playerSpawns[1];
+        const leftPos = v2.mulElems(leftSpawn, v2.create(this.width, this.height));
+        const rightPos = v2.mulElems(rightSpawn, v2.create(this.width, this.height));
+        const center = v2.create(this.width / 2, this.height / 2);
+
+        decorations.beginFill(arena.emblem.leftColor, 0.12);
+        decorations.drawCircle(leftPos.x, leftPos.y, 18);
+        decorations.endFill();
+        decorations.beginFill(arena.emblem.rightColor, 0.12);
+        decorations.drawCircle(rightPos.x, rightPos.y, 18);
+        decorations.endFill();
+
+        decorations.lineStyle(1.2, arena.emblem.leftColor, 0.42);
+        decorations.moveTo(leftPos.x + 18, leftPos.y);
+        decorations.lineTo(center.x - arena.emblem.size / 2, center.y);
+        decorations.lineStyle(1.2, arena.emblem.rightColor, 0.42);
+        decorations.moveTo(rightPos.x - 18, rightPos.y);
+        decorations.lineTo(center.x + arena.emblem.size / 2, center.y);
+        decorations.lineStyle(1.5, 0xf3e7ca, 0.35);
+        decorations.drawCircle(center.x, center.y, arena.emblem.size / 2 + 4);
+
+        const emblem = PIXI.Sprite.from(arena.emblem.image);
+        emblem.anchor.set(0.5);
+        emblem.position.set(center.x, center.y);
+        emblem.width = arena.emblem.size;
+        emblem.height = arena.emblem.size;
+        emblem.alpha = arena.emblem.alpha;
+        emblem.roundPixels = true;
+
+        this.display.ground.addChild(decorations, emblem);
     }
 
     getMapDef() {
@@ -262,6 +300,7 @@ export class Map {
         camera: Camera,
         _smokeParticles: SmokeParticle[],
         debug: DebugRenderOpts,
+        transparentObstacles = false,
     ) {
         const obstacles = this.m_obstaclePool.m_getPool();
         for (let i = 0; i < obstacles.length; i++) {
@@ -276,7 +315,13 @@ export class Map {
                     activePlayer,
                     renderer,
                 );
-                obstacle.render(dt, camera, debug, activePlayer.layer);
+                obstacle.render(
+                    dt,
+                    camera,
+                    debug,
+                    activePlayer.layer,
+                    transparentObstacles,
+                );
             }
         }
 
@@ -293,6 +338,7 @@ export class Map {
                     renderer,
                     camera,
                     debug,
+                    transparentObstacles,
                 );
                 building.render(camera, debug, activePlayer.layer);
             }

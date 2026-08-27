@@ -4,7 +4,7 @@
     %VITE_TURNSTILE_SCRIPT%
     <!-- Meta Properties -->
     <meta charset="UTF-8">
-    <title>survev.io - 2d battle royale game</title>
+    <title>AIsurviv.io</title>
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -28,7 +28,11 @@
     <!-- Styles -->
 
     <link href="css/app.css" rel="stylesheet">
+    <link href="css/duel-lobby.css" rel="stylesheet">
+    <link href="css/aim-training.css" rel="stylesheet">
     <link href="css/game.css" rel="stylesheet">
+    <link href="css/mobile-hud-v26011.css" rel="stylesheet">
+    <link href="css/mobile-home-v26012.css" rel="stylesheet">
     %VITE_DEBUG_CSS_LINK%
   </head>
   <body>
@@ -37,6 +41,9 @@
     </div>
     <div id="fb-root"></div>
     <canvas tabindex="1" id="cvs"></canvas>
+<div id='sandevistan-filter' class='sandevistan-filter' aria-hidden='true'></div>
+<div id='extraction-hud' class='extraction-hud' aria-hidden='true' style='display: none'></div>
+<div id='zombie-mission-hud' aria-hidden='true' style='display: none'></div>
     <div id="game-area-wrapper" style="display: none" oncontextmenu="return false;">
       <div id="game-touch-area"></div>
       <!-- Class Select -->
@@ -351,6 +358,7 @@
             <div id="ui-map-info" class="js-ui-map-hidden js-ui-hud-show">
               <div id="ui-gas-icon" class="gas-icon"></div>
               <div id="ui-gas-timer"></div>
+<div id='ui-match-timer' style='display: none'></div>
             </div>
             <div id="ui-spec-counter" class="js-ui-map-hidden js-ui-hud-show">
               <div id="ui-spec-counter-icon"></div>
@@ -437,14 +445,40 @@
           </div>
         </div>
         <div id="ui-top-center" class="js-ui-map-hidden js-ui-hud-show click-through">
-          <div id="ui-waiting-text" class="top-center-text"><span data-l10n="game-waiting-for-players">Waiting for players</span>...</div>
+          <div id='ui-duel-score'>
+					<div id='ui-duel-round'></div>
+					<div id='ui-duel-players'>
+						<span id='ui-duel-player-left'></span>
+						<span id='ui-duel-score-left'>0</span>
+						<span id='ui-duel-score-divider'>:</span>
+						<span id='ui-duel-score-right'>0</span>
+						<span id='ui-duel-player-right'></span>
+					</div>
+					<div id='ui-duel-status'></div>
+				</div>
+<div id='ui-aim-training-stats' data-game-input-blocker hidden>
+					<div class='aim-training-stat-primary'>
+						<div><strong id='aim-training-shots'>0</strong><small>弹丸</small></div>
+						<div><strong id='aim-training-hits'>0</strong><small>命中</small></div>
+						<div><strong id='aim-training-accuracy'>0.0%</strong><small>命中率</small></div>
+						<div><strong id='aim-training-damage'>0.0</strong><small>伤害</small></div>
+					</div>
+					<div id='aim-training-meta' class='aim-training-stat-meta'></div>
+					<div class='aim-training-hud-actions'>
+						<button id='aim-training-clear-stats' type='button'>清空射击数据</button>
+						<button id='aim-training-settings-open' type='button'>靶场设置</button>
+						<button id='aim-training-exit' type='button'>退出靶场</button>
+					</div>
+				</div>
+<div id="ui-waiting-text" class="top-center-text"><span data-l10n="game-waiting-for-players">Waiting for players</span>...</div>
           <div id="ui-spectate-text" class="top-center-text ui-spectate-mode">
             <div class="spectate-text spectate-desc" data-l10n="game-spectating">Spectating</div>
             <div id="spectate-player" class="spectate-text"></div>
           </div>
         </div>
         <div id="ui-upper-center" class="click-through">
-          <div id="ui-announcement"></div>
+          <div id='ui-live-announcement'></div>
+<div id="ui-announcement"></div>
         </div>
         <div id="ui-lower-center" class="js-ui-map-hidden js-ui-hud-show click-through">
           <div id="ui-interaction">
@@ -499,7 +533,17 @@
             </div>
           </div>
         </div>
-        <div id="ui-bottom-center-left" class="js-ui-map-hidden">
+        <div id='ui-sandevistan-skill' class='js-ui-map-hidden js-ui-hud-show click-through' hidden>
+				<div id='ui-sandevistan-icon'>S</div>
+				<div id='ui-sandevistan-status'>
+					<strong>斯安威斯坦 <small id='ui-sandevistan-key-hint' class='sandevistan-key-hint'></small></strong>
+					<span id='ui-sandevistan-timer'>—</span>
+				</div>
+				<div id='ui-sandevistan-cooldown-bar'>
+					<div id='ui-sandevistan-cooldown-fill'></div>
+				</div>
+			</div>
+<div id="ui-bottom-center-left" class="js-ui-map-hidden">
           <div id="ui-perk-0" class="ui-armor-counter tooltip-perk ui-outline-hover">
             <div class="tooltip-text">
               <div class="tooltip-title"></div>
@@ -528,6 +572,27 @@
             </div>
             <img class="ui-armor-image ui-loot-image" src="">
           </div>
+<div id='ui-perk-4' class='ui-armor-counter tooltip-perk ui-outline-hover'>
+					<div class='tooltip-text'>
+						<div class='tooltip-title'></div>
+						<div class='tooltip-desc'></div>
+					</div>
+					<img class='ui-armor-image ui-loot-image' src=''>
+				</div>
+<div id='ui-perk-5' class='ui-armor-counter tooltip-perk ui-outline-hover'>
+					<div class='tooltip-text'>
+						<div class='tooltip-title'></div>
+						<div class='tooltip-desc'></div>
+					</div>
+					<img class='ui-armor-image ui-loot-image' src=''>
+				</div>
+<div id='ui-perk-6' class='ui-armor-counter tooltip-perk ui-outline-hover'>
+					<div class='tooltip-text'>
+						<div class='tooltip-title'></div>
+						<div class='tooltip-desc'></div>
+					</div>
+					<img class='ui-armor-image ui-loot-image' src=''>
+				</div>
         </div>
         <div id="ui-bottom-center-right" class="js-ui-map-hidden">
           <div id="ui-armor-helmet" class="ui-armor-counter ui-outline-hover">
@@ -547,7 +612,7 @@
           </div>
         </div>
         <div id="ui-bottom-right" class="js-ui-map-hidden">
-          <div id="ui-weapon-container">
+          <div id="ui-weapon-container" data-game-input-blocker>
             <div class="ui-weapon-info">
               <div class="ui-weapon-switch ui-outline-hover" id="ui-weapon-id-1" data-slot="1">
                 <div class="ui-weapon-name"></div>
@@ -584,10 +649,29 @@
             <div id="ui-spectate-buttons" class="ui-bg-standard">
               <a class="menu-option btn-darken" id="btn-spectate-next-player" data-l10n="game-next-teammate">Next Teammate</a>
               <a class="menu-option btn-darken" id="btn-spectate-prev-player" data-l10n="game-previous-teammate">Previous Teammate</a>
-              <a class="menu-option btn-darken" id="btn-spectate-view-stats" data-l10n="game-view-match-stats">View Match Stats</a>
-              <a class="menu-option btn-darken btn-quit" id="btn-spectate-quit" data-l10n="game-leave-game">Leave Game</a>
+              <a class='menu-option btn-darken' id='btn-spectate-players-only'
+							title='开启后切换观战目标时排除 AI'>只观看玩家：关</a>
+<a class='menu-option btn-darken' id='btn-spectate-free-camera'
+							data-l10n='game-spectate-free-camera'>Free Camera</a>
+<div id='ui-spectate-layer-controls' class='spectate-layer-controls'>
+							<label for='ui-spectate-layer-slider'>层级 <b id='ui-spectate-layer-value'>0</b></label>
+							<input id='ui-spectate-layer-slider' type='range' min='0' max='3' step='1' value='0'
+								aria-label='自由视角显示层级'>
+						</div>
+<a class='menu-option btn-darken' id='btn-spectate-transparent-obstacles'
+							title='自由视角中将建筑屋顶、树木及其他遮挡物半透明显示'>遮挡物透明：关</a>
+<a class="menu-option btn-darken btn-quit" id="btn-spectate-quit" data-l10n="game-leave-game">Leave Game</a>
             </div>
-            <div id="ui-spectate-stats" class="ui-bg-standard">
+            <div id='ui-spectator-chat' class='ui-bg-standard spectator-chat-panel'>
+						<div id='ui-spectator-chat-feed' aria-live='polite'></div>
+						<div class='spectator-chat-input-row'>
+							<input id='ui-spectator-chat-input' type='text' maxlength='120' inputmode='text'
+								autocomplete='off' autocapitalize='sentences' enterkeyhint='send'
+								data-game-input-blocker placeholder='发送给当前被观战玩家' />
+							<button id='btn-spectator-chat-send' type='button'>发送</button>
+						</div>
+					</div>
+<div id="ui-spectate-stats" class="ui-bg-standard">
               <div id="ui-spectate-stats-header" data-l10n="game-your-results">Your Results</div>
               <table id="ui-spectate-stats-table">
                 <tbody id="ui-spectate-stats-data">
@@ -596,7 +680,8 @@
             </div>
           </div>
         </div>
-        <div id="ui-bottom-center-1" class="click-through">
+        <div id='ui-spectator-inbox' class='ui-bg-standard' role='status' aria-live='polite'></div>
+<div id="ui-bottom-center-1" class="click-through">
           <div id="ui-kills">
             <div id="ui-kill-text"></div>
             <div id="ui-kill-count"></div>
@@ -666,7 +751,65 @@
           <div id="nitro-home-mrec" data-fuse="home_mrec"></div>
         </div>
         <!-- Accounts Modals -->
-        <div id="modal-account-name-change" class="modal modal-account">
+        <div id='modal-zombie-lobby' class='modal modal-account'>
+				<div class='modal-content modal-close'>
+					<div class='modal-header modal-header-name'>
+						<span class='close close-corner' id='btn-zombie-lobby-close'></span>
+						<h2>僵尸模式</h2>
+					</div>
+					<div class='modal-body modal-body-name'>
+						<div class='modal-settings-item'>
+							<p class='modal-body-text'>大量僵尸追逐你，撑过 6 分钟获胜。选择难度与规模：</p>
+							<div class='zombie-difficulty-row'>
+								<a class='btn-darken menu-option zombie-difficulty-btn' id='btn-zombie-diff-simple' data-diff='simple'>简单</a>
+								<a class='btn-darken menu-option zombie-difficulty-btn selected' id='btn-zombie-diff-normal' data-diff='normal'>普通</a>
+								<a class='btn-darken menu-option zombie-difficulty-btn' id='btn-zombie-diff-hard' data-diff='hard'>困难</a>
+							</div>
+							<div id='zombie-lobby-status' class='account-status'></div>
+							<a class='btn-green btn-darken menu-option' id='btn-zombie-lobby-solo'>单人</a>
+							<a class='btn-green btn-darken menu-option' id='btn-zombie-lobby-duo'>双人组队</a>
+							<a class='btn-green btn-darken menu-option' id='btn-zombie-lobby-squad'>四人组队</a>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id='modal-all-modes' class='modal modal-account'>
+				<div class='modal-content modal-close'>
+					<div class='modal-header modal-header-name'>
+						<span class='close close-corner' id='btn-all-modes-close'></span>
+						<h2>全部模式</h2>
+					</div>
+					<div class='modal-body modal-body-name'>
+						<p class='modal-body-text'>可直接游玩全部已配置模式，包括当前未开放模式（不含搜打撤）。</p>
+						<div id='all-modes-list'></div>
+					</div>
+				</div>
+			</div>
+<div id='modal-account-login' class='modal modal-account'>
+				<div class='modal-content modal-close'>
+					<div class='modal-header modal-header-name'>
+						<span class='close close-corner' id='btn-login-modal-close'></span>
+						<h2>登录 / 注册</h2>
+					</div>
+					<div class='modal-body modal-body-name'>
+						<div class='modal-settings-item'>
+							<p class='modal-body-text'>登录后才能游玩搜打撤；没有账号请先注册（初始密码 1234，登录后可在面板修改）。</p>
+							<div id='login-modal-status' class='account-status'></div>
+							<input type='text' class='menu-option player-name-input' tabindex='0'
+								placeholder='账号' id='login-modal-username' maxlength='16'
+								autocomplete='username' />
+							<input type='password' class='menu-option player-name-input' tabindex='0'
+								placeholder='密码' id='login-modal-password' maxlength='64'
+								autocomplete='current-password' />
+						</div>
+					</div>
+					<div class='modal-footer modal-footer-name modal-footer-round'>
+						<h3 class='finish btn-darken' id='btn-login-modal-login'>登录</h3>
+						<h3 class='finish btn-darken' id='btn-login-modal-register'>注册</h3>
+					</div>
+				</div>
+			</div>
+<div id="modal-account-name-change" class="modal modal-account">
           <div class="modal-content modal-close">
             <div class="modal-header modal-header-name">
               <span class="close close-corner"></span>
@@ -806,12 +949,29 @@
               <span data-l10n="index-rotate-reminder">Rotate to landscape for a better experience.</span>
             </div>
             <div id="left-column" class="menu-column">
-              <div id="ad-block-left">
+              <div id='extraction-mode-section' class='extraction-mode-section' style='display: none'>
+							<a class='btn-darken menu-option' id='btn-leaderboard'
+								title='排行榜 · 查看他人仓库'>排行榜</a>
+							<div class='extraction-mode-title'>搜打撤</div>
+							<a class='btn-green btn-darken menu-option quick-play-mode-button'
+								id='btn-extraction-start' data-label='开始对局'>开始对局</a>
+							<a class='btn-darken menu-option' id='btn-extraction-team'>邀请组队</a>
+							<a class='btn-darken menu-option' id='btn-extraction-squad-team'>四人组队</a>
+							<a class='btn-darken menu-option' id='btn-extraction-stash'>仓库配装</a>
+							<div id='extraction-secret-section' class='extraction-secret-section' style='display: none'>
+								<div class='extraction-mode-title extraction-secret-title'>绝密搜打撤</div>
+								<a class='btn-green btn-darken menu-option quick-play-mode-button extraction-secret-entry'
+									id='btn-extraction-secret-start' data-label='开始对局'>开始对局</a>
+								<a class='btn-darken menu-option extraction-secret-entry' id='btn-extraction-secret-team'>邀请组队</a>
+								<a class='btn-darken menu-option extraction-secret-entry' id='btn-extraction-secret-squad-team'>四人组队</a>
+							</div>
+						</div>
+<div id="ad-block-left">
                 <div class="surviv-shirts">
                 </div>
               </div>
               <div id="social-share-block-wrapper">
-                <div id="social-share-block" class="menu-block">
+                <div id="social-share-block">
                   <div class="btn-social-wrapper">
                     <!--
                     <a href="https://facebook.com/survev" target="_blank" class="btn-social btn-darken btn-facebook"></a>
@@ -837,17 +997,72 @@
               <div class="play-button-container">
                 <div id="player-options">
                   <input type="text" class="menu-option player-name-input" tabindex="0" placeholder="Enter your name here" data-l10n="index-enter-name-here" id="player-name-input-solo" maxlength="16" />
+<div class='player-name-confirm-row' id='player-name-confirm-row' style='display:none'>
+									<a class='btn-darken menu-option player-options-btn' id='btn-name-confirm'>确认改名</a>
+								</div>
+<div id='player-account-panel' class='player-account-panel'>
+									<div class='player-account-logged-out'>
+										<input type='text' class='menu-option player-name-input' tabindex='0'
+											placeholder='账号' id='account-username-input' maxlength='16'
+											autocomplete='username' />
+										<input type='password' class='menu-option player-name-input' tabindex='0'
+											placeholder='密码' id='account-password-input' maxlength='64'
+											autocomplete='current-password' />
+										<div class='player-account-actions'>
+											<a class='btn-darken menu-option player-options-btn'
+												id='btn-account-login'>登录</a>
+											<a class='btn-darken menu-option player-options-btn'
+												id='btn-account-register'>注册</a>
+										</div>
+										<div id='account-status' class='account-status'></div>
+									</div>
+									<div class='player-account-logged-in' style='display:none'>
+										<span id='account-display-name' class='account-display-name'></span>
+										<a class='btn-darken menu-option player-options-btn'
+											id='btn-account-change-password'>修改密码</a>
+										<a class='btn-darken menu-option player-options-btn'
+											id='btn-account-logout'>退出登录</a>
+									</div>
+									<div id='account-change-password-panel' class='player-account-change-password'
+										style='display:none'>
+										<input type='password' class='menu-option player-name-input' tabindex='0'
+											placeholder='当前密码' id='account-current-password-input' maxlength='64'
+											autocomplete='current-password' />
+										<input type='password' class='menu-option player-name-input' tabindex='0'
+											placeholder='新密码' id='account-next-password-input' maxlength='64'
+											autocomplete='new-password' />
+										<div class='player-account-actions'>
+											<a class='btn-darken menu-option player-options-btn'
+												id='btn-account-change-password-confirm'>确认修改</a>
+											<a class='btn-darken menu-option player-options-btn'
+												id='btn-account-change-password-cancel'>取消</a>
+										</div>
+										<div id='account-change-password-status' class='account-status'></div>
+									</div>
+								</div>
                   <a class="btn-darken menu-option player-options-btn" id="btn-customize"></a>
                 </div>
                 <select id="server-select-main" class="server-select menu-option btn-hollow btn-hollow-selected">
                   <optgroup id="server-opts" label="Region" data-l10n="index-region">
                   </optgroup>
                 </select>
-                <a class="btn-green btn-darken menu-option" id="btn-start-mode-0" data-l10n="index-play-solo">Play Solo</a>
+                <div id="mode-button-grid">
+                <a class="btn-green btn-darken menu-option quick-play-mode-button" id="btn-start-mode-0" data-game-mode-index="0" data-l10n="index-play-solo">Play Solo</a>
                 <div id="btns-quick-start">
-                  <a class="btn-green btn-darken menu-option" id="btn-start-mode-1" data-l10n="index-play-duo">Play Duo</a>
-                  <a class="btn-green btn-darken menu-option" id="btn-start-mode-2" data-l10n="index-play-squad">Play Squad</a>
+                  <a class="btn-green btn-darken menu-option quick-play-mode-button" id="btn-start-mode-1" data-game-mode-index="1" data-l10n="index-play-duo">Play Duo</a>
+                  <a class="btn-green btn-darken menu-option quick-play-mode-button" id="btn-start-mode-2" data-game-mode-index="2" data-l10n="index-play-squad">Play Squad</a>
                 </div>
+<div id='btns-duel-start'>
+									<a class='btn-darken menu-option' id='btn-duel-lobby'>1v1大厅</a>
+								</div>
+<a class='btn-darken menu-option' id='btn-aim-training'>瞄准练习</a>
+<a class='btn-green btn-darken menu-option' id='btn-zombie-lobby' style='display: none'>僵尸模式</a>
+<div id='extra-mode-buttons'></div>
+<a class='btn-darken menu-option' id='btn-all-modes'>选择全部模式</a>
+                </div>
+<div id='btns-spectate-start'>
+								<a class='btn-darken menu-option' id='btn-spectate-lobby'>观战</a>
+							</div>
                 <div class="btns-double-row">
                   <a class="btn-darken menu-option btn-team-option" id="btn-join-team" data-l10n="index-join-team">Join Team</a>
                   <a class="btn-darken menu-option btn-team-option" id="btn-create-team" data-l10n="index-create-team">Create Team</a>
@@ -1040,13 +1255,7 @@
                 <div id="news-block" class="menu-block">
                   <div id="news">
                     <h3 class="news-header">What's New!</h3>
-                     <div id="news-current" data-date="2026-08-24">
-                      <small class="news-date">August 24th, 2026</small>
-                      <p class="news-paragraph"><strong>Classy (or not) Combat</strong></p>
-                      <p class="news-paragraph">It's time for another round of Project: COBALT! Fight with your favourite class, such as a now stronger Assault, or drop your class entirely on your quest for the chicken dinner...</p>
-                      <p class="news-paragraph">Additionally, be sure to push for your final cosmetics, as Survevr Pass 1 will be coming to a close with the next update! If you need a refresher on what the current pass has in store, be sure to check out the <a href="https://survev.wiki.gg/wiki/Survevr_Passes#Survevr_Pass_1">wiki</a>.</p>
-                    </div>
-                     <div data-date="2026-08-09">
+                     <div id="news-current" data-date="2026-08-09">
                       <small class="news-date">August 9th, 2026</small>
                       <p class="news-paragraph"><strong>Summer Breeze</strong></p>
                       <p class="news-paragraph">After a harsh stretch of airstrikes and summer heat, the foliage has risen and <span class="highlight">Woods</span> has returned to the island! Rush to grab some devastating 12 guage weapons or crown some new kings.</p>
@@ -1472,6 +1681,222 @@
           bg.style.backgroundImage = `url(${bgImg})`;
       }
     </script>
+<div id='modal-extraction-secret-rule' class='modal'>
+			<div class='modal-content modal-close'>
+				<div class='modal-header'>
+					<span class='close close-corner'></span>
+					<h2>绝密模式 · 进入条件</h2>
+				</div>
+				<div class='modal-body'>
+					<p class='modal-body-text extraction-secret-rule-desc'>
+						本局为<b>绝密模式</b>：需要至少配备一把 A / S / S+ 级武器才能进入
+						（单持手枪除外）。请先到<b>仓库</b>配装符合要求的武器。
+					</p>
+					<div id='extraction-secret-rule-weapons' class='extraction-secret-rule-weapons'></div>
+				</div>
+				<div class='modal-footer modal-footer-round'>
+					<h3 class='close close-footer'>知道了</h3>
+				</div>
+			</div>
+		</div>
+<div id='aim-training-modal' class='aim-training-overlay' data-game-input-blocker data-game-input-modal hidden>
+			<section class='aim-training-dialog' role='dialog' aria-modal='true' aria-labelledby='aim-training-title'>
+				<header class='aim-training-header'>
+					<div><h2 id='aim-training-title'>靶场设置</h2><p id='aim-training-subtitle'>所有选项均可在靶场内即时调整</p></div>
+					<button id='aim-training-close' type='button' aria-label='关闭靶场设置'>×</button>
+				</header>
+				<div class='aim-training-body'>
+					<div class='aim-training-weapons'>
+						<div class='aim-training-weapon'>
+							<img id='aim-training-weapon-image-0' alt='武器一' />
+							<label><strong>武器一</strong><select id='aim-training-weapon-0'></select><small id='aim-training-weapon-note-0' class='aim-training-note'></small></label>
+						</div>
+						<div class='aim-training-weapon'>
+							<img id='aim-training-weapon-image-1' alt='武器二' />
+							<label><strong>武器二</strong><select id='aim-training-weapon-1'></select><small id='aim-training-weapon-note-1' class='aim-training-note'></small></label>
+						</div>
+					</div>
+					<div class='aim-training-fields'>
+						<label><strong>投掷物</strong><select id='aim-training-throwable'></select><small class='aim-training-note'>进入靶场后获得 12 个，可计入射击与命中数据。</small></label>
+						<label><strong>AI激素阶段：<span id='aim-training-boost-value'>无</span></strong><input id='aim-training-boost' type='range' min='0' max='4' step='1' value='0' /><small id='aim-training-speed-note' class='aim-training-note'></small></label>
+						<label><strong>AI头盔</strong><select id='aim-training-helmet'><option value='0'>无</option><option value='1'>一级</option><option value='2'>二级</option><option value='3'>三级</option></select></label>
+						<label><strong>AI防弹衣</strong><select id='aim-training-chest'><option value='0'>无</option><option value='1'>一级</option><option value='2'>二级</option><option value='3'>三级</option></select></label>
+						<label class='aim-training-toggle'><div><input id='aim-training-normal-health' type='checkbox' /><strong>AI正常生命值</strong></div><small class='aim-training-note'>开启后AI会受到正常伤害，死亡约1秒后自动复活。</small></label>
+						<label><strong>AI预估距离</strong><select id='aim-training-distance'></select><small class='aim-training-note'>应用后标靶会重新定位到该训练距离。</small></label>
+						<label class='aim-training-toggle'><div><input id='aim-training-vertical-random' type='checkbox' /><strong>上下随机移动</strong></div><small class='aim-training-note'>标靶随机改变上下移动方向。</small></label>
+						<label class='aim-training-toggle'><div><input id='aim-training-omni-random' type='checkbox' /><strong>全向随机移动</strong></div><small class='aim-training-note'>标靶会在靶场内随机选择任意方向。</small></label>
+						<label class='aim-training-toggle'><div><input id='aim-training-dodge-bullets' type='checkbox' /><strong>AI躲避子弹</strong></div><small class='aim-training-note'>独立于上下/全向移动设置，检测到来弹时始终优先侧向闪避。</small></label>
+						<label class='aim-training-magazine'><div><input id='aim-training-infinite-magazine' type='checkbox' /><strong>弹匣内子弹无限</strong></div><small id='aim-training-magazine-note' class='aim-training-note'></small></label>
+					</div>
+					<div class='aim-training-rules'>靶场没有毒圈，玩家始终无敌并拥有全部倍镜。AI激素固定在所选阶段且不会随时间衰减；未开启正常生命值时AI保持无限生命。上下随机与全向随机互斥；两项都关闭时标靶保持静止。</div>
+				</div>
+				<footer class='aim-training-footer'><span id='aim-training-status'></span><button id='aim-training-start' type='button' disabled>应用设置</button></footer>
+				<div id='aim-training-error' role='status'></div>
+			</section>
+		</div>
+<div id='duel-lobby-modal' class='duel-lobby-overlay' hidden>
+			<section class='duel-lobby-dialog' role='dialog' aria-modal='true' aria-labelledby='duel-lobby-title'>
+				<header class='duel-lobby-header'>
+					<div>
+						<small>PRIVATE DUEL</small>
+						<h2 id='duel-lobby-title'>1v1私人大厅</h2>
+					</div>
+					<button id='duel-lobby-close' type='button' aria-label='关闭1v1大厅'>×</button>
+				</header>
+				<div id='duel-lobby-entry' class='duel-lobby-entry'>
+					<div class='duel-lobby-intro'>
+						<div class='duel-lobby-emblem'>1v1</div>
+						<div>
+							<strong>和好友进行五局制单挑</strong>
+							<p>创建大厅后发送邀请链接或六位房间号。随机1v1匹配和房间模式可由管理员分别开关。</p>
+						</div>
+					</div>
+					<button id='duel-lobby-create' class='duel-lobby-primary' type='button'>创建私人大厅</button>
+					<div class='duel-lobby-divider'><span>或者加入好友</span></div>
+					<div class='duel-lobby-join-row'>
+						<input id='duel-lobby-code-input' maxlength='6' autocomplete='off' placeholder='输入六位房间号' aria-label='1v1房间号' />
+						<button id='duel-lobby-join' type='button'>加入大厅</button>
+					</div>
+				</div>
+				<div id='duel-lobby-room' class='duel-lobby-room' hidden>
+					<div class='duel-lobby-invite'>
+						<div><small>房间号</small><strong id='duel-lobby-code'>------</strong></div>
+						<button id='duel-lobby-copy-code' type='button'>复制房间号</button>
+						<button id='duel-lobby-copy-link' type='button'>复制邀请链接</button>
+					</div>
+					<div id='duel-lobby-players' class='duel-lobby-players'></div>
+					<div class='duel-lobby-settings-heading'>
+						<div><strong>本局装备</strong><small id='duel-lobby-editor-note'>双方分别选择自己的武器</small></div>
+						<span id='duel-lobby-save-state'>使用后台默认配置</span>
+					</div>
+					<div class='duel-lobby-weapons'>
+						<label class='duel-lobby-weapon-field'>
+							<span>我的1号武器</span>
+							<img id='duel-lobby-weapon-image-0' alt='' />
+							<div class='duel-lobby-weapon-choice'>
+								<select id='duel-lobby-weapon-0' aria-label='1号武器'></select>
+								<b id='duel-lobby-weapon-name-0' class='duel-lobby-weapon-summary-name' hidden></b>
+							</div>
+						</label>
+						<label class='duel-lobby-weapon-field'>
+							<span>我的2号武器</span>
+							<img id='duel-lobby-weapon-image-1' alt='' />
+							<div class='duel-lobby-weapon-choice'>
+								<select id='duel-lobby-weapon-1' aria-label='2号武器'></select>
+								<b id='duel-lobby-weapon-name-1' class='duel-lobby-weapon-summary-name' hidden></b>
+							</div>
+						</label>
+					</div>
+					<div id='duel-lobby-basics' class='duel-lobby-basics'>
+						<label><span>武器选择模式</span><select id='duel-lobby-weapon-mode'><option value='individual'>各自选择</option><option value='mirrored'>镜像同武器</option><option value='exclusive'>独占武器（不可重复）</option></select></label>
+						<label><span>启用激素</span><input id='duel-lobby-adrenaline-enabled' type='checkbox' /></label>
+						<label><span>初始肾上腺素</span><input id='duel-lobby-boost' type='number' min='0' max='100' step='1' /></label>
+						<label id='duel-lobby-ai-toggle-field'><span>AI 对手</span><input id='duel-lobby-ai-enabled' type='checkbox' /></label>
+						<label id='duel-lobby-ai-difficulty-field'><span>AI 难度</span><select id='duel-lobby-ai-difficulty'><option value='normal'>普通</option><option value='hard'>困难</option><option value='pro'>Pro</option><option value='legit'>LEGIT</option><option value='forbidden'>HACKER</option></select></label>
+						<label><span>头盔等级</span><select id='duel-lobby-helmet'><option value='0'>无头盔</option><option value='1'>1级</option><option value='2'>2级</option><option value='3'>3级</option></select></label>
+						<label><span>防弹衣等级</span><select id='duel-lobby-chest'><option value='0'>无防弹衣</option><option value='1'>1级</option><option value='2'>2级</option><option value='3'>3级</option></select></label>
+						<label><span>初始倍镜</span><select id='duel-lobby-scope'><option value='1xscope'>1倍镜</option><option value='2xscope'>2倍镜</option><option value='4xscope'>4倍镜</option><option value='8xscope'>8倍镜</option><option value='15xscope'>15倍镜</option></select></label>
+					</div>
+					<div id='duel-lobby-common-summary' class='duel-lobby-common-summary' hidden>
+						<div class='duel-lobby-common-summary-row'><span>武器模式</span><strong id='duel-lobby-summary-mode'>—</strong></div>
+						<div class='duel-lobby-common-summary-row'><span>激素</span><strong id='duel-lobby-summary-adrenaline'>—</strong></div>
+						<div class='duel-lobby-common-summary-row'><span>头盔</span><img id='duel-lobby-summary-helmet-img' alt='' /><strong id='duel-lobby-summary-helmet'>—</strong></div>
+						<div class='duel-lobby-common-summary-row'><span>防弹衣</span><img id='duel-lobby-summary-chest-img' alt='' /><strong id='duel-lobby-summary-chest'>—</strong></div>
+						<div class='duel-lobby-common-summary-row'><span>倍镜</span><img id='duel-lobby-summary-scope-img' alt='' /><strong id='duel-lobby-summary-scope'>—</strong></div>
+					</div>
+					<div id='duel-lobby-ai-weapons' class='duel-lobby-weapons' hidden>
+						<label class='duel-lobby-weapon-field'><span>AI 1号武器</span><img id='duel-lobby-ai-weapon-image-0' alt='' /><select id='duel-lobby-ai-weapon-0'></select></label>
+						<label class='duel-lobby-weapon-field'><span>AI 2号武器</span><img id='duel-lobby-ai-weapon-image-1' alt='' /><select id='duel-lobby-ai-weapon-1'></select></label>
+					</div>
+					<div id='duel-lobby-legit-warning' class='duel-lobby-ai-warning legit' hidden>LEGIT 使用高频决策，但只依据当前视野、倍镜、楼层及烟雾遮挡获得信息。</div>
+					<div id='duel-lobby-hacker-warning' class='duel-lobby-ai-warning hacker' hidden>HACKER 仅限1v1，会使用服务端完整战场信息并显著增加CPU占用。</div>
+					<div class='duel-lobby-throwables-title'><strong>我的投掷物</strong><span>各自选择 · 自动保存</span></div>
+					<div id='duel-lobby-throwables' class='duel-lobby-throwables'></div>
+					<footer class='duel-lobby-footer'>
+						<button id='duel-lobby-leave' type='button'>离开大厅</button>
+						<span id='duel-lobby-status'>等待好友加入</span>
+						<button id='duel-lobby-start' class='duel-lobby-primary' type='button' disabled>开始1v1</button>
+					</footer>
+					<div id='duel-lobby-toast' class='duel-lobby-toast' role='status' hidden></div>
+				</div>
+				<div id='duel-lobby-error' class='duel-lobby-error' role='status'></div>
+			</section>
+		</div>
+<div id='spectate-lobby-modal' class='duel-lobby-overlay' hidden>
+			<section class='duel-lobby-dialog spectate-lobby-dialog' role='dialog' aria-modal='true' aria-labelledby='spectate-lobby-title'>
+				<header class='duel-lobby-header'>
+					<div>
+						<small>SPECTATE</small>
+						<h2 id='spectate-lobby-title'>观战大厅</h2>
+					</div>
+					<button id='spectate-lobby-close' type='button' aria-label='关闭观战大厅'>×</button>
+				</header>
+				<div class='spectate-lobby-body'>
+					<div class='spectate-lobby-toolbar'>
+						<span id='spectate-lobby-count'>加载中…</span>
+						<button id='spectate-lobby-refresh' type='button'>刷新</button>
+					</div>
+					<div id='spectate-lobby-list' class='spectate-lobby-list'></div>
+					<div id='spectate-lobby-empty' class='spectate-lobby-empty' hidden>当前没有可观的房间</div>
+					<div id='spectate-lobby-error' class='spectate-lobby-error' role='status'></div>
+				</div>
+			</section>
+		</div>
+<div id='extraction-stash-panel' style='display: none'>
+		<div class='stash-shell'>
+			<div class='stash-header'>
+				<div class='stash-title'>搜打撤仓库</div>
+				<div class='stash-identity'>
+					<input id='extraction-stash-name' type='text' maxlength='16' readonly placeholder='当前登录玩家' title='仓库身份与登录账号绑定' />
+				</div>
+				<button id='extraction-stash-close' type='button'>关闭</button>
+			</div>
+			<div id='extraction-stash-status' class='extraction-stash-status'></div>
+			<div class='stash-body'>
+				<div class='stash-left'>
+					<div class='stash-avatar-wrap'>
+						<div class='stash-dummy'></div>
+						<div class='stash-equip stash-equip-helmet' data-slot='helmet' title='头盔'></div>
+						<div class='stash-equip stash-equip-chest' data-slot='chest' title='护甲'></div>
+						<div class='stash-equip stash-equip-backpack' data-slot='backpack' title='背包'></div>
+						<div class='stash-equip stash-equip-scope' data-slot='scope' title='倍镜'></div>
+					</div>
+					<div class='stash-weapons'>
+						<div class='stash-weapon' id='stash-weapon-0'></div>
+						<div class='stash-weapon' id='stash-weapon-1'></div>
+					</div>
+					<div class='stash-left-stats'>
+						<div class='stash-stats-title'>携带</div>
+						<div id='stash-ammo-list' class='stash-stat-list'></div>
+						<div id='stash-heal-list' class='stash-stat-list'></div>
+						<div id='stash-throw-list' class='stash-stat-list'></div>
+					</div>
+				</div>
+				<div class='stash-right'>
+					<div class='stash-section'>
+						<h3>枪械 <span class='stash-hint'>点击装备 / 右键移除</span></h3>
+						<div id='stash-items-guns' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>护甲 <span class='stash-hint'>点击装备 / 右键移除</span></h3>
+						<div id='stash-items-armor' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>弹药 <span class='stash-hint'>左键携带+1 / 右键携带-1</span></h3>
+						<div id='stash-items-ammo' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>药品 <span class='stash-hint'>左键携带+1 / 右键携带-1</span></h3>
+						<div id='stash-items-consumables' class='stash-grid'></div>
+					</div>
+					<div class='stash-section'>
+						<h3>投掷物 <span class='stash-hint'>左键携带+1 / 右键携带-1</span></h3>
+						<div id='stash-items-throwables' class='stash-grid'></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
     <script type="module" src="src/main.ts"></script>
   </body>
 </html>

@@ -15,6 +15,11 @@ export type ExplosionDef =
         dropRandomLoot?: number;
         healTeam?: boolean;
         healAmount?: number;
+        spudScalePerHit?: number;
+        spudMaxScaleBonus?: number;
+        spudDecayDelay?: number;
+        spudDecayPerSecond?: number;
+        spudSpeedPenaltyPerScale?: number;
     }
     & (
         | {
@@ -215,6 +220,11 @@ export const ExplosionDefs: Record<string, ExplosionDef> = {
         decalType: "",
         freezeDuration: 1,
         frozenSprites: ["player-mash-01.img", "player-mash-02.img", "player-mash-03.img"],
+        spudScalePerHit: 0.04,
+        spudMaxScaleBonus: 0.4,
+        spudDecayDelay: 1.25,
+        spudDecayPerSecond: 0.12,
+        spudSpeedPenaltyPerScale: 5,
     },
     explosion_potato_lmgshot: {
         type: "explosion",

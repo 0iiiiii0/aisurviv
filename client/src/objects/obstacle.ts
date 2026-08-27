@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js-legacy";
 
 import { MapObjectDefs } from "../../../shared/defs/register.ts";
+import { GameConfig } from "../../../shared/gameConfig.ts";
 import type { ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
 import type { Collider } from "../../../shared/utils/coldet.ts";
 import { collider } from "../../../shared/utils/collider.ts";
@@ -370,11 +371,17 @@ export class Obstacle implements AbstractObject {
         if (this.isDoor) {
             const door = this.door;
 
+            // Sandevistan world dilation also slows the door swing animation
+            // (the server already delays the state change with world time).
+            const sandDt = activePlayer.localData.sandevistanActive
+                ? dt * GameConfig.player.sandevistan.worldTimeScale
+                : dt;
+
             // Interpolate position
             const moveSpd = door.interpSpeed;
             const posDiff = v2.sub(this.pos, door.interpPos);
             const diffLen = v2.length(posDiff);
-            let posMove = moveSpd * dt;
+            let posMove = moveSpd * sandDt;
             if (diffLen < posMove) {
                 posMove = diffLen;
             }
@@ -384,7 +391,7 @@ export class Obstacle implements AbstractObject {
             // Interpolate rotation
             const rotSpd = Math.PI * door.interpSpeed;
             const angDiff = math.angleDiff(door.interpRot, this.rot);
-            let angMove = math.sign(angDiff) * rotSpd * dt;
+            let angMove = math.sign(angDiff) * rotSpd * sandDt;
             if (Math.abs(angDiff) < Math.abs(angMove)) {
                 angMove = angDiff;
             }
@@ -501,7 +508,13 @@ export class Obstacle implements AbstractObject {
         this.isNew = false;
     }
 
-    render(dt: number, camera: Camera, debug: DebugRenderOpts, layer: number) {
+    render(
+        dt: number,
+        camera: Camera,
+        debug: DebugRenderOpts,
+        layer: number,
+        transparentObstacles = false,
+    ) {
         let pos = this.isDoor ? this.door.interpPos : this.pos;
 
         if (this.isSkin && camera.m_interpEnabled) {
@@ -525,6 +538,7 @@ export class Obstacle implements AbstractObject {
             this.sprite.scale.x *= -1;
         }
         this.sprite.rotation = -rot + this.imgRot;
+        this.sprite.alpha = this.sprite.imgAlpha * (transparentObstacles && !this.dead ? 0.42 : 1);
 
         if (this.isDoor && this.door?.casingSprite) {
             const casingPos = camera.m_pointToScreen(
@@ -534,6 +548,7 @@ export class Obstacle implements AbstractObject {
             this.door.casingSprite.position.set(casingPos.x, casingPos.y);
             this.door.casingSprite.scale.set(casingScale, casingScale);
             this.door.casingSprite.rotation = -rot;
+            this.door.casingSprite.alpha = transparentObstacles ? 0.42 : 1;
             this.door.casingSprite.visible = !this.dead;
         }
 

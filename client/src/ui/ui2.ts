@@ -10,17 +10,19 @@ import {
 import type { GunDef } from "../../../shared/defs/gameObjects/gunDefs.ts";
 import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
 import type { RoleDef } from "../../../shared/defs/gameObjects/roleDefs.ts";
-import type { ObstacleDef } from "../../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
 
+import type { ObstacleDef } from "../../../shared/defs/mapObjectsTyping.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
-import { Action, DamageType, GameConfig, Input, type InventoryItem } from "../../../shared/gameConfig.ts";
+import { Action, DamageType, GameConfig, Input } from "../../../shared/gameConfig.ts";
 import { PickupMsgType } from "../../../shared/net/net.ts";
+import { getBagCapacity } from "../../../shared/utils/bagCapacity.ts";
 import { collider } from "../../../shared/utils/collider.ts";
 import { math } from "../../../shared/utils/math.ts";
 import { util } from "../../../shared/utils/util.ts";
 import { v2 } from "../../../shared/utils/v2.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
+import { InputType, type InputValue, MouseWheel } from "../input.ts";
 import type { InputBinds } from "../inputBinds.ts";
 import type { Map } from "../map.ts";
 import type { Loot, LootBarn } from "../objects/loot.ts";
@@ -30,7 +32,8 @@ import type { Localization } from "./localization.ts";
 
 const maxKillFeedLines = 6;
 const touchHoldDuration = 0.75 * 1000;
-const perkUiCount = 4;
+// 搜打撤/绝密最多可带出 7 个能力，HUD 需能同时显示（协议 MaxPerks=8，最多同步 7 个）。
+const perkUiCount = 7;
 
 enum InteractionType {
     None,
@@ -38,6 +41,20 @@ enum InteractionType {
     Loot,
     Revive,
     Object,
+    ZombieMission,
+}
+
+/**
+ * Mobile browsers synthesize mouse events after a tap.  Never let that ghost
+ * mouseup move focus from a native editor back to the game canvas: doing so
+ * closes the software keyboard before the first character can be entered.
+ */
+function isTextEntryTarget(target: EventTarget | null): boolean {
+    return (
+        target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || (target instanceof HTMLElement && target.isContentEditable)
+    );
 }
 
 const WeaponSlotToBind = {
@@ -55,6 +72,30 @@ function isLmb(e: MouseEvent) {
 }
 function isRmb(e: MouseEvent) {
     return e.button == 2;
+}
+
+/** Localized HUD label for the Sandevistan activation bind. */
+function sandevistanKeyHintText(bind: InputValue | null): string {
+    if (!bind) {
+        return "未绑定";
+    }
+    switch (bind.type) {
+        case InputType.MouseButton: {
+            const names = [
+                "鼠标左键",
+                "中键",
+                "鼠标右键",
+                "鼠标侧键1",
+                "鼠标侧键2",
+            ];
+            return names[bind.code] || bind.toString();
+        }
+        case InputType.MouseWheel:
+            return bind.code == MouseWheel.Up ? "滚轮上" : "滚轮下";
+        case InputType.Key:
+        default:
+            return bind.toString();
+    }
 }
 // These functions, copy and diff, only work if both
 // arguments have the same internal structure
@@ -223,6 +264,9 @@ export class UiManager2 {
     oldState = new UiState();
     newState = new UiState();
     frameCount = 0;
+    private lastSandevistanHint = "";
+    /** Mobile-only: a tap on the skill slot queues one activation. */
+    sandevistanButtonPressed = false;
 
     // DOM
     dom = {
@@ -279,6 +323,14 @@ export class UiManager2 {
                 domElemById("ui-boost-counter-3").firstElementChild,
             ] as HTMLElement[],
         },
+        sandevistan: {
+            skill: domElemById("ui-sandevistan-skill"),
+            icon: domElemById("ui-sandevistan-icon"),
+            timer: domElemById("ui-sandevistan-timer"),
+            cooldownFill: domElemById("ui-sandevistan-cooldown-fill"),
+            filter: domElemById("sandevistan-filter"),
+            statusHint: domElemById("ui-sandevistan-key-hint"),
+        },
         scopes: [] as Array<{
             scopeType: string;
             div: HTMLElement;
@@ -307,9 +359,14 @@ export class UiManager2 {
 
     rareLootMessageQueue: string[] = [];
     uiEvents: Array<{ action: string; type: string; data: string | number }> = [];
+    /**
+     * Mission icons are client-side sprites rather than normal world objects,
+     * so Game supplies their proximity interaction separately.
+     */
+    zombieMissionInteractionText: string | null = null;
 
     eventListeners = [] as EventListeners[];
-    clearQueuedItemActions: () => void;
+    clearQueuedItemActions: (event?: Event) => void;
     onKeyUp: (e: KeyboardEvent) => void;
     // Game-item handling. Game item UIs support two actions:
     // left-click to use, and right-click to drop.
@@ -520,7 +577,14 @@ export class UiManager2 {
                     item.touchOsId = e.changedTouches[0].identifier;
                 }
             });
-            setEventListener("touchend", item.div, (_e) => {
+            setEventListener("touchend", item.div, (e) => {
+                // Keep HUD taps out of the gameplay touch stream and suppress
+                // the synthetic mouseup that mobile browsers may emit after a
+                // touch. Otherwise one tap can queue the same weapon action
+                // twice after the mobile controller lets native HUD events
+                // through.
+                e.stopPropagation();
+                if (e.cancelable) e.preventDefault();
                 if (
                     new Date().getTime() - item.actionTime < touchHoldDuration
                     && item.actionQueued
@@ -530,19 +594,30 @@ export class UiManager2 {
                 }
                 item.actionQueued = false;
             });
-            setEventListener("touchcancel", item.div, (_e) => {
+            setEventListener("touchcancel", item.div, (e) => {
+                e.stopPropagation();
                 item.actionQueued = false;
             });
         }
 
         const canvas = document.getElementById("cvs")!;
-        this.clearQueuedItemActions = () => {
+        this.clearQueuedItemActions = (event?: Event) => {
             for (let i = 0; i < this.itemActions.length; i++) {
                 this.itemActions[i].actionQueued = false;
             }
 
             // @HACK: Get rid of :hover styling when using touch
             if (device.touch) {
+                const target = event?.target ?? null;
+                const insideInputBlocker = target instanceof Element
+                    && target.closest("[data-game-input-blocker]") !== null;
+                if (
+                    isTextEntryTarget(target)
+                    || isTextEntryTarget(document.activeElement)
+                    || insideInputBlocker
+                ) {
+                    return;
+                }
                 canvas.focus();
             }
         };
@@ -551,6 +626,17 @@ export class UiManager2 {
         window.addEventListener("focus", this.clearQueuedItemActions);
 
         this.onKeyUp = (e: KeyboardEvent) => {
+            // Text entry must never trigger gameplay/global binds. The
+            // spectator chat stopped keydown propagation, but keyup still
+            // reached this window listener and the letter L toggled fullscreen.
+            const target = e.target as HTMLElement | null;
+            if (
+                target instanceof HTMLInputElement
+                || target instanceof HTMLTextAreaElement
+                || target?.isContentEditable
+            ) {
+                return;
+            }
             // Add an input handler specifically to handle fullscreen on Firefox;
             // "requestFullscreen() must be called from inside a short running user-generated event handler."
             const keyCode = e.which || e.keyCode;
@@ -560,6 +646,20 @@ export class UiManager2 {
             }
         };
         window.addEventListener("keyup", this.onKeyUp);
+
+        // Mobile: turn the skill slot into a dedicated activation button.
+        // data-game-input-blocker keeps taps on it from reaching the move/aim
+        // pads, and a tap queues Input.Sandevistan for the next input frame.
+        if (device.uiLayout == device.UiLayout.Sm) {
+            this.dom.sandevistan.skill.classList.add("sandevistan-mobile");
+            this.dom.sandevistan.skill.setAttribute(
+                "data-game-input-blocker",
+                "",
+            );
+            this.dom.sandevistan.skill.addEventListener("click", () => {
+                this.sandevistanButtonPressed = true;
+            });
+        }
     }
 
     m_free() {
@@ -672,12 +772,62 @@ export class UiManager2 {
         state.boost = activePlayer.m_localData.m_boost;
         state.downed = activePlayer.m_netData.m_downed;
 
+        // Sandevistan implant HUD: skill slot + readiness bar + full-screen
+        // blue filter. Only the dedicated mode exposes the slot.
+        const sandevistanMode = Boolean(
+            map.mapDef?.gameMode?.sandevistanMode,
+        );
+        const sand = activePlayer.localData;
+        this.dom.sandevistan.skill.hidden = !sandevistanMode;
+        if (sandevistanMode) {
+            // Keep the HUD key hint in sync with the player's actual bind
+            // (default is middle mouse, but the user may rebind it).
+            const sandBind = this.inputBinds.getBind(Input.Sandevistan);
+            const sandHint = `[${sandevistanKeyHintText(sandBind)}]`;
+            if (this.lastSandevistanHint !== sandHint) {
+                this.lastSandevistanHint = sandHint;
+                this.dom.sandevistan.statusHint.textContent = sandHint;
+            }
+            const sandActive = Boolean(sand.sandevistanActive);
+            const sandRemaining = Math.max(0, Number(sand.sandevistanRemaining) || 0);
+            const sandCooldown = Math.max(0, Number(sand.sandevistanCooldown) || 0);
+            let timerText = "就绪";
+            if (sandActive) {
+                timerText = `${sandRemaining.toFixed(1)}s`;
+            } else if (sandCooldown > 0) {
+                timerText = `${Math.ceil(sandCooldown)}s`;
+            }
+            this.dom.sandevistan.timer.textContent = timerText;
+            const totalCooldown = GameConfig.player.sandevistan.cooldown;
+            const duration = GameConfig.player.sandevistan.duration;
+            let readiness: number;
+            if (sandActive) {
+                // Active window: the bar depletes together with the remaining
+                // effect time (server sends live sandevistanRemaining every
+                // update, so this tracks the real 5s window).
+                readiness = duration > 0
+                    ? Math.min(1, Math.max(0, sandRemaining / duration))
+                    : 1;
+            } else {
+                // Cooldown: the bar refills as the cooldown counts down.
+                readiness = totalCooldown > 0
+                    ? Math.min(1, Math.max(0, 1 - sandCooldown / totalCooldown))
+                    : 1;
+            }
+            this.dom.sandevistan.cooldownFill.style.transform = `scaleX(${readiness})`;
+            this.dom.sandevistan.icon.classList.toggle("active", sandActive);
+            this.dom.sandevistan.filter.classList.toggle("active", sandActive);
+        } else {
+            this.dom.sandevistan.filter.classList.remove("active");
+        }
+
         // Interaction
         let interactionType = InteractionType.None;
         let interactionObject: Obstacle | Loot | Player | null = null;
         let interactionUsable = true;
 
-        if (activePlayer.canInteract(map)) {
+        const canInteract = activePlayer.canInteract(map);
+        if (canInteract) {
             // Usable obstacles
             let closestObj = null;
             let closestPen = 0;
@@ -823,12 +973,27 @@ export class UiManager2 {
                 interactionUsable = true;
             }
         }
+        // The server handles zombie mission interactions before loot, doors,
+        // and revives. Mirror that priority in the prompt, while never replacing
+        // an in-progress item's Cancel action.
+        if (
+            canInteract
+            && !spectating
+            && interactionType !== InteractionType.Cancel
+            && this.zombieMissionInteractionText
+        ) {
+            interactionType = InteractionType.ZombieMission;
+            interactionObject = null;
+            interactionUsable = true;
+        }
         state.interaction.type = interactionType;
-        state.interaction.text = this.getInteractionText(
-            interactionType,
-            interactionObject!,
-            activePlayer,
-        );
+        state.interaction.text = interactionType === InteractionType.ZombieMission
+            ? this.zombieMissionInteractionText ?? ""
+            : this.getInteractionText(
+                interactionType,
+                interactionObject!,
+                activePlayer,
+            );
         state.interaction.key = this.getInteractionKey(interactionType);
         state.interaction.usable = interactionUsable && !spectating;
         for (let oe = 0; oe < activePlayer.m_localData.m_weapons.length; oe++) {
@@ -871,9 +1036,18 @@ export class UiManager2 {
         const ge = state.weapons[activePlayer.m_localData.m_curWeapIdx];
         const weaponDef = GameObjectDefs.typeToDef(ge.type) as GunDef | MeleeDef;
         const we = ge.ammo;
+        // 搜打撤（普通 / 绝密）：信号弹（flare）与 .338（308sub）不显示为
+        // 无限弹药，与服务器 isInfinite() 保持一致（消耗真实弹药）。
+        const extractionMode = Boolean(map.mapDef?.gameMode?.extractionMode);
         const fe = weaponDef.type == "gun"
-            ? weaponDef.ammoInfinite
-                    || (activePlayer.m_hasPerk("endless_ammo") && !weaponDef.ignoreEndlessAmmo)
+            ? !(
+                    extractionMode
+                    && (weaponDef.ammo === "flare"
+                        || weaponDef.ammo === "308sub")
+                )
+                    && (weaponDef.ammoInfinite
+                        || (activePlayer.m_hasPerk("endless_ammo")
+                            && !weaponDef.ignoreEndlessAmmo))
                 ? Number.MAX_VALUE
                 : activePlayer.m_localData.m_inventory[weaponDef.ammo]
             : 0;
@@ -895,7 +1069,7 @@ export class UiManager2 {
             const ve = state.loot[Se];
             const ke = ve.count;
             ve.count = activePlayer.m_localData.m_inventory[ve.type] || 0;
-            ve.maximum = GameConfig.bagSizes[ve.type as InventoryItem][xe];
+            ve.maximum = getBagCapacity(ve.type, xe, extractionMode);
             ve.selectable = ve.count > 0 && !spectating;
             if (ve.count > ke) {
                 ve.ticker = 0;
@@ -1246,7 +1420,9 @@ export class UiManager2 {
             const J = state.loot[K];
             if (Z && Y && J) {
                 if (Z.count || Z.maximum) {
-                    Y.count.innerHTML = String(J.count);
+                    Y.count.innerHTML = J.count === GameConfig.inventoryInfiniteCount
+                        ? "&#8734;"
+                        : String(J.count);
                     Y.div.style.opacity = String(
                         (GameObjectDefs.typeToDef(Y.lootType) as AmmoDef).special && J.count == 0
                             ? 0
@@ -1461,6 +1637,15 @@ export class UiManager2 {
                     )
                 } ${killTxt} ${targetName}`;
             }
+            case DamageType.Extraction:
+                return `${targetName} 已撤离`;
+            case DamageType.TimeUp:
+                return `${targetName} 时间到，全员阵亡`;
+            case DamageType.Nuclear:
+                if (killerName) {
+                    return `${killerName} 使用核爆消灭了 ${targetName}`;
+                }
+                return `${targetName} 未进入地堡，被核爆消灭`;
             default:
                 return "";
         }
@@ -1678,6 +1863,9 @@ export class UiManager2 {
             case InteractionType.Revive:
                 bind = this.inputBinds.getBind(Input.Revive)
                     || this.inputBinds.getBind(Input.Interact);
+                break;
+            case InteractionType.ZombieMission:
+                bind = this.inputBinds.getBind(Input.Interact);
                 break;
             case InteractionType.None:
             default:

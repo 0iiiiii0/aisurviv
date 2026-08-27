@@ -1,0 +1,73 @@
+{
+  "version": "all-modes-ai",
+  "date": "2026-07-24",
+  "playlistCount": 47,
+  "mapCount": 17,
+  "files": [
+    {
+      "path": "server/src/bot/modeStrategy.ts",
+      "size": 15448,
+      "sha256": "070b3d9940dc745a0023c1a50f8794c73a3ee0cf8d4cd65fb7117e05ff6a4989"
+    },
+    {
+      "path": "server/src/allModesSmokeTest.ts",
+      "size": 2982,
+      "sha256": "535e4ee1cd88a4bfb2d062be85c5b6bc417f2a6ab18de6ac4dba6da010061e23"
+    },
+    {
+      "path": "server/src/smartBot.ts",
+      "size": 253803,
+      "sha256": "06a0761ccfc753f84500148c310cf50473658ac37ed26be78a57d56eda879e30"
+    },
+    {
+      "path": "server/src/gameServer.ts",
+      "size": 22186,
+      "sha256": "5f23fc3facc3e8678cca2f527fef8b9e84ebca755f1110192a659a2ece5309c1"
+    },
+    {
+      "path": "server/src/game/gameManager.ts",
+      "size": 8386,
+      "sha256": "018823ffef1509958eddcb57a9ea65a1a3a28fe03f3d0df3d7fefd36715d3d35"
+    },
+    {
+      "path": "server/src/game/gameProcessManager.ts",
+      "size": 13847,
+      "sha256": "9d869e9756677ddd88ce0366bdd68d304fce28e817d32857818bf17329536d9f"
+    },
+    {
+      "path": "server/package.json",
+      "size": 1731,
+      "sha256": "fdb80cbca226bada21afa04e8503bf0ab6f80fcf3d5e0b60d3b3ce62d9c2f1ef"
+    },
+    {
+      "path": "MODE_PROFILES_ALL_MODES.json",
+      "size": 49772,
+      "sha256": "9a7504bdcb9b1de5e0a04c68c60d4b41efd0cca7ffb527f6e8b49827d5830b3f"
+    },
+    {
+      "path": "ALL_MODES_AI.patch",
+      "size": 46238,
+      "sha256": "213c920284dd2a0965d1a654923dbc8b1adc66bc4b873a983a2778b994effc46"
+    },
+    {
+      "path": "ALL_MODES_AI.md",
+      "size": 4231,
+      "sha256": "e96d01f9a3bd0ccad0c15f5e05cb0029ca64518a2e6dc3c487f254af56b14076"
+    },
+    {
+      "path": "CHANGELOG_ALL_MODES_AI.md",
+      "size": 854,
+      "sha256": "b9206b9cf52ac8927544b3eadb214b1b1263607dbdd7c52232d81f571e962cb6"
+    },
+    {
+      "path": "VALIDATION_ALL_MODES_AI.txt",
+      "size": 1609,
+      "sha256": "9568cd932b73ec1ec4eea2aa32b55c6aba19a0328c1136ff4a1c44eccb90b03e"
+    },
+    {
+      "path": "VALIDATION_COMMAND_OUTPUT_ALL_MODES_AI.txt",
+      "size": 3096,
+      "sha256": "e9842794de249307187552ef521edfaf155e1a045abe01f3ddc3dad3c8097dac"
+    }
+  ]
+}

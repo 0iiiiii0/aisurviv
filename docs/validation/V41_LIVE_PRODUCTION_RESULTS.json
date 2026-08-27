@@ -1,0 +1,53 @@
+{
+  "validatedAt": "2026-07-27T21:15:16Z",
+  "environment": {
+    "node": "22.16.0",
+    "nodeEnv": "production",
+    "processMode": "multi",
+    "host": "127.0.0.1"
+  },
+  "aimAndHumanDuel": {
+    "aimTraining": {
+      "ready": true,
+      "weapon": "ak47",
+      "distance": 80,
+      "gameId": "e21561e25f07f41078ce0c927f689318f58898a3"
+    },
+    "duel": {
+      "code": "5ULUUN",
+      "gameId": "d5f9f37dea7d2366e6eb2ac176c429916c218320",
+      "leftWeapons": [
+        "ak47",
+        "mosin"
+      ],
+      "rightWeapons": [
+        "m39",
+        "mp220"
+      ],
+      "shareCode": "QCWR3R7Y"
+    },
+    "spectators": {
+      "multiViewer": true,
+      "distinctTokens": true,
+      "expiredAfterMatch": true
+    },
+    "randomDuelDisabled": true
+  },
+  "adminPureAiDuel": {
+    "gameId": "7a6b0280414e42304436c56eff07d93102177623",
+    "difficulties": [
+      "pro",
+      "hard"
+    ],
+    "aiCount": 2,
+    "serverBotCount": 2,
+    "spectatorShareCode": "SVK9QD92",
+    "multiViewer": true,
+    "expiredAfterStop": true
+  },
+  "notes": [
+    "Game IDs, lobby codes and share codes are expired test-only values.",
+    "The host/admin stopped both duel rooms after validation.",
+    "This run includes the final child-process creation timeout and early-exit protection."
+  ]
+}

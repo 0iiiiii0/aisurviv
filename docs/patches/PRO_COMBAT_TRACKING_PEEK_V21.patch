@@ -1,0 +1,930 @@
+--- a/server/package.json
++++ b/server/package.json
+@@ -35,7 +35,8 @@
+         "test:revive-coordination": "node -r ts-node/register src/reviveCoordinationSmokeTest.ts",
+         "test:spectator-difficulty": "node -r ts-node/register src/spectatorDifficultySmokeTest.ts",
+         "test:cpu-load": "node -r ts-node/register src/cpuLoadControlSmokeTest.ts",
+-        "test:gas-escape": "node -r ts-node/register src/gasEscapeSmokeTest.ts"
++        "test:gas-escape": "node -r ts-node/register src/gasEscapeSmokeTest.ts",
++        "test:combat-tactics": "node -r ts-node/register src/combatTacticsSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -121,6 +121,13 @@
+ } from "./bot/gasEscape";
+ import { SystemCpuMonitor, cpuThrottleScale, normalizeCpuLimits } from "./utils/systemCpu";
+ import { movementInputFromDirection } from "./bot/movementInput";
++import {
++    closeRangeCombatDirection,
++    coverGeometry,
++    nextPeekPhase,
++    obstacleBlocksBody,
++    predictInterceptPoint,
++} from "./bot/combatTactics";
+ import { interactionApproachPlan } from "./bot/interactionGeometry";
+ import {
+     adrenalineMovementPlan,
+@@ -269,8 +276,17 @@
+ interface PlayerMemory {
+     pos: Vec2;
+     velocity: Vec2;
++    acceleration: Vec2;
+     updatedAt: number;
+     seenAt: number;
++}
++
++interface CombatCoverChoice {
++    obstacle: GameObject;
++    anchor: Vec2;
++    leftPeek: Vec2;
++    rightPeek: Vec2;
++    score: number;
+ }
+ 
+ interface TargetChoice {
+@@ -1264,6 +1280,26 @@
+     private reloadAimHoldDir: Vec2 | null = null;
+     private reloadAimHoldMouseLen = 50;
+     private reloadAimHoldUntil = 0;
++    private trackedAimEnemyId = 0;
++    private trackedAimPoint = v2.create(0, 0);
++    private trackedAimVelocity = v2.create(0, 0);
++    private trackedAimUpdatedAt = 0;
++    private stableAimNoiseRad = 0;
++    private stableAimNoiseUntil = 0;
++    private combatCoverObstacleId = 0;
++    private combatCoverAnchor: Vec2 | null = null;
++    private combatCoverLeftPeek: Vec2 | null = null;
++    private combatCoverRightPeek: Vec2 | null = null;
++    private combatPeekSide = Math.random() < 0.5 ? -1 : 1;
++    private combatPeekPhase: "none" | "hide" | "peek" | "return" = "none";
++    private combatPeekPhaseUntil = 0;
++    private combatPeekFired = false;
++    private combatCoverLockUntil = 0;
++    private combatCoverLastEnemyId = 0;
++    private closeDodgeSign = Math.random() < 0.5 ? -1 : 1;
++    private closeDodgeUntil = 0;
++    private precisionRepositionUntil = 0;
++    private precisionRepositionSign = Math.random() < 0.5 ? -1 : 1;
+     private readonly doorInteractCooldownUntil = new Map<number, number>();
+     private readonly ignoredDoorsUntil = new Map<number, number>();
+     private lastDoorInteractId = 0;
+@@ -1783,14 +1819,22 @@
+             }
+             const previous = this.playerMemory.get(object.__id);
+             let velocity = v2.create(0, 0);
++            let acceleration = v2.create(0, 0);
+             if (previous) {
+                 const deltaSeconds = Math.max(0.02, (timestamp - previous.updatedAt) / 1000);
+                 const rawVelocity = mul(sub(pos, previous.pos), 1 / deltaSeconds);
+                 velocity = lerp(previous.velocity, rawVelocity, 0.55);
++                const rawAcceleration = mul(sub(velocity, previous.velocity), 1 / deltaSeconds);
++                const rawAccelerationLength = length(rawAcceleration);
++                const boundedAcceleration = rawAccelerationLength > 24
++                    ? mul(normalize(rawAcceleration), 24)
++                    : rawAcceleration;
++                acceleration = lerp(previous.acceleration ?? v2.create(0, 0), boundedAcceleration, 0.38);
+             }
+             this.playerMemory.set(object.__id, {
+                 pos: v2.create(pos.x, pos.y),
+                 velocity,
++                acceleration,
+                 updatedAt: timestamp,
+                 seenAt: timestamp,
+             });
+@@ -5437,30 +5481,40 @@
+             const pos = data.pos as Vec2 | undefined;
+             if (!pos || data.dead || Number(data.layer ?? 0) !== myLayer) continue;
+ 
+-            const onScreen = !config.scopeOnlyTargets || pointInsideViewport(myPos, pos, viewport, -0.35);
+-            if (!onScreen) continue;
+-
+-            const dist = distance(myPos, pos);
+             const memory = this.playerMemory.get(object.__id);
+-            const observationAge = memory ? timestamp - memory.seenAt : Infinity;
+-            if (!isFreshCombatObservation(dist, observationAge, viewport.scopeLevel)) continue;
+-            const sharedRangeBonus = object.__id === sharedTargetId ? 28 : 0;
+-            const factionRangeBonus = object.__id === factionTargetId ? 42 : 0;
+-            if (dist > Math.max(mapScanRange + sharedRangeBonus + factionRangeBonus, maxScreenDistance)) continue;
+-
+             const lineClear = this.hasVisualLineOfSight(
+                 myPos,
+                 pos,
+                 object.__id,
+                 concealmentZones,
+             );
+-            // Entity lock is limited to enemies the maximum owned scope can
+-            // actually display and that are not hidden by opaque cover, smoke,
+-            // an intact roof, or foliage concealment.
+-            if (!lineClear) continue;
++            const memoryAge = memory ? timestamp - memory.seenAt : Infinity;
++            const retainedForPeek = Boolean(
++                !lineClear &&
++                    this.difficulty === "pro" &&
++                    object.__id === this.currentEnemyId &&
++                    this.combatPeekPhase !== "none" &&
++                    memory &&
++                    memoryAge <= 1150,
++            );
++            // A Pro bot may retain the last genuinely visible bearing while it
++            // is fully hidden behind cover. That memory is used only to walk to
++            // the next peek point; firing remains gated by a fresh visible line.
++            if (!lineClear && !retainedForPeek) continue;
++            const combatPos = retainedForPeek && memory ? memory.pos : pos;
++            const onScreen =
++                !config.scopeOnlyTargets || pointInsideViewport(myPos, combatPos, viewport, -0.35);
++            if (!onScreen) continue;
++
++            const dist = distance(myPos, combatPos);
++            const observationAge = memory ? timestamp - memory.seenAt : Infinity;
++            if (!retainedForPeek && !isFreshCombatObservation(dist, observationAge, viewport.scopeLevel)) continue;
++            const sharedRangeBonus = object.__id === sharedTargetId ? 28 : 0;
++            const factionRangeBonus = object.__id === factionTargetId ? 42 : 0;
++            if (dist > Math.max(mapScanRange + sharedRangeBonus + factionRangeBonus, maxScreenDistance)) continue;
+ 
+             const facing = normalize((data.dir as Vec2 | undefined) ?? v2.create(1, 0));
+-            const directionToMe = normalize(sub(myPos, pos));
++            const directionToMe = normalize(sub(myPos, combatPos));
+             const aimingAtMe = clamp((dot(facing, directionToMe) + 1) * 0.5, 0, 1);
+             const weaponThreat = this.weaponThreat(String(data.activeWeapon ?? ""), dist);
+             const downedPenalty = data.downed ? 45 : 0;
+@@ -5501,7 +5555,7 @@
+                 modeBonus -
+                 downedPenalty;
+ 
+-            candidates.push({ object, distance: dist, score, visible: true, onScreen: true });
++            candidates.push({ object, distance: dist, score, visible: lineClear, onScreen: true });
+         }
+ 
+         candidates.sort((a, b) => b.score - a.score);
+@@ -5558,14 +5612,302 @@
+         return 0;
+     }
+ 
++    private resetCombatCover(): void {
++        this.combatCoverObstacleId = 0;
++        this.combatCoverAnchor = null;
++        this.combatCoverLeftPeek = null;
++        this.combatCoverRightPeek = null;
++        this.combatPeekPhase = "none";
++        this.combatPeekPhaseUntil = 0;
++        this.combatPeekFired = false;
++        this.combatCoverLockUntil = 0;
++        this.combatCoverLastEnemyId = 0;
++    }
++
++    private stableCombatAimDirection(
++        myPos: Vec2,
++        enemyId: number,
++        enemyPos: Vec2,
++        memory: PlayerMemory | undefined,
++        projectileSpeed: number,
++        targetDistance: number,
++        leadScale: number,
++        movingPenalty: number,
++        timestamp: number,
++    ): { direction: Vec2; point: Vec2 } {
++        const targetChanged = this.trackedAimEnemyId !== enemyId;
++        const prediction = predictInterceptPoint({
++            shooterPos: myPos,
++            targetPos: enemyPos,
++            targetVelocity: memory?.velocity ?? v2.create(0, 0),
++            targetAcceleration: memory?.acceleration ?? v2.create(0, 0),
++            projectileSpeed,
++            leadFactor: this.profile.leadFactor * clamp(leadScale, 0.72, 1.28),
++            reactionSeconds: this.profile.reactionMs / 1000 * 0.28,
++            maxLeadSeconds: targetDistance <= 14 ? 0.19 : targetDistance <= 38 ? 0.42 : 0.72,
++        });
++        const rawPoint = v2.create(prediction.point.x, prediction.point.y);
++        if (targetChanged || timestamp - this.trackedAimUpdatedAt > 700) {
++            this.trackedAimEnemyId = enemyId;
++            this.trackedAimPoint = rawPoint;
++            this.trackedAimVelocity = memory?.velocity ?? v2.create(0, 0);
++        } else {
++            const response = targetDistance <= 14
++                ? this.difficulty === "pro" ? 0.84 : 0.72
++                : targetDistance >= 42
++                  ? this.difficulty === "pro" ? 0.62 : 0.48
++                  : 0.68;
++            this.trackedAimPoint = lerp(this.trackedAimPoint, rawPoint, response);
++            this.trackedAimVelocity = lerp(
++                this.trackedAimVelocity,
++                memory?.velocity ?? v2.create(0, 0),
++                0.55,
++            );
++        }
++        this.trackedAimUpdatedAt = timestamp;
++
++        if (timestamp >= this.stableAimNoiseUntil || targetChanged) {
++            const holdMs = this.difficulty === "pro" ? 170 : this.difficulty === "hard" ? 260 : 390;
++            const baseJitter = config.mapAi
++                ? this.mapNavigator.aimJitter(this.profile.aimJitterRad)
++                : this.profile.aimJitterRad;
++            this.stableAimNoiseRad = util.random(-baseJitter, baseJitter) * movingPenalty;
++            this.stableAimNoiseUntil = timestamp + holdMs;
++        }
++        const direct = normalize(sub(this.trackedAimPoint, myPos));
++        return {
++            direction: fromAngle(angleOf(direct) + this.stableAimNoiseRad),
++            point: this.trackedAimPoint,
++        };
++    }
++
++    private chooseCombatCover(
++        myPos: Vec2,
++        enemyPos: Vec2,
++        enemyId: number,
++    ): CombatCoverChoice | null {
++        let best: CombatCoverChoice | null = null;
++        for (const object of this.spatialGrid.queryRadius(myPos, 22)) {
++            if (object.__type !== ObjectType.Obstacle || object.data.dead) continue;
++            if (Number(object.data.layer ?? 0) !== this.myLayer()) continue;
++            if (object.data.isDoor) continue;
++            const type = String(object.data.type ?? "").toLowerCase();
++            if (/bush|grass|smoke|window|river|water|stair|decal|floor/.test(type)) continue;
++            const pos = object.data.pos as Vec2 | undefined;
++            if (!pos) continue;
++            const radius = this.obstacleRadius(object);
++            if (radius < 0.72) continue;
++            const geometry = coverGeometry({
++                obstaclePos: pos,
++                obstacleRadius: radius,
++                enemyPos,
++                playerRadius: 0.72,
++                peekPadding: this.difficulty === "pro" ? 0.34 : 0.5,
++            });
++            const anchor = v2.create(geometry.anchor.x, geometry.anchor.y);
++            const leftPeek = v2.create(geometry.leftPeek.x, geometry.leftPeek.y);
++            const rightPeek = v2.create(geometry.rightPeek.x, geometry.rightPeek.y);
++            if (this.isPointOutsideMap(anchor) || !this.pointInsideCurrentGas(anchor, 0.7)) continue;
++            if (!this.hasClearResourcePath(myPos, anchor, object.__id)) continue;
++            if (!obstacleBlocksBody(enemyPos, anchor, pos, radius, 0.72)) continue;
++            if (this.hasLineOfSight(enemyPos, anchor, enemyId)) continue;
++
++            const leftValid =
++                !this.isPointOutsideMap(leftPeek) &&
++                this.pointInsideCurrentGas(leftPeek, 0.5) &&
++                this.hasClearResourcePath(anchor, leftPeek, object.__id) &&
++                this.hasVisualLineOfSight(leftPeek, enemyPos, enemyId);
++            const rightValid =
++                !this.isPointOutsideMap(rightPeek) &&
++                this.pointInsideCurrentGas(rightPeek, 0.5) &&
++                this.hasClearResourcePath(anchor, rightPeek, object.__id) &&
++                this.hasVisualLineOfSight(rightPeek, enemyPos, enemyId);
++            if (!leftValid && !rightValid) continue;
++
++            const currentCoverBonus = object.__id === this.combatCoverObstacleId ? 34 : 0;
++            const travel = distance(myPos, anchor);
++            const enemyDistance = distance(enemyPos, anchor);
++            const sizeBonus = Math.min(28, radius * 11);
++            const twoSidedBonus = leftValid && rightValid ? 14 : 0;
++            const score = 140 + sizeBonus + twoSidedBonus + currentCoverBonus - travel * 5.2 + Math.min(16, enemyDistance * 0.18);
++            if (!best || score > best.score) {
++                best = {
++                    obstacle: object,
++                    anchor,
++                    leftPeek: leftValid ? leftPeek : rightPeek,
++                    rightPeek: rightValid ? rightPeek : leftPeek,
++                    score,
++                };
++            }
++        }
++        return best;
++    }
++
++    private applyProPeekTactics(
++        myPos: Vec2,
++        target: TargetChoice,
++        enemyPos: Vec2,
++        weaponType: string,
++        weaponDef: AnyDef | undefined,
++        mastery: ReturnType<typeof scoreWeaponMastery> | null,
++        timestamp: number,
++    ): { active: boolean; allowFire: boolean; movement: Vec2; atPeek: boolean } {
++        const precisionWeapon = Boolean(
++            weaponDef?.type === "gun" &&
++                (mastery?.stopToShoot || gunRange(weaponType) >= 68 || Number(weaponDef.fireDelay ?? 0) >= 0.36),
++        );
++        if (
++            this.difficulty !== "pro" ||
++            !precisionWeapon ||
++            target.distance < 17 ||
++            this.countEnemiesNear(myPos, 11) > 0 ||
++            this.airstrikeThreat(myPos, timestamp) !== null
++        ) {
++            this.resetCombatCover();
++            return { active: false, allowFire: true, movement: v2.create(0, 0), atPeek: false };
++        }
++
++        const existing = this.combatCoverObstacleId
++            ? this.objectPool.getObjById(this.combatCoverObstacleId)
++            : undefined;
++        const existingValid = Boolean(
++            existing &&
++                !existing.data.dead &&
++                this.combatCoverAnchor &&
++                this.combatCoverLeftPeek &&
++                this.combatCoverRightPeek &&
++                this.combatCoverLastEnemyId === target.object.__id &&
++                timestamp < this.combatCoverLockUntil,
++        );
++        if (!existingValid) {
++            const choice = this.chooseCombatCover(myPos, enemyPos, target.object.__id);
++            if (!choice) {
++                this.resetCombatCover();
++                return { active: false, allowFire: true, movement: v2.create(0, 0), atPeek: false };
++            }
++            this.combatCoverObstacleId = choice.obstacle.__id;
++            this.combatCoverAnchor = choice.anchor;
++            this.combatCoverLeftPeek = choice.leftPeek;
++            this.combatCoverRightPeek = choice.rightPeek;
++            this.combatCoverLastEnemyId = target.object.__id;
++            this.combatCoverLockUntil = timestamp + 2600;
++            this.combatPeekPhase = "hide";
++            this.combatPeekPhaseUntil = timestamp + 320;
++            this.combatPeekFired = false;
++        }
++
++        const obstacle = this.objectPool.getObjById(this.combatCoverObstacleId);
++        const obstaclePos = obstacle?.data.pos as Vec2 | undefined;
++        const anchor = this.combatCoverAnchor;
++        if (!obstacle || !obstaclePos || !anchor || !this.combatCoverLeftPeek || !this.combatCoverRightPeek) {
++            this.resetCombatCover();
++            return { active: false, allowFire: true, movement: v2.create(0, 0), atPeek: false };
++        }
++        if (!obstacleBlocksBody(enemyPos, anchor, obstaclePos, this.obstacleRadius(obstacle), 0.72)) {
++            this.resetCombatCover();
++            return { active: false, allowFire: true, movement: v2.create(0, 0), atPeek: false };
++        }
++
++        const automatic = weaponDef?.fireMode === "auto" || weaponDef?.autoAttack === true;
++        const fireDelayMs = Math.max(70, Number(weaponDef?.fireDelay ?? 0.25) * 1000);
++        const atAnchor = distance(myPos, anchor) <= 0.78;
++        const selectedPeek = this.combatPeekSide >= 0
++            ? this.combatCoverLeftPeek
++            : this.combatCoverRightPeek;
++        const atPeek = distance(myPos, selectedPeek) <= 0.9;
++
++        if (this.combatPeekPhase === "hide" && atAnchor && timestamp >= this.combatPeekPhaseUntil) {
++            const transition = nextPeekPhase({
++                phase: "hide",
++                timestamp,
++                phaseUntil: this.combatPeekPhaseUntil,
++                alignedForShot: false,
++                firedDuringPeek: false,
++                automatic,
++                fireDelayMs,
++            });
++            this.combatPeekPhase = transition.phase;
++            this.combatPeekPhaseUntil = timestamp + transition.durationMs;
++            this.combatPeekFired = false;
++        } else if (
++            this.combatPeekPhase === "peek" &&
++            (timestamp >= this.combatPeekPhaseUntil || (atPeek && this.combatPeekFired))
++        ) {
++            const transition = nextPeekPhase({
++                phase: "peek",
++                timestamp,
++                phaseUntil: this.combatPeekPhaseUntil,
++                alignedForShot: atPeek,
++                firedDuringPeek: this.combatPeekFired,
++                automatic,
++                fireDelayMs,
++            });
++            this.combatPeekPhase = transition.phase;
++            this.combatPeekPhaseUntil = timestamp + transition.durationMs;
++        } else if (this.combatPeekPhase === "return" && atAnchor && timestamp >= this.combatPeekPhaseUntil) {
++            const transition = nextPeekPhase({
++                phase: "return",
++                timestamp,
++                phaseUntil: this.combatPeekPhaseUntil,
++                alignedForShot: false,
++                firedDuringPeek: false,
++                automatic,
++                fireDelayMs,
++            });
++            this.combatPeekPhase = transition.phase;
++            this.combatPeekPhaseUntil = timestamp + transition.durationMs;
++            this.combatPeekSide *= -1;
++            this.combatPeekFired = false;
++        }
++
++        if (this.combatPeekPhase === "peek") {
++            return {
++                active: true,
++                allowFire: atPeek && target.visible,
++                movement: normalize(sub(selectedPeek, myPos)),
++                atPeek,
++            };
++        }
++
++        // The hidden anchor is deliberately on the far side of the obstacle.
++        // If the straight segment crosses the cover itself, route around one of
++        // the two peek shoulders first instead of repeatedly walking into it.
++        let hideTarget = anchor;
++        if (!atAnchor && !this.hasClearResourcePath(myPos, anchor)) {
++            const leftReachable = this.hasClearResourcePath(myPos, this.combatCoverLeftPeek);
++            const rightReachable = this.hasClearResourcePath(myPos, this.combatCoverRightPeek);
++            if (!leftReachable && !rightReachable) {
++                this.resetCombatCover();
++                return { active: false, allowFire: true, movement: v2.create(0, 0), atPeek: false };
++            }
++            hideTarget = leftReachable && rightReachable
++                ? distance(myPos, this.combatCoverLeftPeek) <= distance(myPos, this.combatCoverRightPeek)
++                    ? this.combatCoverLeftPeek
++                    : this.combatCoverRightPeek
++                : leftReachable
++                  ? this.combatCoverLeftPeek
++                  : this.combatCoverRightPeek;
++        }
++        return {
++            active: true,
++            allowFire: false,
++            movement: atAnchor ? v2.create(0, 0) : normalize(sub(hideTarget, myPos)),
++            atPeek: false,
++        };
++    }
++
+     private combat(
+         myPos: Vec2,
+         target: TargetChoice,
+         timestamp: number,
+         factionOrder: FactionOrder | null = null,
+     ): void {
+-        const enemyPos = target.object.data.pos as Vec2;
+         const targetMemory = this.playerMemory.get(target.object.__id);
++        const liveEnemyPos = target.object.data.pos as Vec2;
++        const enemyPos = target.visible && liveEnemyPos
++            ? liveEnemyPos
++            : targetMemory?.pos ?? liveEnemyPos;
++        if (!enemyPos) return;
+         const enemyVelocity = targetMemory?.velocity ?? v2.create(0, 0);
+         const enemySpeed = length(enemyVelocity);
+         const perkAdaptation = this.perkAdaptation(target.object, timestamp);
+@@ -5598,11 +5940,19 @@
+                   mobilityBonus: perkAdaptation.myHasWindwalk && target.distance < 35 ? 14 : 0,
+               })
+             : null;
+-        const leadTime =
+-            clamp(target.distance / projectileSpeed, 0, 0.65) *
+-            this.profile.leadFactor *
+-            (mastery?.leadFactor ?? 1);
+-        const predicted = add(enemyPos, mul(enemyVelocity, leadTime));
++        const movingPenalty = this.isMoving() ? 1.2 : 1;
++        const trackedAim = this.stableCombatAimDirection(
++            myPos,
++            target.object.__id,
++            enemyPos,
++            targetMemory,
++            projectileSpeed,
++            target.distance,
++            mastery?.leadFactor ?? 1,
++            movingPenalty,
++            timestamp,
++        );
++        const predicted = trackedAim.point;
+         const predictedLineClear =
+             target.visible &&
+             this.hasVisualLineOfSight(
+@@ -5619,19 +5969,16 @@
+                 target.object.__id,
+                 this.currentConcealmentZones,
+             );
+-        const shotClear = predictedLineClear || directLineClear;
++        const shotClear = target.visible && (predictedLineClear || directLineClear);
+         const observationAge = targetMemory ? timestamp - targetMemory.seenAt : Infinity;
+         const currentViewport = this.maxScopeViewport(myPos);
+         const freshVisibleShot =
++            target.visible &&
+             target.onScreen &&
+             isFreshCombatObservation(target.distance, observationAge, currentViewport.scopeLevel);
+-        const shotAimPoint = predictedLineClear ? predicted : enemyPos;
+-        const directAim = normalize(sub(shotAimPoint, myPos));
+-        const movingPenalty = this.isMoving() ? 1.25 : 1;
+-        const aimJitter = config.mapAi
+-            ? this.mapNavigator.aimJitter(this.profile.aimJitterRad)
+-            : this.profile.aimJitterRad;
+-        this.output.aimDir = jitterDirection(directAim, aimJitter * movingPenalty);
++        this.output.aimDir = predictedLineClear
++            ? trackedAim.direction
++            : normalize(sub(enemyPos, myPos), trackedAim.direction);
+         this.output.mouseLen = clamp(target.distance * 8, 12, net.Constants.MouseMaxDist);
+ 
+         const rawIdealRange = mastery?.idealRange ?? this.idealWeaponRange(weaponType);
+@@ -5651,10 +5998,19 @@
+             (factionOrder?.preferredRangeMultiplier ?? 1) *
+             (duelCombatProfile?.desiredRangeMultiplier ?? 1);
+         const toEnemy = normalize(sub(enemyPos, myPos));
++        const enemyFacing = normalize(
++            (target.object.data.dir as Vec2 | undefined) ?? mul(toEnemy, -1),
++            mul(toEnemy, -1),
++        );
+         const roleSide = this.role === "support" || this.role === "scout" ? -1 : 1;
+         const factionFlank = factionOrder?.flankSign ?? 0;
+         const tacticalStrafeSign = factionFlank !== 0 ? factionFlank : this.strafeSign;
+         const tangent = mul(perpendicular(toEnemy), tacticalStrafeSign * roleSide);
++        const enemyAimPressure = clamp(
++            (dot(enemyFacing, mul(toEnemy, -1)) - 0.42) / 0.58,
++            0,
++            1,
++        );
+ 
+         if (timestamp >= this.nextStrafeAt) {
+             this.strafeSign *= -1;
+@@ -5708,6 +6064,55 @@
+         } else if (!target.visible) {
+             movementVector = normalize(add(toEnemy, mul(tangent, 0.35)));
+         }
++
++        if (target.distance <= 15.5) {
++            if (timestamp >= this.closeDodgeUntil) {
++                const enemyLateral = dot(enemyVelocity, perpendicular(toEnemy));
++                if (Math.abs(enemyLateral) > 0.8) {
++                    this.closeDodgeSign = enemyLateral > 0 ? -1 : 1;
++                } else if (timestamp - this.lastDamagedAt < 620 || Math.random() < 0.42) {
++                    this.closeDodgeSign *= -1;
++                }
++                const baseHold = this.difficulty === "pro" ? 250 : this.difficulty === "hard" ? 330 : 430;
++                this.closeDodgeUntil = timestamp + baseHold + util.random(-55, 95);
++            }
++            const closeDirection = closeRangeCombatDirection({
++                myPos,
++                enemyPos,
++                enemyVelocity,
++                enemyFacing,
++                desiredDistance: Math.max(4.1, Math.min(10.5, idealRange * 0.55)),
++                strafeSign: this.closeDodgeSign,
++                health: this.local.health,
++                recentlyDamaged: timestamp - this.lastDamagedAt < 720,
++                targetDistance: target.distance,
++            });
++            movementVector = v2.create(closeDirection.x, closeDirection.y);
++        }
++        const precisionDistanceFight = Boolean(
++            weaponDef?.type === "gun" &&
++                target.distance >= 22 &&
++                (mastery?.stopToShoot || gunRange(weaponType) >= 68),
++        );
++        if (
++            precisionDistanceFight &&
++            enemyAimPressure >= 0.72 &&
++            timestamp >= this.precisionRepositionUntil &&
++            timestamp - this.lastDamagedAt < 1100
++        ) {
++            this.precisionRepositionSign *= -1;
++            this.precisionRepositionUntil = timestamp + (this.difficulty === "pro" ? 320 : 460);
++        }
++        if (precisionDistanceFight && timestamp < this.precisionRepositionUntil) {
++            const repositionSide = mul(perpendicular(toEnemy), this.precisionRepositionSign);
++            const rangeCorrection = target.distance < idealRange * 0.78
++                ? mul(toEnemy, -0.44)
++                : target.distance > idealRange * 1.22
++                  ? mul(toEnemy, 0.25)
++                  : v2.create(0, 0);
++            movementVector = normalize(add(mul(repositionSide, 1.15), rangeCorrection));
++        }
++
+         if (gasPressureAdvantage) {
+             // Hold the safe edge instead of chasing an opponent already forced by gas.
+             const circle = this.currentGasCircle();
+@@ -5785,6 +6190,16 @@
+                 strafeSign: this.strafeSign,
+             });
+         }
++        const coverTactics = this.applyProPeekTactics(
++            myPos,
++            target,
++            enemyPos,
++            weaponType,
++            weaponDef,
++            mastery,
++            timestamp,
++        );
++        if (coverTactics.active) movementVector = coverTactics.movement;
+         this.moveDirection(movementVector);
+         if (
+             shouldStopForPrecisionShot({
+@@ -5794,7 +6209,10 @@
+                 weaponRange: isMeleeWeapon
+                     ? Number(weaponDef?.attack?.rad ?? 3.2) + 1.4
+                     : gunRange(weaponType),
+-                lineClear: shotClear && freshVisibleShot,
++                lineClear:
++                    shotClear &&
++                    freshVisibleShot &&
++                    (!coverTactics.active || coverTactics.allowFire),
+                 healthSafe:
+                     this.local.health >
+                     effectiveCombatRetreatHealth(
+@@ -5831,7 +6249,10 @@
+             duelMode: this.duelModeActive,
+             reactionReady: reactionReady && (!this.duelModeActive || cadenceReady),
+             inRange,
+-            lineClear: shotClear && freshVisibleShot,
++            lineClear:
++                shotClear &&
++                freshVisibleShot &&
++                (!coverTactics.active || coverTactics.allowFire),
+             ammoReady: isMeleeWeapon || Number(weapon?.ammo ?? 0) > 0,
+             shootConfidence: this.profile.shootConfidence,
+             randomRoll: Math.random(),
+@@ -5839,6 +6260,11 @@
+         if (pullTrigger) {
+             this.output.shootStart = true;
+             this.output.shootHold = automaticFire;
++            if (coverTactics.active && coverTactics.allowFire) this.combatPeekFired = true;
++            if (!coverTactics.active && !automaticFire && target.distance >= 22) {
++                this.precisionRepositionSign *= -1;
++                this.precisionRepositionUntil = timestamp + (this.difficulty === "pro" ? 300 : 420);
++            }
+             if (this.duelModeActive) this.duelLastTriggerAt = timestamp;
+         } else if (this.duelModeActive && !this.isMoving()) {
+             // Never remain in the "aiming but doing nothing" state. Close range
+--- /dev/null
++++ b/server/src/bot/combatTactics.ts
+@@ -0,0 +1,210 @@
++export interface Vec2Like {
++    x: number;
++    y: number;
++}
++
++const EPSILON = 1e-6;
++
++const add = (a: Vec2Like, b: Vec2Like): Vec2Like => ({ x: a.x + b.x, y: a.y + b.y });
++const sub = (a: Vec2Like, b: Vec2Like): Vec2Like => ({ x: a.x - b.x, y: a.y - b.y });
++const mul = (a: Vec2Like, scalar: number): Vec2Like => ({ x: a.x * scalar, y: a.y * scalar });
++const dot = (a: Vec2Like, b: Vec2Like): number => a.x * b.x + a.y * b.y;
++const length = (value: Vec2Like): number => Math.hypot(value.x, value.y);
++const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
++
++export const normalizeVector = (
++    value: Vec2Like,
++    fallback: Vec2Like = { x: 1, y: 0 },
++): Vec2Like => {
++    const size = length(value);
++    if (!Number.isFinite(size) || size <= EPSILON) {
++        const fallbackSize = length(fallback);
++        return fallbackSize > EPSILON
++            ? { x: fallback.x / fallbackSize, y: fallback.y / fallbackSize }
++            : { x: 1, y: 0 };
++    }
++    return { x: value.x / size, y: value.y / size };
++};
++
++export interface InterceptAimContext {
++    shooterPos: Vec2Like;
++    targetPos: Vec2Like;
++    targetVelocity: Vec2Like;
++    targetAcceleration?: Vec2Like;
++    projectileSpeed: number;
++    leadFactor: number;
++    reactionSeconds?: number;
++    maxLeadSeconds?: number;
++}
++
++/**
++ * Solves a constant-velocity projectile intercept and then applies a bounded
++ * acceleration correction. The correction is deliberately conservative: a
++ * rapidly changing strafe should not make the bot aim far outside the target's
++ * current movement corridor.
++ */
++export function predictInterceptPoint(context: InterceptAimContext): {
++    point: Vec2Like;
++    interceptSeconds: number;
++} {
++    const relative = sub(context.targetPos, context.shooterPos);
++    const velocity = context.targetVelocity ?? { x: 0, y: 0 };
++    const projectileSpeed = Math.max(20, Number(context.projectileSpeed) || 20);
++    const maxLead = clamp(Number(context.maxLeadSeconds) || 0.7, 0.04, 0.9);
++
++    const a = dot(velocity, velocity) - projectileSpeed * projectileSpeed;
++    const b = 2 * dot(relative, velocity);
++    const c = dot(relative, relative);
++    let time = Math.sqrt(c) / projectileSpeed;
++
++    if (Math.abs(a) <= EPSILON) {
++        if (Math.abs(b) > EPSILON) {
++            const linear = -c / b;
++            if (linear > 0) time = linear;
++        }
++    } else {
++        const discriminant = b * b - 4 * a * c;
++        if (discriminant >= 0) {
++            const root = Math.sqrt(discriminant);
++            const t1 = (-b - root) / (2 * a);
++            const t2 = (-b + root) / (2 * a);
++            const positive = [t1, t2].filter((value) => value > 0 && Number.isFinite(value));
++            if (positive.length > 0) time = Math.min(...positive);
++        }
++    }
++
++    const reaction = clamp(Number(context.reactionSeconds) || 0, 0, 0.18);
++    time = clamp((time + reaction) * clamp(context.leadFactor, 0.35, 1.35), 0.015, maxLead);
++
++    const acceleration = context.targetAcceleration ?? { x: 0, y: 0 };
++    const accelerationMagnitude = length(acceleration);
++    const boundedAcceleration = accelerationMagnitude > 22
++        ? mul(normalizeVector(acceleration), 22)
++        : acceleration;
++    const accelerationWeight = time <= 0.16 ? 0.18 : time <= 0.35 ? 0.34 : 0.46;
++    const correction = mul(boundedAcceleration, 0.5 * time * time * accelerationWeight);
++    const point = add(context.targetPos, add(mul(velocity, time), correction));
++    return { point, interceptSeconds: time };
++}
++
++export interface CloseRangeMovementContext {
++    myPos: Vec2Like;
++    enemyPos: Vec2Like;
++    enemyVelocity: Vec2Like;
++    enemyFacing?: Vec2Like;
++    desiredDistance: number;
++    strafeSign: number;
++    health: number;
++    recentlyDamaged: boolean;
++    targetDistance: number;
++}
++
++/**
++ * Produces a stable close-range orbit. It avoids mirrored movement by biasing
++ * against the opponent's current lateral velocity and widens the orbit when the
++ * opponent is already aiming at the bot.
++ */
++export function closeRangeCombatDirection(context: CloseRangeMovementContext): Vec2Like {
++    const toEnemy = normalizeVector(sub(context.enemyPos, context.myPos));
++    const side = { x: -toEnemy.y, y: toEnemy.x };
++    const enemyLateral = dot(context.enemyVelocity, side);
++    let sign = context.strafeSign >= 0 ? 1 : -1;
++    if (Math.abs(enemyLateral) > 0.8) sign = enemyLateral > 0 ? -1 : 1;
++
++    const enemyFacing = normalizeVector(context.enemyFacing ?? mul(toEnemy, -1), mul(toEnemy, -1));
++    const enemyToBot = mul(toEnemy, -1);
++    const aimPressure = clamp((dot(enemyFacing, enemyToBot) - 0.35) / 0.65, 0, 1);
++    const desiredDistance = Math.max(3.4, context.desiredDistance);
++    const distanceError = context.targetDistance - desiredDistance;
++    const radial = clamp(distanceError / Math.max(3.5, desiredDistance * 0.45), -1.15, 1.15);
++    const panic = context.recentlyDamaged || context.health < 34;
++    const lateralWeight = 1.05 + aimPressure * 0.55 + (panic ? 0.24 : 0);
++    const radialWeight = panic && distanceError < 0 ? 1.35 : 0.72;
++    return normalizeVector(
++        add(mul(side, sign * lateralWeight), mul(toEnemy, radial * radialWeight)),
++        mul(side, sign),
++    );
++}
++
++export interface CoverGeometryContext {
++    obstaclePos: Vec2Like;
++    obstacleRadius: number;
++    enemyPos: Vec2Like;
++    playerRadius?: number;
++    peekPadding?: number;
++}
++
++export interface CoverGeometry {
++    anchor: Vec2Like;
++    leftPeek: Vec2Like;
++    rightPeek: Vec2Like;
++    awayFromEnemy: Vec2Like;
++}
++
++/**
++ * Computes a fully hidden anchor and two side-peek points around a circularized
++ * obstacle. The anchor stays deeper than the player's collider radius so the
++ * character sprite/collider does not leak around the edge while waiting.
++ */
++export function coverGeometry(context: CoverGeometryContext): CoverGeometry {
++    const away = normalizeVector(sub(context.obstaclePos, context.enemyPos));
++    const side = { x: -away.y, y: away.x };
++    const obstacleRadius = Math.max(0.55, Number(context.obstacleRadius) || 0.55);
++    const playerRadius = Math.max(0.55, Number(context.playerRadius) || 0.72);
++    const peekPadding = Math.max(0.15, Number(context.peekPadding) || 0.42);
++    const anchorDistance = obstacleRadius + playerRadius + 0.42;
++    const peekForward = obstacleRadius + playerRadius * 0.58;
++    const peekSide = obstacleRadius + playerRadius + peekPadding;
++    return {
++        anchor: add(context.obstaclePos, mul(away, anchorDistance)),
++        leftPeek: add(context.obstaclePos, add(mul(away, peekForward), mul(side, peekSide))),
++        rightPeek: add(context.obstaclePos, add(mul(away, peekForward), mul(side, -peekSide))),
++        awayFromEnemy: away,
++    };
++}
++
++export function obstacleBlocksBody(
++    enemyPos: Vec2Like,
++    bodyPos: Vec2Like,
++    obstaclePos: Vec2Like,
++    obstacleRadius: number,
++    playerRadius = 0.72,
++): boolean {
++    const segment = sub(bodyPos, enemyPos);
++    const denominator = dot(segment, segment);
++    if (denominator <= EPSILON) return false;
++    const t = clamp(dot(sub(obstaclePos, enemyPos), segment) / denominator, 0, 1);
++    const closest = add(enemyPos, mul(segment, t));
++    const clearance = length(sub(closest, obstaclePos));
++    return clearance <= Math.max(0.4, obstacleRadius) + Math.max(0.45, playerRadius) * 0.72;
++}
++
++export interface PeekCycleContext {
++    phase: "none" | "hide" | "peek" | "return";
++    timestamp: number;
++    phaseUntil: number;
++    alignedForShot: boolean;
++    firedDuringPeek: boolean;
++    automatic: boolean;
++    fireDelayMs: number;
++}
++
++export function nextPeekPhase(context: PeekCycleContext): {
++    phase: "hide" | "peek" | "return";
++    durationMs: number;
++} {
++    if (context.phase === "none") return { phase: "hide", durationMs: 380 };
++    if (context.phase === "hide" && context.timestamp >= context.phaseUntil) {
++        return { phase: "peek", durationMs: context.automatic ? 300 : clamp(context.fireDelayMs + 150, 250, 430) };
++    }
++    if (
++        context.phase === "peek" &&
++        (context.timestamp >= context.phaseUntil || (context.alignedForShot && context.firedDuringPeek))
++    ) {
++        return { phase: "return", durationMs: 240 };
++    }
++    if (context.phase === "return" && context.timestamp >= context.phaseUntil) {
++        return { phase: "hide", durationMs: context.automatic ? 430 : 520 };
++    }
++    return { phase: context.phase, durationMs: Math.max(1, context.phaseUntil - context.timestamp) };
++}
+--- /dev/null
++++ b/server/src/combatTacticsSmokeTest.ts
+@@ -0,0 +1,70 @@
++import assert from "assert";
++
++import {
++    closeRangeCombatDirection,
++    coverGeometry,
++    nextPeekPhase,
++    obstacleBlocksBody,
++    predictInterceptPoint,
++} from "./bot/combatTactics";
++
++const intercept = predictInterceptPoint({
++    shooterPos: { x: 0, y: 0 },
++    targetPos: { x: 50, y: 0 },
++    targetVelocity: { x: 0, y: 6 },
++    targetAcceleration: { x: 0, y: 0 },
++    projectileSpeed: 100,
++    leadFactor: 1,
++});
++assert(intercept.point.y > 2, "moving target must be led instead of aimed at current position");
++assert(intercept.interceptSeconds > 0 && intercept.interceptSeconds < 0.9);
++
++const close = closeRangeCombatDirection({
++    myPos: { x: 0, y: 0 },
++    enemyPos: { x: 4, y: 0 },
++    enemyVelocity: { x: 0, y: 3 },
++    enemyFacing: { x: -1, y: 0 },
++    desiredDistance: 7,
++    strafeSign: 1,
++    health: 25,
++    recentlyDamaged: true,
++    targetDistance: 4,
++});
++assert(close.x < 0, "a hurt bot inside its desired range must create distance");
++assert(Math.abs(close.y) > 0.25, "close combat must retain a lateral dodge component");
++
++const cover = coverGeometry({
++    obstaclePos: { x: 10, y: 0 },
++    obstacleRadius: 2,
++    enemyPos: { x: 0, y: 0 },
++    playerRadius: 0.72,
++});
++assert(cover.anchor.x > 12.5, "hidden anchor must sit fully behind the obstacle");
++assert(cover.leftPeek.y * cover.rightPeek.y < 0, "peek points must exist on opposite sides");
++assert(
++    obstacleBlocksBody({ x: 0, y: 0 }, cover.anchor, { x: 10, y: 0 }, 2, 0.72),
++    "the hidden anchor must keep the whole player collider behind cover",
++);
++
++const peek = nextPeekPhase({
++    phase: "hide",
++    timestamp: 1000,
++    phaseUntil: 900,
++    alignedForShot: false,
++    firedDuringPeek: false,
++    automatic: false,
++    fireDelayMs: 500,
++});
++assert.equal(peek.phase, "peek");
++const retreat = nextPeekPhase({
++    phase: "peek",
++    timestamp: 1200,
++    phaseUntil: 1500,
++    alignedForShot: true,
++    firedDuringPeek: true,
++    automatic: false,
++    fireDelayMs: 500,
++});
++assert.equal(retreat.phase, "return");
++
++console.log("Combat tactics smoke test passed: intercept tracking, close-range orbiting, full-body cover, and Pro peek cycle.");

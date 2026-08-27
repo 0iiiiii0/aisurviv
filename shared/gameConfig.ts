@@ -24,6 +24,12 @@ export enum DamageType {
     Gas,
     Airdrop,
     Airstrike,
+    /** 搜打撤: the player left through an extraction point. */
+    Extraction,
+    /** 搜打撤: the match time limit expired and everyone was eliminated. */
+    TimeUp,
+    /** Zombie mode: eliminated by the mission nuclear blast. */
+    Nuclear,
 }
 
 export enum EmoteSlot {
@@ -87,6 +93,7 @@ export enum Input {
     Fullscreen,
     HideUI,
     TeamPingSingle,
+    Sandevistan,
     Count,
 }
 
@@ -101,6 +108,14 @@ export enum MapId {
     Cobalt = 7,
     Birthday = 8,
     Beach = 9,
+    Sandevistan = 100,
+    Extraction = 101,
+    ExtractionSecret = 102,
+    Duel = 103,
+    AimTraining = 104,
+    DuelAi = 105,
+    Zombie = 106,
+    SpaceCity = 107,
 }
 
 export enum Plane {
@@ -137,11 +152,14 @@ export enum FactionTeam {
 }
 
 export const GameConfig = {
+    // Inventory values are serialized with 12 bits. The maximum value is kept
+    // as a sentinel for arena items that can be used without being consumed.
+    inventoryInfiniteCount: 0xfff,
     // started with 1000 to distinguish us from the original surviv protocol
     // the protocol we originated from was 78
     // remember to bump this every time a serialization function is changed
     // or a definition item added, removed or moved
-    protocolVersion: 1024,
+    protocolVersion: 1025,
     Action,
     Anim,
     DamageType,
@@ -176,7 +194,14 @@ export const GameConfig = {
         health: 100,
         reviveHealth: 24,
         minActiveTime: 10,
-        boostDecay: 0.375,
+        // Seconds a disconnected contestant stays in the match before being removed.
+        // Bots reconnect and resume within this window; longer-lived zombies are freed.
+        disconnectTimeout: 30,
+        // Seconds a disconnected human contestant may reconnect into the same match
+        // (3 minutes) as long as their model is not permanently dead. Bots keep the
+        // shorter disconnectTimeout so their worker processes release promptly.
+        reconnectTimeout: 180,
+        boostDecay: 0.33,
         boostMoveSpeed: 1.85,
         boostHealAmounts: [0.5, 1.25, 1.5, 1.75],
         boostBreakpoints: [1, 1, 1.5, 0.5],
@@ -212,6 +237,80 @@ export const GameConfig = {
         killLeaderMinKills: 3,
         minSpawnRad: 25,
         perkModeRoleSelectDuration: 20,
+        /** AI heading turn rate (rad/s) while world time is dilated. */
+        aiTurnRateRadians: 8,
+
+        // Sandevistan (Cyberpunk 2077 implant) mode parameters. Activation
+        // slows the whole match (other players, AI, bullets, gas, throwables
+        // and map interactions) to worldTimeScale while the caster's own
+        // actions advance at the server-tunable playerTimeScale, then enters
+        // cooldown. In the dedicated mode the lobby is one human + AI fill,
+        // so the global time dilation is authoritative and safe.
+        sandevistan: {
+            /** World time multiplier while active (0.1 = world runs at 10%). */
+            worldTimeScale: 0.1,
+            /** Active duration in seconds. */
+            duration: 5,
+            /** Cooldown in seconds, starts when the effect ends. */
+            cooldown: 25,
+            /** Extra movement speed for the caster while active (0 = none). */
+            speedBonus: 0,
+            /** Spread multiplier while active (0.5 = half spread). */
+            spreadMult: 0.5,
+            /** Cooldown reduction in seconds per kill while active. */
+            killCooldownReduce: 4,
+
+            // ---- V90 visual effect tuning (single source of truth) ----
+            /** Activating transition length (flash / zoom-in). */
+            activationDuration: 0.18,
+            /** Deactivating transition length (afterimages collapse away). */
+            deactivationDuration: 0.25,
+            /** Brief camera field-of-view boost (scale punch) on activation. */
+            cameraFovBoost: 0.035,
+            /** Screen shake strength on activation / deactivation (px). */
+            cameraShakeStrength: 3,
+            /** Visual time scale feel (world already slowed server-side). */
+            visualTimeScale: 1,
+
+            afterimageEnabled: true,
+            /** Fixed spawn cadence while moving (seconds). */
+            afterimageSpawnInterval: 0.25,
+            /** Minimum world move speed (units/s) to keep spawning trails. */
+            afterimageMinDistance: 2.2,
+            /** Afterimage lifetime before dissolving (seconds). */
+            afterimageLifetime: 0.42,
+            /** Object-pool size (max simultaneous afterimages). */
+            afterimageMaxCount: 14,
+            /** Starting opacity of a fresh afterimage. */
+            afterimageOpacity: 0.62,
+            /** Higher = older images fade faster (exponential-ish). */
+            afterimageFadeCurve: 1.6,
+            /** Main afterimage tint (cyan-blue). */
+            afterimageColor: 0x4fc3ff,
+            /** Edge tint (purple / magenta). */
+            afterimageEdgeColor: 0xff66ff,
+            /** Edge dissolve strength (0 disables the edge pass). */
+            afterimageDissolveStrength: 0.35,
+
+            // Post-processing toggles (batch 2 uses PIXI filters; the config is
+            // already final so batch 1 can ship with safe CSS fallbacks).
+            chromaticAberrationEnabled: true,
+            chromaticAberrationStrength: 1.5,
+            distortionEnabled: true,
+            distortionStrength: 0.25,
+            motionBlurEnabled: true,
+            motionBlurStrength: 0.35,
+
+            /** Placeholder sound slots; empty until audio assets are added. */
+            activationSound: "",
+            loopSound: "",
+            deactivationSound: "",
+            soundPitchEffect: 0.88,
+
+            /** 0 low / 1 medium / 2 high. Low disables heavy post-processing. */
+            qualityLevel: 2,
+            multiplayerSafeMode: false,
+        },
 
         /* STRIP_FROM_PROD_CLIENT:START */
         defaultItems: {

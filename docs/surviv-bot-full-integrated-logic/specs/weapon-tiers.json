@@ -1,0 +1,100 @@
+{
+  "order": [
+    "S+",
+    "S",
+    "A",
+    "B",
+    "C",
+    "D",
+    "F"
+  ],
+  "score": {
+    "S+": 100,
+    "S": 85,
+    "A": 70,
+    "B": 55,
+    "C": 40,
+    "D": 25,
+    "F": 5
+  },
+  "tiers": {
+    "S+": [
+      "Rainbow Blaster",
+      "AWM-S",
+      "USAS-12",
+      "Super 90",
+      "M134",
+      "Potato Cannon",
+      "M79"
+    ],
+    "S": [
+      "SV-98",
+      "Mosin-Nagant",
+      "M4A1-S",
+      "Mk 20 SSR",
+      "M249",
+      "Saiga-12",
+      "SPAS-12",
+      "Lasr Gun",
+      "Heart Cannon",
+      "Flamethrower",
+      "Spud Gun"
+    ],
+    "A": [
+      "M1 Garand",
+      "L86A2",
+      "SVD-63",
+      "Mk45G",
+      "SCAR-H",
+      "Groza-S",
+      "Groza",
+      "AN-94",
+      "QBB-97",
+      "PKP Pecheneg",
+      "PKM",
+      "BAR M1918",
+      "Vector (.45 ACP)",
+      "Vector (9mm)",
+      "CZ-3A1",
+      "MP220",
+      "Hawk 12G",
+      "P30L",
+      "DEagle 50"
+    ],
+    "B": [
+      "AK-47",
+      "M416",
+      "FAMAS",
+      "DP-28",
+      "M39 EMR",
+      "Mk 12 SPR",
+      "VSS",
+      "Scout Elite",
+      "BLR-81",
+      "M870",
+      "M1100",
+      "MAC-10",
+      "M1A1",
+      "UMP9",
+      "MP5",
+      "Peacemaker",
+      "OTs-38"
+    ],
+    "C": [
+      "G18C",
+      "M93R",
+      "OT-38",
+      "M1911",
+      "Model 94"
+    ],
+    "D": [
+      "M9",
+      "M9 Cursed",
+      "Water Gun"
+    ],
+    "F": [
+      "Flare Gun",
+      "Bugle"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang='zh-CN'>
+<head>
+	<meta charset='UTF-8'>
+	<title>查看仓库</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/css/storage.css">
+</head>
+<body>
+	<div id='stash-view-app'>
+		<header class='storage-header'>
+			<div class='storage-title'>查看仓库</div>
+			<div class='storage-identity'>
+				<a class='storage-back' href='/extraction'>返回排行榜</a>
+			</div>
+		</header>
+		<div id='stash-view-status' class='extraction-stash-status'></div>
+		<main class='storage-main storage-stash-view-full'>
+			<section class='storage-stash-view-full-panel'>
+				<div class='storage-stash-view-head'>
+					<div>
+						<h2 id='stash-view-full-title'>查看仓库</h2>
+						<p id='stash-view-full-sub' class='storage-leaderboard-hint'></p>
+					</div>
+				</div>
+				<div id='stash-view-full-grid' class='storage-stash-view-grid'></div>
+			</section>
+		</main>
+	</div>
+	<script type="module" src="/src/viewStash.ts"></script>
+</body>
+</html>

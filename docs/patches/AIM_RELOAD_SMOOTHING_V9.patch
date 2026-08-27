@@ -1,0 +1,346 @@
+diff --git a/server/package.json b/server/package.json
+index 8586c83..47bb87d 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -23,7 +23,8 @@
+         "test:faction-autofill": "node -r ts-node/register src/factionAutoFillSmokeTest.ts",
+         "test:bot-combat-heal": "node -r ts-node/register src/botCombatHealSmokeTest.ts",
+         "test:resource-sweep": "node -r ts-node/register src/resourceSweepSmokeTest.ts",
+-        "test:loot-safety": "node -r ts-node/register src/lootSafetySmokeTest.ts"
++        "test:loot-safety": "node -r ts-node/register src/lootSafetySmokeTest.ts",
++        "test:aim-control": "node -r ts-node/register src/aimControlSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+diff --git a/server/src/aimControlSmokeTest.ts b/server/src/aimControlSmokeTest.ts
+new file mode 100644
+index 0000000..7319982
+--- /dev/null
++++ b/server/src/aimControlSmokeTest.ts
+@@ -0,0 +1,55 @@
++import assert from "assert";
++
++import {
++    angularDistance,
++    normalizeDirection,
++    predictTrackedAimDirection,
++    rotateDirectionTowards,
++    shortestAngleDelta,
++    shouldDelayGunfire,
++} from "./bot/aimControl";
++
++const deg = (value: number): number => (value * Math.PI) / 180;
++
++const invalid = normalizeDirection({ x: Number.NaN, y: 0 }, { x: 0, y: 2 });
++assert.ok(Math.abs(invalid.x) < 1e-9);
++assert.ok(Math.abs(invalid.y - 1) < 1e-9);
++
++assert.ok(Math.abs(shortestAngleDelta(deg(179), deg(-179)) - deg(2)) < 1e-9);
++assert.ok(Math.abs(shortestAngleDelta(deg(-179), deg(179)) + deg(2)) < 1e-9);
++
++const start = { x: 1, y: 0 };
++const opposite = { x: -1, y: 0 };
++const firstFrame = rotateDirectionTowards(start, opposite, deg(500), 16);
++const firstFrameTurn = angularDistance(start, firstFrame);
++assert.ok(firstFrameTurn > deg(7.9) && firstFrameTurn < deg(8.1));
++assert.ok(angularDistance(firstFrame, opposite) > deg(170));
++
++// A stalled event loop must not turn the delayed packet into an instant snap.
++const delayedFrame = rotateDirectionTowards(start, opposite, deg(500), 1000);
++const delayedTurn = angularDistance(start, delayedFrame);
++assert.ok(delayedTurn > deg(49.9) && delayedTurn < deg(50.1));
++
++let direction = start;
++for (let index = 0; index < 30; index += 1) {
++    direction = rotateDirectionTowards(direction, opposite, deg(500), 16);
++}
++assert.ok(angularDistance(direction, opposite) < 1e-6);
++
++
++const tracked = predictTrackedAimDirection(
++    { x: 10, y: 10 },
++    { x: 20, y: 10 },
++    { x: 0, y: 10 },
++    0.1,
++);
++assert.ok(tracked.x > 0.99);
++assert.ok(tracked.y > 0.09 && tracked.y < 0.11);
++assert.equal(shouldDelayGunfire(deg(30), true), true);
++assert.equal(shouldDelayGunfire(deg(5), false), false);
++
++const smallTarget = { x: Math.cos(deg(5)), y: Math.sin(deg(5)) };
++const noOvershoot = rotateDirectionTowards(start, smallTarget, deg(500), 16);
++assert.ok(angularDistance(noOvershoot, smallTarget) < 1e-9);
++
++console.log("Aim control smoke test passed: reload tracking can turn smoothly without one-frame snapping.");
+diff --git a/server/src/bot/aimControl.ts b/server/src/bot/aimControl.ts
+new file mode 100644
+index 0000000..f37b21b
+--- /dev/null
++++ b/server/src/bot/aimControl.ts
+@@ -0,0 +1,83 @@
++export interface Direction2D {
++    x: number;
++    y: number;
++}
++
++const TAU = Math.PI * 2;
++
++export function normalizeDirection(
++    value: Direction2D,
++    fallback: Direction2D = { x: 1, y: 0 },
++): Direction2D {
++    const x = Number(value?.x);
++    const y = Number(value?.y);
++    const length = Math.hypot(x, y);
++    if (!Number.isFinite(length) || length <= 1e-6) {
++        const fallbackLength = Math.hypot(Number(fallback.x), Number(fallback.y));
++        if (!Number.isFinite(fallbackLength) || fallbackLength <= 1e-6) {
++            return { x: 1, y: 0 };
++        }
++        return { x: fallback.x / fallbackLength, y: fallback.y / fallbackLength };
++    }
++    return { x: x / length, y: y / length };
++}
++
++export function shortestAngleDelta(fromRadians: number, toRadians: number): number {
++    let delta = (toRadians - fromRadians) % TAU;
++    if (delta > Math.PI) delta -= TAU;
++    if (delta < -Math.PI) delta += TAU;
++    return delta;
++}
++
++export function angularDistance(a: Direction2D, b: Direction2D): number {
++    const current = normalizeDirection(a);
++    const target = normalizeDirection(b, current);
++    const dot = Math.max(-1, Math.min(1, current.x * target.x + current.y * target.y));
++    return Math.acos(dot);
++}
++
++/**
++ * Rotate toward a desired aim direction with a hard angular-speed limit.
++ * The time step is capped so a delayed event-loop tick can never produce an
++ * instant 180-degree snap.
++ */
++export function rotateDirectionTowards(
++    currentValue: Direction2D,
++    targetValue: Direction2D,
++    radiansPerSecond: number,
++    elapsedMs: number,
++): Direction2D {
++    const current = normalizeDirection(currentValue);
++    const target = normalizeDirection(targetValue, current);
++    const currentAngle = Math.atan2(current.y, current.x);
++    const targetAngle = Math.atan2(target.y, target.x);
++    const delta = shortestAngleDelta(currentAngle, targetAngle);
++    const safeRate = Math.max(0.05, Number(radiansPerSecond) || 0.05);
++    const safeElapsedSeconds = Math.max(0.001, Math.min(0.1, Number(elapsedMs) / 1000 || 0.001));
++    const maxStep = safeRate * safeElapsedSeconds;
++    if (Math.abs(delta) <= maxStep) return target;
++    const nextAngle = currentAngle + Math.sign(delta) * maxStep;
++    return { x: Math.cos(nextAngle), y: Math.sin(nextAngle) };
++}
++export function predictTrackedAimDirection(
++    origin: Direction2D,
++    targetPosition: Direction2D,
++    targetVelocity: Direction2D,
++    leadSeconds: number,
++    fallback: Direction2D = { x: 1, y: 0 },
++): Direction2D {
++    const safeLead = Math.max(0, Math.min(0.25, Number(leadSeconds) || 0));
++    return normalizeDirection(
++        {
++            x: Number(targetPosition.x) + Number(targetVelocity.x) * safeLead - Number(origin.x),
++            y: Number(targetPosition.y) + Number(targetVelocity.y) * safeLead - Number(origin.y),
++        },
++        fallback,
++    );
++}
++
++export function shouldDelayGunfire(remainingAimErrorRadians: number, automatic: boolean): boolean {
++    const alignmentLimit = automatic ? 0.25 : 0.16;
++    return Number(remainingAimErrorRadians) > alignmentLimit;
++}
++
+diff --git a/server/src/smartBot.ts b/server/src/smartBot.ts
+index be04462..5ade9a6 100644
+--- a/server/src/smartBot.ts
++++ b/server/src/smartBot.ts
+@@ -96,6 +96,12 @@ import {
+ } from "./bot/combatIntelligence";
+ import { SpatialGrid } from "./bot/SpatialGrid";
+ import { sanitizeMouseDistance } from "./bot/inputSafety";
++import {
++    angularDistance,
++    predictTrackedAimDirection,
++    rotateDirectionTowards,
++    shouldDelayGunfire,
++} from "./bot/aimControl";
+ import { shouldPullTrigger, shouldStopForPrecisionShot } from "./bot/combatExecution";
+ import { assessHealSafety, type HealSafetyDecision } from "./bot/healSafety";
+ import { movementInputFromDirection } from "./bot/movementInput";
+@@ -1027,6 +1033,12 @@ class TacticalBot {
+     private crateLastSwingAt = 0;
+     private lastNavigationBlockerId = 0;
+     private navigationBlockerSince = 0;
++    private transmittedAimDir = v2.create(1, 0);
++    private aimTransmissionInitialized = false;
++    private lastAimTransmissionAt = 0;
++    private reloadAimHoldDir: Vec2 | null = null;
++    private reloadAimHoldMouseLen = 50;
++    private reloadAimHoldUntil = 0;
+ 
+     ws: WebSocket;
+     matchPriv: string;
+@@ -7395,17 +7407,147 @@ class TacticalBot {
+         this.airstrikeZones = this.airstrikeZones.filter((zone) => zone.expiresAt > timestamp);
+     }
+ 
++    private isReloadingNow(): boolean {
++        const actionType = Number(this.getSelf()?.data.actionType ?? GameConfig.Action.None);
++        return actionType === GameConfig.Action.Reload || actionType === GameConfig.Action.ReloadAlt;
++    }
++
++    private reloadTrackingAim(
++        timestamp: number,
++    ): { direction: Vec2; mouseLen: number } | null {
++        if (!this.isReloadingNow()) {
++            if (timestamp >= this.reloadAimHoldUntil) this.reloadAimHoldDir = null;
++            return null;
++        }
++
++        const me = this.getSelf();
++        const myPos = me?.data.pos as Vec2 | undefined;
++        if (!myPos) return null;
++
++        const target = this.currentEnemyId
++            ? this.objectPool.getObjById(this.currentEnemyId)
++            : undefined;
++        const memory = this.currentEnemyId
++            ? this.playerMemory.get(this.currentEnemyId)
++            : undefined;
++        const targetValid = Boolean(
++            target &&
++                target.__type === ObjectType.Player &&
++                !target.data.dead &&
++                !this.isTeammate(target.__id) &&
++                Number(target.data.layer ?? 0) === this.myLayer(),
++        );
++
++        // PlayerMemory is only refreshed for enemies that are actually visible
++        // through the bot's owned scope and line-of-sight checks. Track that
++        // recent visual contact during the reload instead of turning toward loot,
++        // movement objectives, or a default direction.
++        if (targetValid && memory && timestamp - memory.seenAt <= 900) {
++            const targetDistance = distance(myPos, memory.pos);
++            const leadSeconds = clamp(targetDistance / 520, 0.025, 0.12);
++            const direction = predictTrackedAimDirection(
++                myPos,
++                memory.pos,
++                memory.velocity,
++                leadSeconds,
++                this.transmittedAimDir,
++            ) as Vec2;
++            const mouseLen = clamp(targetDistance * 8, 12, net.Constants.MouseMaxDist);
++            this.reloadAimHoldDir = direction;
++            this.reloadAimHoldMouseLen = mouseLen;
++            this.reloadAimHoldUntil = timestamp + 850;
++            return { direction, mouseLen };
++        }
++
++        // Briefly preserve the last legitimate combat bearing when the opponent
++        // crosses a doorway or the update packet momentarily omits them. This is
++        // a directional hold only; it never fires or reveals a hidden position.
++        if (this.reloadAimHoldDir && timestamp < this.reloadAimHoldUntil) {
++            return {
++                direction: this.reloadAimHoldDir,
++                mouseLen: this.reloadAimHoldMouseLen,
++            };
++        }
++        return null;
++    }
++
++    private aimTurnRateRadians(reloading: boolean): number {
++        let degreesPerSecond = this.state === "combat" ? 500 : 330;
++        if (reloading) degreesPerSecond = 390;
++        if (this.duelModeActive) degreesPerSecond += 70;
++        if (this.profile.reactionMs <= 100) degreesPerSecond += 55;
++        else if (this.profile.reactionMs >= 280) degreesPerSecond -= 35;
++
++        const myPos = this.getSelf()?.data.pos as Vec2 | undefined;
++        const memory = this.currentEnemyId ? this.playerMemory.get(this.currentEnemyId) : undefined;
++        if (myPos && memory && distance(myPos, memory.pos) <= 8) {
++            degreesPerSecond += 120;
++        }
++        return (clamp(degreesPerSecond, 260, 650) * Math.PI) / 180;
++    }
++
++    private updateTransmittedAim(
++        desiredDirection: Vec2,
++        timestamp: number,
++        reloading: boolean,
++    ): { direction: Vec2; remainingError: number } {
++        const desired = normalize(desiredDirection, this.transmittedAimDir);
++        if (!this.aimTransmissionInitialized) {
++            const serverFacing = this.getSelf()?.data.dir as Vec2 | undefined;
++            this.transmittedAimDir = normalize(serverFacing ?? this.transmittedAimDir, desired);
++            this.lastAimTransmissionAt = timestamp;
++            this.aimTransmissionInitialized = true;
++        }
++
++        const elapsedMs = Math.max(1, timestamp - this.lastAimTransmissionAt);
++        this.transmittedAimDir = rotateDirectionTowards(
++            this.transmittedAimDir,
++            desired,
++            this.aimTurnRateRadians(reloading),
++            elapsedMs,
++        ) as Vec2;
++        this.lastAimTransmissionAt = timestamp;
++        return {
++            direction: this.transmittedAimDir,
++            remainingError: angularDistance(this.transmittedAimDir, desired),
++        };
++    }
++
+     private sendInputs(): void {
+         if (!this.connected || this.ws.readyState !== WebSocket.OPEN) return;
++        const timestamp = now();
++        const reloading = this.isReloadingNow();
++        const reloadAim = this.reloadTrackingAim(timestamp);
++        const desiredAim = reloadAim?.direction ?? this.output.aimDir;
++        const transmittedAim = this.updateTransmittedAim(desiredAim, timestamp, reloading);
++
++        let shootStart = this.output.shootStart;
++        let shootHold = this.output.shootHold;
++        const activeWeapon = this.local.weapons[this.local.curWeapIdx];
++        const activeWeaponDef = gameDef(activeWeapon?.type ?? "");
++        if (activeWeaponDef?.type === "gun") {
++            const automatic = activeWeaponDef.fireMode === "auto" || activeWeaponDef.autoAttack === true;
++            if (shouldDelayGunfire(transmittedAim.remainingError, automatic)) {
++                // Turn first, then fire. This prevents the smoothed turn from
++                // becoming a shot fired halfway through a large target switch.
++                shootStart = false;
++                shootHold = false;
++            }
++        }
++        if (reloading) {
++            shootStart = false;
++            shootHold = false;
++        }
++
+         const packet = new net.InputMsg();
+         packet.moveDown = this.output.movement.down;
+         packet.moveUp = this.output.movement.up;
+         packet.moveLeft = this.output.movement.left;
+         packet.moveRight = this.output.movement.right;
+-        packet.shootStart = this.output.shootStart;
+-        packet.shootHold = this.output.shootHold;
+-        packet.toMouseDir = normalize(this.output.aimDir);
+-        packet.toMouseLen = sanitizeMouseDistance(this.output.mouseLen);
++        packet.shootStart = shootStart;
++        packet.shootHold = shootHold;
++        packet.toMouseDir = transmittedAim.direction;
++        packet.toMouseLen = sanitizeMouseDistance(reloadAim?.mouseLen ?? this.output.mouseLen);
+         packet.useItem = this.output.useItem;
+         for (const input of this.output.inputs) packet.addInput(input);
+         this.sendMsg(net.MsgType.Input, packet);

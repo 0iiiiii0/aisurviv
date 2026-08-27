@@ -1,0 +1,1129 @@
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/package.json b/server/package.json
+--- a/server/package.json	2026-07-24 14:11:16.000000000 +0000
++++ b/server/package.json	2026-07-24 18:06:49.676768145 +0000
+@@ -26,7 +26,8 @@
+         "test:loot-safety": "node -r ts-node/register src/lootSafetySmokeTest.ts",
+         "test:aim-control": "node -r ts-node/register src/aimControlSmokeTest.ts",
+         "test:special-roles": "node -r ts-node/register src/specialRoleSmokeTest.ts",
+-        "test:integrated-spec": "node -r ts-node/register src/integratedLogicSpecSmokeTest.ts"
++        "test:integrated-spec": "node -r ts-node/register src/integratedLogicSpecSmokeTest.ts",
++        "test:faction-airdrop-container": "node -r ts-node/register src/factionAirdropContainerSmokeTest.ts"
+     },
+     "dependencies": {
+         "nanotimer": "^0.3.15",
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/src/bot/containerNavigation.ts b/server/src/bot/containerNavigation.ts
+--- a/server/src/bot/containerNavigation.ts	1970-01-01 00:00:00.000000000 +0000
++++ b/server/src/bot/containerNavigation.ts	2026-07-24 18:04:03.624763246 +0000
+@@ -0,0 +1,132 @@
++import type { Vec2 } from "../../../shared/utils/v2";
++import { math } from "../../../shared/utils/math";
++import { v2 } from "../../../shared/utils/v2";
++
++export interface ContainerRouteGeometry {
++    entranceOutside: Vec2;
++    entranceInside: Vec2;
++    botInside: boolean;
++    targetInside: boolean;
++}
++
++export interface ContainerObstacleDefinition {
++    type?: string;
++    destructible?: boolean;
++    collidable?: boolean;
++    door?: unknown;
++    button?: unknown;
++    explosion?: unknown;
++    armorPlated?: boolean;
++    stonePlated?: boolean;
++    health?: number;
++    obstacleType?: string;
++    hitParticle?: string | string[];
++    explodeParticle?: string | string[];
++    sound?: {
++        bullet?: string;
++        punch?: string;
++        explode?: string;
++    };
++}
++
++export const isShippingContainerType = (type: string): boolean =>
++    /^container_(?:0[1-6]|01x)$/i.test(type);
++
++/**
++ * Surviv.io shipping containers have one usable opening at local negative Y.
++ * Loot is spawned deeper inside, so approaching it by straight-line distance
++ * often drives a bot into a side wall. This helper exposes the two-stage route:
++ * outside mouth -> just inside mouth -> loot.
++ */
++export const shippingContainerRoute = (
++    buildingType: string,
++    center: Vec2,
++    orientation: number,
++    from: Vec2,
++    target: Vec2,
++): ContainerRouteGeometry | null => {
++    if (!isShippingContainerType(buildingType)) return null;
++
++    const rotation = math.oriToRad(orientation);
++    const localTarget = v2.rotate(v2.sub(target, center), -rotation);
++    const openContainer = /^container_04$/i.test(buildingType);
++    const targetMinY = openContainer ? -11.4 : -4.1;
++    const targetMaxY = openContainer ? 11.4 : 8.75;
++    if (Math.abs(localTarget.x) > 3.15 || localTarget.y < targetMinY || localTarget.y > targetMaxY) {
++        return null;
++    }
++
++    const localBot = v2.rotate(v2.sub(from, center), -rotation);
++    const botInside =
++        Math.abs(localBot.x) <= 2.7 &&
++        localBot.y >= (openContainer ? -10.9 : -3.45) &&
++        localBot.y <= (openContainer ? 10.9 : 8.35);
++
++    // Closed containers open at local -Y. The open-through variant can be
++    // entered from either end, so select the end that is closer to the bot.
++    let outsideLocal = v2.create(0, -5.35);
++    let insideLocal = v2.create(0, -2.45);
++    if (openContainer && localBot.y > 0) {
++        outsideLocal = v2.create(0, 12.1);
++        insideLocal = v2.create(0, 9.8);
++    } else if (openContainer) {
++        outsideLocal = v2.create(0, -12.1);
++        insideLocal = v2.create(0, -9.8);
++    }
++
++    return {
++        entranceOutside: v2.add(center, v2.rotate(outsideLocal, rotation)),
++        entranceInside: v2.add(center, v2.rotate(insideLocal, rotation)),
++        botInside,
++        targetInside: true,
++    };
++};
++
++const textIncludesWood = (value: unknown): boolean => {
++    if (Array.isArray(value)) return value.some(textIncludesWood);
++    return /wood|plank|board|barricade/i.test(String(value ?? ""));
++};
++
++/**
++ * A blocker across a container mouth should be cleared only when it is a safe,
++ * destructible wooden/furniture object. Metal container walls, explosive
++ * barrels and plated obstacles are deliberately excluded.
++ */
++export const isSafeContainerEntryBlocker = (
++    objectType: string,
++    definition: ContainerObstacleDefinition | undefined,
++): boolean => {
++    if (
++        !definition ||
++        definition.type !== "obstacle" ||
++        definition.destructible !== true ||
++        definition.collidable === false ||
++        definition.door ||
++        definition.button ||
++        definition.explosion ||
++        definition.armorPlated ||
++        definition.stonePlated
++    ) {
++        return false;
++    }
++
++    const obstacleType = String(definition.obstacleType ?? "");
++    const soundText = [
++        definition.sound?.bullet,
++        definition.sound?.punch,
++        definition.sound?.explode,
++    ].join(" ");
++    const visualMaterial = [definition.hitParticle, definition.explodeParticle];
++    const explicitlyWooden =
++        /plank|board|barricade|wood|crate|box|fence|chair|table|shelf|cabinet|locker|drawer/i.test(objectType) ||
++        /wood|crate|furniture|barricade|locker/i.test(obstacleType) ||
++        textIncludesWood(soundText) ||
++        visualMaterial.some(textIncludesWood);
++
++    // Low-health furniture occasionally uses a neutral name but is still a
++    // legitimate entrance obstruction. Keep this fallback conservative.
++    const lightFurniture =
++        Number(definition.health ?? Infinity) <= 160 &&
++        /furniture|crate|locker/i.test(obstacleType);
++    return explicitlyWooden || lightFurniture;
++};
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/src/bot/factionStrategy.ts b/server/src/bot/factionStrategy.ts
+--- a/server/src/bot/factionStrategy.ts	2026-07-24 14:14:18.000000000 +0000
++++ b/server/src/bot/factionStrategy.ts	2026-07-24 17:52:27.784742718 +0000
+@@ -319,6 +319,11 @@
+         this.pruneTeam(team, snapshot.updatedAt);
+     }
+ 
++    getHomeAnchor(teamId: number): Vec2 | null {
++        const home = this.teams.get(teamId)?.homeAnchor;
++        return home ? clone(home) : null;
++    }
++
+     removeBot(botId: number): void {
+         const teamId = this.botTeams.get(botId);
+         this.botTeams.delete(botId);
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/src/bot/specialRoleStrategy.ts b/server/src/bot/specialRoleStrategy.ts
+--- a/server/src/bot/specialRoleStrategy.ts	2026-07-24 16:46:52.000000000 +0000
++++ b/server/src/bot/specialRoleStrategy.ts	2026-07-24 18:05:43.340766188 +0000
+@@ -98,6 +98,7 @@
+ const add = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x + b.x, y: a.y + b.y });
+ const sub = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, y: a.y - b.y });
+ const mul = (a: Vec2, scalar: number): Vec2 => ({ x: a.x * scalar, y: a.y * scalar });
++const dot = (a: Vec2, b: Vec2): number => a.x * b.x + a.y * b.y;
+ const length = (value: Vec2): number => Math.hypot(value.x, value.y);
+ const normalize = (value: Vec2, fallback: Vec2 = { x: 1, y: 0 }): Vec2 => {
+     const len = length(value);
+@@ -425,39 +426,96 @@
+         return { use: false, stagingPoint: fallback, reason: "airdrop already nearby" };
+     }
+ 
+-    const center = context.safeCenter ?? {
++    const mapCenter = {
+         x: context.mapWidth * 0.5,
+         y: context.mapHeight * 0.5,
+     };
++    const safeCenter = context.safeCenter ?? mapCenter;
+     const anchor = context.formationAnchor ?? context.homeAnchor ?? context.position;
+-    const objective = context.objective ?? center;
+-    const awayFromFront = normalize(sub(anchor, objective), normalize(sub(context.position, center)));
++    const objective = context.objective ?? safeCenter;
++    const fallbackRear = normalize(sub(anchor, objective), normalize(sub(context.position, mapCenter)));
++    const home = context.homeAnchor;
++    const friendlyDirection = home
++        ? normalize(sub(home, mapCenter), fallbackRear)
++        : fallbackRear;
+     const safeRadius = Math.max(18, context.safeRadius ?? Math.min(context.mapWidth, context.mapHeight) * 0.42);
++    const homeDistance = home ? distance(home, mapCenter) : safeRadius * 0.55;
+     const rearOffset = openingDeployment
+-        ? 7
++        ? 9
+         : context.phase === "early"
+-          ? 13
++          ? 14
+           : context.phase === "mid"
+-            ? 10
+-            : 7;
+-    let target = add(anchor, mul(awayFromFront, rearOffset));
+-    target = lerp(target, center, context.phase === "late" || context.phase === "final" ? 0.35 : 0.16);
++            ? 11
++            : 8;
++
++    // A commander flare is a rear-line team asset, not a frontline objective.
++    // Start from the learned faction spawn anchor and only blend in formation
++    // information after the point has been kept on the friendly half of the map.
++    const homeWeight = openingDeployment
++        ? 0.68
++        : context.phase === "early"
++          ? 0.58
++          : context.phase === "mid"
++            ? 0.48
++            : context.phase === "late"
++              ? 0.34
++              : 0.2;
++    const friendlyAnchor = home
++        ? lerp(mapCenter, home, homeWeight)
++        : add(anchor, mul(friendlyDirection, rearOffset));
++    const tacticalRear = add(anchor, mul(friendlyDirection, rearOffset));
++    let target = home ? lerp(friendlyAnchor, tacticalRear, 0.28) : tacticalRear;
++
++    // Clamp the staging point to the friendly side. The late/final circle may
++    // eventually force the team toward the centre, but an opening military
++    // airdrop should never be deliberately called across the midline.
++    const minimumFriendlyDepth = openingDeployment
++        ? Math.max(10, Math.min(safeRadius * 0.34, homeDistance * 0.46))
++        : context.phase === "early"
++          ? Math.max(8, Math.min(safeRadius * 0.26, homeDistance * 0.34))
++          : context.phase === "mid"
++            ? Math.max(5, Math.min(safeRadius * 0.18, homeDistance * 0.24))
++            : 1.5;
++    const currentFriendlyDepth = dot(sub(target, mapCenter), friendlyDirection);
++    if (currentFriendlyDepth < minimumFriendlyDepth) {
++        target = add(target, mul(friendlyDirection, minimumFriendlyDepth - currentFriendlyDepth));
++    }
++
++    // Keep the point in the current safe circle without discarding faction-side
++    // preference. Only late phases receive a strong pull toward the safe centre.
++    const safePull = context.phase === "final" ? 0.5 : context.phase === "late" ? 0.34 : 0.12;
++    target = lerp(target, safeCenter, safePull);
++    if (distance(target, safeCenter) > safeRadius * 0.7) {
++        target = lerp(target, safeCenter, 0.46);
++    }
++
++    // Safe-circle correction can pull the point back across the map midline.
++    // Re-apply a feasible friendly-side floor after that correction. If the
++    // current circle is mostly hostile territory, retain as much rear depth as
++    // the circle permits instead of deliberately choosing the enemy half.
++    const safeCenterDepth = dot(sub(safeCenter, mapCenter), friendlyDirection);
++    const maximumSafeDepth = safeCenterDepth + safeRadius * 0.68;
++    const finalFriendlyFloor = Math.max(
++        0.75,
++        Math.min(minimumFriendlyDepth, maximumSafeDepth),
++    );
++    const finalFriendlyDepth = dot(sub(target, mapCenter), friendlyDirection);
++    if (finalFriendlyDepth < finalFriendlyFloor) {
++        target = add(target, mul(friendlyDirection, finalFriendlyFloor - finalFriendlyDepth));
++    }
+ 
+     const margin = 18;
+     target = {
+         x: clamp(target.x, margin, context.mapWidth - margin),
+         y: clamp(target.y, margin, context.mapHeight - margin),
+     };
+-    if (distance(target, center) > safeRadius * 0.72) {
+-        target = lerp(target, center, 0.45);
+-    }
+ 
+     // An indoor leader still receives an outdoor staging plan, but the caller
+     // must route through a usable door and confirm the authoritative indoor flag
+-    // has cleared before sending Shoot. This avoids falsely consuming the one-time
+-    // opening deployment inside a large building.
++    // has cleared before sending Shoot. Move farther toward the friendly rear if
++    // the first point is still crowded by a structure.
+     if ((context.indoors || context.nearestStructureDistance < 7) && distance(context.position, target) < 4) {
+-        target = add(target, mul(awayFromFront, 9));
++        target = add(target, mul(friendlyDirection, 10));
+     }
+     return {
+         use: true,
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/src/factionAirdropContainerSmokeTest.ts b/server/src/factionAirdropContainerSmokeTest.ts
+--- a/server/src/factionAirdropContainerSmokeTest.ts	1970-01-01 00:00:00.000000000 +0000
++++ b/server/src/factionAirdropContainerSmokeTest.ts	2026-07-24 18:09:50.140773469 +0000
+@@ -0,0 +1,78 @@
++import assert from "assert/strict";
++
++import { MapObjectDefs } from "../../shared/defs/mapObjectDefs";
++import { v2 } from "../../shared/utils/v2";
++import { resourceBreakPlan } from "./bot/lootStrategy";
++import {
++    isSafeContainerEntryBlocker,
++    shippingContainerRoute,
++} from "./bot/containerNavigation";
++
++const militaryDrop = MapObjectDefs.airdrop_crate_03 as any;
++assert.equal(militaryDrop.airdropCrate, true, "military drop must be recognized as an airdrop crate");
++assert.equal(militaryDrop.button?.useOnce, true, "military drop should have one opener interaction");
++assert.equal(militaryDrop.button?.destroyOnUse, true, "opening must replace the military shell with its loot crate");
++assert.equal(militaryDrop.button?.useDelay, 2.5, "opener must remain committed through the server unlock delay");
++
++
++const militaryPayloadPlan = resourceBreakPlan("fists", "crate_12", 1, 1, 28);
++assert.ok(
++    militaryPayloadPlan?.feasible,
++    "the heavy military payload must remain a deliberate multi-bot break target even when it exceeds the ordinary 16-hit resource limit",
++);
++assert.ok((militaryPayloadPlan?.estimatedHits ?? 0) > 16);
++
++const closedRoute = shippingContainerRoute(
++    "container_01",
++    v2.create(100, 100),
++    0,
++    v2.create(100, 88),
++    v2.create(100, 103.25),
++);
++assert.ok(closedRoute, "loot inside a closed shipping container must get an entrance route");
++assert.ok(closedRoute.entranceOutside.y < 95, "closed-container route must approach the open negative-Y mouth");
++assert.ok(closedRoute.entranceInside.y > closedRoute.entranceOutside.y);
++assert.equal(closedRoute.botInside, false);
++
++const rotatedRoute = shippingContainerRoute(
++    "container_01",
++    v2.create(100, 100),
++    1,
++    v2.create(112, 100),
++    v2.create(96.75, 100),
++);
++assert.ok(rotatedRoute, "container entrance geometry must rotate with the building");
++assert.ok(rotatedRoute.entranceOutside.x > 105, "orientation 1 must rotate the negative-Y mouth toward positive X");
++
++const throughRoute = shippingContainerRoute(
++    "container_04",
++    v2.create(100, 100),
++    0,
++    v2.create(100, 114),
++    v2.create(100, 99.95),
++);
++assert.ok(throughRoute);
++assert.ok(throughRoute.entranceOutside.y > 111, "open-through containers should use the nearer end");
++
++assert.equal(
++    isSafeContainerEntryBlocker("crate_01", MapObjectDefs.crate_01 as any),
++    true,
++    "a wooden crate across the mouth should be cleared",
++);
++assert.equal(
++    isSafeContainerEntryBlocker("shack_wall_top", MapObjectDefs.shack_wall_top as any),
++    true,
++    "a destructible wooden board/wall across an entrance should be cleared",
++);
++assert.equal(
++    isSafeContainerEntryBlocker("container_wall_side", MapObjectDefs.container_wall_side as any),
++    false,
++    "AI must not mistake the metal container wall for a breakable entrance board",
++);
++assert.equal(
++    isSafeContainerEntryBlocker("barrel_01", MapObjectDefs.barrel_01 as any),
++    false,
++    "AI must not melee an explosive barrel merely because it blocks a container mouth",
++);
++
++console.log("faction airdrop/container smoke test passed");
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/src/smartBot.ts b/server/src/smartBot.ts
+--- a/server/src/smartBot.ts	2026-07-24 16:58:38.000000000 +0000
++++ b/server/src/smartBot.ts	2026-07-24 18:09:50.140773469 +0000
+@@ -38,6 +38,7 @@
+ import assert from "assert";
+ 
+ import { GameObjectDefs } from "../../shared/defs/gameObjectDefs";
++import { MapObjectDefs } from "../../shared/defs/mapObjectDefs";
+ import { EmotesDefs } from "../../shared/defs/gameObjects/emoteDefs";
+ import { MeleeDefs } from "../../shared/defs/gameObjects/meleeDefs";
+ import { OutfitDefs } from "../../shared/defs/gameObjects/outfitDefs";
+@@ -55,6 +56,7 @@
+     LocalDataWithDirty,
+     PlayerInfo,
+ } from "../../shared/net/updateMsg";
++import { math } from "../../shared/utils/math";
+ import { util } from "../../shared/utils/util";
+ import { v2, type Vec2 } from "../../shared/utils/v2";
+ import type { FindGameResponse } from "./gameServer";
+@@ -103,6 +105,10 @@
+     shouldDelayGunfire,
+ } from "./bot/aimControl";
+ import { shouldPullTrigger, shouldStopForPrecisionShot } from "./bot/combatExecution";
++import {
++    isSafeContainerEntryBlocker,
++    shippingContainerRoute,
++} from "./bot/containerNavigation";
+ import { assessHealSafety, type HealSafetyDecision } from "./bot/healSafety";
+ import { movementInputFromDirection } from "./bot/movementInput";
+ import {
+@@ -420,6 +426,22 @@
+     score: number;
+ }
+ 
++interface AirdropTarget {
++    object: GameObject;
++    distance: number;
++    landed: boolean;
++    military: boolean;
++    friendlySide: boolean;
++}
++
++interface ContainerRoute {
++    building: GameObject;
++    entranceOutside: Vec2;
++    entranceInside: Vec2;
++    botInside: boolean;
++    targetInside: boolean;
++}
++
+ const DIFFICULTIES: Record<DifficultyName, DifficultyProfile> = {
+     easy: {
+         thinkIntervalMs: 170,
+@@ -1223,6 +1245,14 @@
+     private currentVaultPanelId = 0;
+     private vaultPanelLockUntil = 0;
+     private readonly usedVaultPanelsUntil = new Map<number, number>();
++    private currentAirdropCrateId = 0;
++    private airdropCrateLockUntil = 0;
++    private lastAirdropInteractAt = 0;
++    private currentContainerBlockerId = 0;
++    private containerBlockerLockUntil = 0;
++    private containerBlockerLastHealthT = 1;
++    private containerBlockerNoProgressSwings = 0;
++    private containerBlockerLastSwingAt = 0;
+     private lastGeneralFlareAt = 0;
+     private specialRoleAssignedAt = 0;
+     private leaderOpeningFlareDeadline = 0;
+@@ -2001,6 +2031,38 @@
+             return;
+         }
+ 
++        const militaryAirdropCrate = this.chooseMilitaryAirdropCrate(
++            myPos,
++            enemyDistance,
++            timestamp,
++        );
++        if (
++            militaryAirdropCrate &&
++            this.useMilitaryAirdropCrate(myPos, militaryAirdropCrate, timestamp)
++        ) {
++            this.decisionBrain.reset();
++            this.setState("special");
++            this.autoOpenDoor(myPos, timestamp);
++            this.applyUnstuckOverride(timestamp);
++            this.lastCommandMoving = this.isMoving();
++            return;
++        }
++
++        const militaryAirdropPayload = this.chooseMilitaryAirdropPayload(
++            myPos,
++            enemyDistance,
++            timestamp,
++        );
++        if (militaryAirdropPayload) {
++            this.decisionBrain.reset();
++            this.setState("loot");
++            this.breakCrate(myPos, militaryAirdropPayload, timestamp);
++            this.autoOpenDoor(myPos, timestamp);
++            this.applyUnstuckOverride(timestamp);
++            this.lastCommandMoving = this.isMoving();
++            return;
++        }
++
+         if (
+             this.handleSpecialRoleAction(
+                 myPos,
+@@ -2820,17 +2882,304 @@
+         return false;
+     }
+ 
+-    private nearestAirdrop(myPos: Vec2): { object: GameObject; distance: number } | null {
+-        let best: { object: GameObject; distance: number } | null = null;
++    private isFriendlyFactionSide(point: Vec2, tolerance = 0): boolean {
++        if (!this.factionModeActive()) return true;
++        const teamId = this.myTeamId();
++        const home = factionCoordinator.getHomeAnchor(teamId) ?? this.spawnPosition;
++        if (!home) return true;
++        const center = v2.create(this.mapWidth * 0.5, this.mapHeight * 0.5);
++        const homeDirection = normalize(sub(home, center), v2.create(teamId === 1 ? -1 : 1, 0));
++        return dot(sub(point, center), homeDirection) >= -tolerance;
++    }
++
++    private refineFriendlyFlareStagingPoint(
++        desired: Vec2,
++        myPos: Vec2,
++        timestamp: number,
++    ): Vec2 {
++        if (!this.factionModeActive()) return desired;
++        const teamId = this.myTeamId();
++        const mapCenter = v2.create(this.mapWidth * 0.5, this.mapHeight * 0.5);
++        const home = factionCoordinator.getHomeAnchor(teamId) ?? this.spawnPosition ?? myPos;
++        const rear = normalize(sub(home, mapCenter), v2.create(teamId === 1 ? -1 : 1, 0));
++        const side = v2.create(-rear.y, rear.x);
++        const circle = this.currentGasCircle();
++        const margin = 18;
++        const candidates: Vec2[] = [];
++        const pushCandidate = (candidate: Vec2): void => {
++            candidates.push(v2.create(
++                clamp(candidate.x, margin, this.mapWidth - margin),
++                clamp(candidate.y, margin, this.mapHeight - margin),
++            ));
++        };
++
++        pushCandidate(desired);
++        pushCandidate(lerp(desired, home, 0.26));
++        for (const rearDistance of [8, 14, 22, 30]) {
++            pushCandidate(add(desired, mul(rear, rearDistance)));
++            pushCandidate(add(add(desired, mul(rear, rearDistance * 0.72)), mul(side, rearDistance * 0.55)));
++            pushCandidate(add(add(desired, mul(rear, rearDistance * 0.72)), mul(side, -rearDistance * 0.55)));
++        }
++
++        let best = candidates[0] ?? desired;
++        let bestScore = -Infinity;
++        for (const candidate of candidates) {
++            const friendlyDepth = dot(sub(candidate, mapCenter), rear);
++            const friendlySide = this.isFriendlyFactionSide(candidate, 1.5);
++            const roof = this.currentRoofZoneAt(candidate);
++            const structureDistance = this.nearestStructureDistance(candidate);
++            const enemyCount = this.enemyClusterAt(candidate, 26);
++            const allyCount = this.friendlyClusterAt(candidate, 24);
++            const safeOverflow = circle
++                ? Math.max(0, distance(candidate, circle.center) - Math.max(8, circle.radius - 8))
++                : 0;
++            const recentAirstrike = this.airstrikeZones.some(
++                (zone) => zone.expiresAt > timestamp && distance(candidate, zone.pos) <= zone.rad + 5,
++            );
++            const score =
++                friendlyDepth * 7.5 -
++                distance(candidate, desired) * 1.35 -
++                (friendlySide ? 0 : 2400) -
++                (roof ? 1800 : 0) -
++                Math.max(0, 10 - structureDistance) * 92 -
++                enemyCount * 420 +
++                Math.min(4, allyCount) * 32 -
++                safeOverflow * 240 -
++                (recentAirstrike ? 2200 : 0);
++            if (score > bestScore) {
++                bestScore = score;
++                best = candidate;
++            }
++        }
++        return best;
++    }
++
++    private isMilitaryAirdropShell(object: GameObject): boolean {
++        if (object.__type !== ObjectType.Obstacle) return false;
++        const data = object.data;
++        return /^airdrop_crate_0[34]/i.test(String(data.type ?? "")) && !data.dead;
++    }
++
++    private isMilitaryAirdropCrate(object: GameObject): boolean {
++        return (
++            this.isMilitaryAirdropShell(object) &&
++            Boolean(object.data.button?.canUse) &&
++            !Boolean(object.data.button?.onOff)
++        );
++    }
++
++    private isMilitaryAirdropPayload(object: GameObject): boolean {
++        if (object.__type !== ObjectType.Obstacle || object.data.dead) return false;
++        return /^crate_1[23]$/i.test(String(object.data.type ?? ""));
++    }
++
++    private nearestAirdrop(myPos: Vec2): AirdropTarget | null {
++        let best: AirdropTarget | null = null;
++        const consider = (object: GameObject, landed: boolean, military: boolean): void => {
++            const pos = object.data.pos as Vec2 | undefined;
++            if (!pos) return;
++            const candidate: AirdropTarget = {
++                object,
++                distance: distance(myPos, pos),
++                landed,
++                military,
++                friendlySide: this.isFriendlyFactionSide(pos, 7),
++            };
++            if (!best || candidate.distance < best.distance) best = candidate;
++        };
+         for (const object of this.objectPool.values(ObjectType.Airdrop)) {
++            consider(object, false, true);
++        }
++        for (const object of this.objectPool.values(ObjectType.Obstacle)) {
++            if (this.isMilitaryAirdropShell(object) || this.isMilitaryAirdropPayload(object)) {
++                consider(object, true, true);
++            }
++        }
++        return best;
++    }
++
++    private chooseMilitaryAirdropCrate(
++        myPos: Vec2,
++        enemyDistance: number,
++        timestamp: number,
++    ): AirdropTarget | null {
++        if (
++            !this.factionModeActive() ||
++            enemyDistance < 13 ||
++            timestamp - this.lastDamagedAt < 500 ||
++            (this.currentSpecialRole === "leader" && !this.leaderOpeningFlareDone)
++        ) {
++            return null;
++        }
++
++        const locked = this.currentAirdropCrateId
++            ? this.objectPool.getObjById(this.currentAirdropCrateId)
++            : undefined;
++        if (
++            locked &&
++            timestamp < this.airdropCrateLockUntil &&
++            this.isMilitaryAirdropCrate(locked)
++        ) {
++            const pos = locked.data.pos as Vec2;
++            const candidate: AirdropTarget = {
++                object: locked,
++                distance: distance(myPos, pos),
++                landed: true,
++                military: true,
++                friendlySide: this.isFriendlyFactionSide(pos, 7),
++            };
++            if (
++                (candidate.friendlySide || this.friendlyClusterAt(pos, 25) >= 2) &&
++                this.squad.reserveCrate(locked.__id, this.id, 1200, timestamp)
++            ) {
++                return candidate;
++            }
++        }
++
++        let best: AirdropTarget | null = null;
++        let bestScore = -Infinity;
++        for (const object of this.objectPool.values(ObjectType.Obstacle)) {
++            if (!this.isMilitaryAirdropCrate(object)) continue;
++            const pos = object.data.pos as Vec2;
++            const dist = distance(myPos, pos);
++            if (dist > 92) continue;
++            const friendlySide = this.isFriendlyFactionSide(pos, 7);
++            if (!friendlySide && this.friendlyClusterAt(pos, 25) < 2) continue;
++            if (dist > 4 && !this.canNavigateResourcePath(myPos, pos, object.__id, object.__id)) {
++                continue;
++            }
++            const roleBonus =
++                this.currentSpecialRole === "recon" ||
++                this.currentSpecialRole === "lieutenant" ||
++                this.currentSpecialRole === "grenadier" ||
++                this.currentSpecialRole === "none"
++                    ? 55
++                    : this.currentSpecialRole === "leader"
++                      ? -25
++                      : -45;
++            const score = 980 + roleBonus + (friendlySide ? 70 : 0) - dist * 4.2;
++            if (score <= bestScore) continue;
++            if (!this.squad.reserveCrate(object.__id, this.id, score, timestamp)) continue;
++            if (best) this.squad.releaseCrate(best.object.__id, this.id);
++            best = { object, distance: dist, landed: true, military: true, friendlySide };
++            bestScore = score;
++        }
++        if (best) {
++            this.currentAirdropCrateId = best.object.__id;
++            this.airdropCrateLockUntil = timestamp + 9000;
++        }
++        return best;
++    }
++
++    private chooseMilitaryAirdropPayload(
++        myPos: Vec2,
++        enemyDistance: number,
++        timestamp: number,
++    ): CrateChoice | null {
++        if (
++            !this.factionModeActive() ||
++            enemyDistance < 10 ||
++            timestamp - this.lastDamagedAt < 600
++        ) {
++            return null;
++        }
++        const meleeType = String(
++            this.local.weapons[GameConfig.WeaponSlot.Melee]?.type ?? "fists",
++        );
++        let best: CrateChoice | null = null;
++        for (const object of this.objectPool.values(ObjectType.Obstacle)) {
++            if (!this.isMilitaryAirdropPayload(object)) continue;
+             const pos = object.data.pos as Vec2 | undefined;
+-            if (!pos) continue;
++            if (!pos || Number(object.data.layer ?? 0) !== this.myLayer()) continue;
+             const dist = distance(myPos, pos);
+-            if (!best || dist < best.distance) best = { object, distance: dist };
++            if (dist > 96) continue;
++            const friendlySide = this.isFriendlyFactionSide(pos, 8);
++            if (!friendlySide && this.friendlyClusterAt(pos, 28) < 2) continue;
++            if (
++                dist > 4.5 &&
++                !this.canNavigateResourcePath(myPos, pos, object.__id, object.__id)
++            ) {
++                continue;
++            }
++            const plan = resourceBreakPlan(
++                meleeType,
++                String(object.data.type ?? ""),
++                clamp(Number(object.data.healthT ?? 1), 0.01, 1),
++                Number(object.data.scale ?? 1),
++                28,
++            );
++            if (!plan?.feasible) continue;
++            const roleBonus =
++                this.currentSpecialRole === "recon" ||
++                this.currentSpecialRole === "lieutenant" ||
++                this.currentSpecialRole === "grenadier" ||
++                this.currentSpecialRole === "none"
++                    ? 110
++                    : this.currentSpecialRole === "leader"
++                      ? -45
++                      : -20;
++            const score =
++                1550 +
++                roleBonus +
++                (friendlySide ? 100 : 0) +
++                plan.expectedLootValue * 1.7 -
++                plan.estimatedHits * 7 -
++                dist * 4.6;
++            if (best && score <= best.score) continue;
++            if (!this.squad.reserveCrate(object.__id, this.id, score, timestamp)) continue;
++            if (best) this.squad.releaseCrate(best.object.__id, this.id);
++            best = {
++                object,
++                distance: dist,
++                score,
++                estimatedHits: plan.estimatedHits,
++                expectedValue: plan.expectedLootValue,
++                searchBand: dist <= 12 ? "near" : dist <= 34 ? "mid" : "far",
++                inOpeningSweep: false,
++            };
++        }
++        if (best) {
++            if (this.currentCrateId && this.currentCrateId !== best.object.__id) {
++                this.squad.releaseCrate(this.currentCrateId, this.id);
++            }
++            this.currentCrateId = best.object.__id;
++            this.crateLockUntil = timestamp + clamp(3500 + best.distance * 70, 4200, 10500);
+         }
+         return best;
+     }
+ 
++    private useMilitaryAirdropCrate(
++        myPos: Vec2,
++        target: AirdropTarget,
++        timestamp: number,
++    ): boolean {
++        const object = this.objectPool.getObjById(target.object.__id);
++        if (!object || !this.isMilitaryAirdropCrate(object)) {
++            this.squad.releaseCrate(target.object.__id, this.id);
++            this.currentAirdropCrateId = 0;
++            this.airdropCrateLockUntil = 0;
++            return false;
++        }
++        const pos = object.data.pos as Vec2;
++        const dist = distance(myPos, pos);
++        this.output.aimDir = normalize(sub(pos, myPos), this.output.aimDir);
++        this.output.mouseLen = clamp(dist * 8, 10, net.Constants.MouseMaxDist);
++        const interactionDistance = GameConfig.player.radius + 2.25;
++        if (dist > interactionDistance) {
++            this.moveDirection(this.steerToward(myPos, pos, timestamp, object.__id, object.__id));
++            return true;
++        }
++        this.output.movement = EMPTY_MOVEMENT();
++        this.output.shootStart = false;
++        this.output.shootHold = false;
++        if (timestamp - this.lastAirdropInteractAt >= 850) {
++            this.addInput(GameConfig.Input.Interact);
++            this.lastAirdropInteractAt = timestamp;
++        }
++        this.airdropCrateLockUntil = timestamp + 4500;
++        return true;
++    }
++
+     private nearestStructureDistance(point: Vec2): number {
+         let best = Infinity;
+         for (const type of [ObjectType.Building, ObjectType.Structure, ObjectType.Obstacle]) {
+@@ -3079,13 +3428,18 @@
+ 
+     private defendFriendlyAirdrop(
+         myPos: Vec2,
+-        drop: { object: GameObject; distance: number },
++        drop: AirdropTarget,
+         enemy: TargetChoice | null,
+         order: FactionOrder | null,
+         timestamp: number,
+     ): boolean {
+         const dropPos = drop.object.data.pos as Vec2 | undefined;
+-        if (!dropPos || !this.friendlyLeaderNear(dropPos, 34)) return false;
++        if (
++            !dropPos ||
++            (!drop.friendlySide && !this.friendlyLeaderNear(dropPos, 34) && this.friendlyClusterAt(dropPos, 25) < 2)
++        ) {
++            return false;
++        }
+         if (enemy && enemy.distance < 24) return false;
+ 
+         const roleRadius: Record<SpecialFactionRole, number> = {
+@@ -3167,7 +3521,7 @@
+         underAirstrike: boolean,
+         timestamp: number,
+     ): boolean {
+-        if (!this.factionModeActive() || this.currentSpecialRole === "none") return false;
++        if (!this.factionModeActive()) return false;
+         if (outsideGas || underAirstrike || (enemy?.distance ?? Infinity) < 6.5) {
+             this.pendingSpecialAction = null;
+             return false;
+@@ -3178,7 +3532,7 @@
+             !this.leaderOpeningFlareDone;
+ 
+         const nearestDrop = this.nearestAirdrop(myPos);
+-        if (nearestDrop && !nearestDrop.object.data.landed && nearestDrop.distance < 9.5) {
++        if (nearestDrop && !nearestDrop.landed && nearestDrop.distance < 9.5) {
+             const dropPos = nearestDrop.object.data.pos as Vec2;
+             this.output.aimDir = normalize(sub(dropPos, myPos));
+             this.moveDirection(normalize(sub(myPos, dropPos)));
+@@ -3186,6 +3540,24 @@
+         }
+         if (this.continueSpecialAction(myPos, timestamp)) return true;
+ 
++        // Ordinary 50v50 soldiers also support a friendly military airdrop. A
++        // deterministic subset forms the security ring while the squad-reserved
++        // opener interacts with the crate, avoiding a 40-bot pile-up.
++        if (this.currentSpecialRole === "none") {
++            const assignedSupport = nearestDrop
++                ? (this.id + nearestDrop.object.__id) % 4 === 0
++                : false;
++            if (
++                assignedSupport &&
++                nearestDrop &&
++                nearestDrop.distance < 56 &&
++                this.defendFriendlyAirdrop(myPos, nearestDrop, enemy, order, timestamp)
++            ) {
++                return true;
++            }
++            return false;
++        }
++
+         const committedResource =
+             (this.currentCrateId > 0 && timestamp < this.crateLockUntil) ||
+             (this.currentLootId > 0 && timestamp < this.lootLockUntil);
+@@ -3307,31 +3679,28 @@
+                 safeRadius: currentCircle?.radius ?? null,
+                 formationAnchor: order?.formationAnchor ?? null,
+                 objective: order?.objective ?? null,
+-                homeAnchor: null,
++                homeAnchor: factionCoordinator.getHomeAnchor(this.factionTeamId),
+                 timestamp,
+                 lastFlareAt: this.lastFlareAt,
+                 openingDeployment: leaderOpeningWindow,
+             });
+             if (decision.use) {
+-                if (this.isIndoorsNow(myPos)) {
+-                    this.flareStagingPoint = v2.create(
+-                        decision.stagingPoint.x,
+-                        decision.stagingPoint.y,
++                if (!this.flareStagingPoint || timestamp > this.flarePlanUntil) {
++                    const refined = this.refineFriendlyFlareStagingPoint(
++                        v2.create(decision.stagingPoint.x, decision.stagingPoint.y),
++                        myPos,
++                        timestamp,
+                     );
+-                    this.flarePlanUntil = timestamp + 24000;
++                    this.flareStagingPoint = refined;
++                    this.flarePlanUntil = timestamp + (this.isIndoorsNow(myPos) ? 24000 : 18000);
++                }
++                if (this.isIndoorsNow(myPos)) {
+                     return this.ensureOutdoorFlarePosition(
+                         myPos,
+                         this.flareStagingPoint,
+                         timestamp,
+                     );
+                 }
+-                if (!this.flareStagingPoint || timestamp > this.flarePlanUntil) {
+-                    this.flareStagingPoint = v2.create(
+-                        decision.stagingPoint.x,
+-                        decision.stagingPoint.y,
+-                    );
+-                    this.flarePlanUntil = timestamp + 18000;
+-                }
+                 const staging = this.flareStagingPoint;
+                 const stagingDistance = distance(myPos, staging);
+                 if (stagingDistance > 3.2) {
+@@ -3994,7 +4363,7 @@
+             if (dist > allowedRange) return null;
+             if (
+                 dist > 3.2 &&
+-                !this.canNavigateResourcePath(myPos, pos, 0, object.__id)
++                !this.canNavigateLootPath(myPos, pos, object.__id, timestamp)
+             ) {
+                 return null;
+             }
+@@ -6609,7 +6978,7 @@
+             const pos = candidate.object.data.pos as Vec2;
+             if (
+                 candidate.distance > 3.2 &&
+-                !this.canNavigateResourcePath(myPos, pos, 0, candidate.object.__id)
++                !this.canNavigateLootPath(myPos, pos, candidate.object.__id, timestamp)
+             ) {
+                 continue;
+             }
+@@ -7128,6 +7497,14 @@
+         this.output.aimDir = directDirection;
+         this.output.mouseLen = clamp(choice.distance * 8, 8, net.Constants.MouseMaxDist);
+ 
++        // Loot spawned inside a shipping container must be approached through the
++        // open end. Direct steering treats the metal side panel as if it could be
++        // walked through and makes bots stare at a gun through the wall. If a
++        // destructible plank/barricade blocks the mouth, clear it first.
++        if (this.routeToContainerLoot(myPos, targetPos, choice.object.__id, timestamp)) {
++            return;
++        }
++
+         if (this.lastLootAttemptId !== choice.object.__id) {
+             this.lastLootAttemptId = choice.object.__id;
+             this.lastLootAttemptAt = 0;
+@@ -8560,6 +8937,178 @@
+         return blockers;
+     }
+ 
++    private containerRouteForLoot(from: Vec2, target: Vec2): ContainerRoute | null {
++        let best: ContainerRoute | null = null;
++        let bestDistance = Infinity;
++        for (const building of this.objectPool.values(ObjectType.Building)) {
++            const data = building.data;
++            const center = data.pos as Vec2 | undefined;
++            const type = String(data.type ?? "");
++            if (
++                !center ||
++                Number(data.layer ?? 0) !== this.myLayer() ||
++                !/^container_(?:0[1-6]|01x)$/i.test(type)
++            ) {
++                continue;
++            }
++            const geometry = shippingContainerRoute(
++                type,
++                center,
++                Number(data.ori ?? data.orientation ?? 0),
++                from,
++                target,
++            );
++            if (!geometry) continue;
++            const centerDistance = distance(target, center);
++            if (centerDistance < bestDistance) {
++                bestDistance = centerDistance;
++                best = {
++                    building,
++                    ...geometry,
++                };
++            }
++        }
++        return best;
++    }
++
++    private isBreakableContainerEntryBlocker(object: GameObject): boolean {
++        if (object.__type !== ObjectType.Obstacle || object.data.dead) return false;
++        const type = String(object.data.type ?? "");
++        const def = MapObjectDefs[type] as AnyDef | undefined;
++        if (
++            !def ||
++            def.type !== "obstacle" ||
++            def.destructible !== true ||
++            def.door ||
++            def.button ||
++            def.explosion ||
++            def.armorPlated ||
++            def.stonePlated
++        ) {
++            return false;
++        }
++        return isSafeContainerEntryBlocker(type, def);
++    }
++
++    private canNavigateLootPath(
++        from: Vec2,
++        target: Vec2,
++        targetId: number,
++        timestamp: number,
++    ): boolean {
++        const route = this.containerRouteForLoot(from, target);
++        if (!route || route.botInside) {
++            return this.canNavigateResourcePath(from, target, 0, targetId);
++        }
++        const waypoint = distance(from, route.entranceOutside) > 2
++            ? route.entranceOutside
++            : route.entranceInside;
++        const blocker = this.firstBlockingObstacle(from, waypoint);
++        if (blocker) {
++            if ((this.ignoredCratesUntil.get(blocker.__id) ?? 0) > timestamp) return false;
++            if (this.isBreakableContainerEntryBlocker(blocker)) return true;
++        }
++        return this.canNavigateResourcePath(from, waypoint, 0, targetId);
++    }
++
++    private breakContainerEntryBlocker(
++        myPos: Vec2,
++        blocker: GameObject,
++        timestamp: number,
++    ): boolean {
++        if (!this.isBreakableContainerEntryBlocker(blocker)) return false;
++        const pos = blocker.data.pos as Vec2 | undefined;
++        if (!pos) return false;
++        const healthT = clamp(Number(blocker.data.healthT ?? 1), 0, 1);
++        if (this.currentContainerBlockerId !== blocker.__id) {
++            this.currentContainerBlockerId = blocker.__id;
++            this.containerBlockerLockUntil = timestamp + 5500;
++            this.containerBlockerLastHealthT = healthT;
++            this.containerBlockerNoProgressSwings = 0;
++            this.containerBlockerLastSwingAt = 0;
++        } else if (healthT < this.containerBlockerLastHealthT - 0.002) {
++            this.containerBlockerLastHealthT = healthT;
++            this.containerBlockerNoProgressSwings = 0;
++        } else if (
++            this.containerBlockerLastSwingAt > 0 &&
++            timestamp - this.containerBlockerLastSwingAt >= 650
++        ) {
++            this.containerBlockerNoProgressSwings += 1;
++            this.containerBlockerLastSwingAt = 0;
++        }
++        if (this.containerBlockerNoProgressSwings >= 3 || timestamp > this.containerBlockerLockUntil) {
++            this.ignoredCratesUntil.set(blocker.__id, timestamp + 7000);
++            this.currentContainerBlockerId = 0;
++            return false;
++        }
++
++        const meleeSlot = GameConfig.WeaponSlot.Melee;
++        const meleeType = String(this.local.weapons[meleeSlot]?.type || "fists");
++        const meleeDef = gameDef(meleeType);
++        const attackRadius = Math.max(1.1, Number(meleeDef?.attack?.rad ?? 1.5));
++        const offset = meleeDef?.attack?.offset as Vec2 | undefined;
++        const offsetLength = offset ? Math.hypot(Number(offset.x ?? 0), Number(offset.y ?? 0)) : 0;
++        const attackDistance = clamp(
++            this.obstacleRadius(blocker) + GameConfig.player.radius + attackRadius + offsetLength * 0.35 - 0.2,
++            2.1,
++            6.5,
++        );
++        const dist = distance(myPos, pos);
++        this.output.aimDir = normalize(sub(pos, myPos), this.output.aimDir);
++        this.output.mouseLen = clamp(dist * 8, 8, net.Constants.MouseMaxDist);
++        if (dist > attackDistance || !this.hasClearResourcePath(myPos, pos, blocker.__id)) {
++            this.moveDirection(this.steerToward(myPos, pos, timestamp, blocker.__id, blocker.__id, true));
++            return true;
++        }
++        this.output.movement = EMPTY_MOVEMENT();
++        if (this.local.curWeapIdx !== meleeSlot) {
++            this.equipSlot(meleeSlot);
++            return true;
++        }
++        this.output.shootStart = true;
++        this.output.shootHold = Boolean(meleeDef?.autoAttack);
++        if (!this.containerBlockerLastSwingAt) this.containerBlockerLastSwingAt = timestamp;
++        return true;
++    }
++
++    private routeToContainerLoot(
++        myPos: Vec2,
++        targetPos: Vec2,
++        lootId: number,
++        timestamp: number,
++    ): boolean {
++        const route = this.containerRouteForLoot(myPos, targetPos);
++        if (!route) return false;
++
++        if (route.botInside) {
++            const blocker = this.firstBlockingObstacle(myPos, targetPos);
++            if (blocker && this.isBreakableContainerEntryBlocker(blocker)) {
++                if (this.breakContainerEntryBlocker(myPos, blocker, timestamp)) return true;
++                this.ignoredLootUntil.set(lootId, timestamp + 3500);
++                return true;
++            }
++            return false;
++        }
++
++        const outsideDistance = distance(myPos, route.entranceOutside);
++        const waypoint = outsideDistance > 1.9
++            ? route.entranceOutside
++            : route.entranceInside;
++        const blocker = this.firstBlockingObstacle(myPos, waypoint);
++        if (blocker) {
++            if (this.isBreakableContainerEntryBlocker(blocker)) {
++                if (this.breakContainerEntryBlocker(myPos, blocker, timestamp)) return true;
++            }
++            this.ignoredLootUntil.set(lootId, timestamp + 4000);
++            this.squad.releaseLoot(lootId, this.id);
++            if (this.currentLootId === lootId) this.currentLootId = 0;
++            return true;
++        }
++        this.output.aimDir = normalize(sub(targetPos, myPos), this.output.aimDir);
++        this.moveDirection(this.steerToward(myPos, waypoint, timestamp, 0, route.building.__id, true));
++        return true;
++    }
++
+     private canNavigateResourcePath(
+         from: Vec2,
+         to: Vec2,
+diff -ruN '--exclude=node_modules' '--exclude=dist' a/server/src/specialRoleSmokeTest.ts b/server/src/specialRoleSmokeTest.ts
+--- a/server/src/specialRoleSmokeTest.ts	2026-07-24 16:56:18.000000000 +0000
++++ b/server/src/specialRoleSmokeTest.ts	2026-07-24 18:05:43.340766188 +0000
+@@ -56,6 +56,22 @@
+     "distant formation combat must not postpone the commander opening flare forever",
+ );
+ 
++
++const friendlyRearOpening = planLeaderFlare({
++    ...base,
++    position: { x: 430, y: 512 },
++    formationAnchor: { x: 610, y: 512 },
++    objective: { x: 760, y: 512 },
++    homeAnchor: { x: 150, y: 512 },
++    safeCenter: { x: 560, y: 512 },
++    openingDeployment: true,
++});
++assert.equal(friendlyRearOpening.use, true);
++assert.ok(
++    friendlyRearOpening.stagingPoint.x < 512,
++    "opening commander airdrop should remain on the learned friendly half even when the formation is across midline",
++);
++
+ const indoorOpening = planLeaderFlare({ ...base, openingDeployment: true, indoors: true });
+ assert.equal(indoorOpening.use, true, "an indoor leader should keep an outdoor deployment plan");
+ assert.notDeepEqual(

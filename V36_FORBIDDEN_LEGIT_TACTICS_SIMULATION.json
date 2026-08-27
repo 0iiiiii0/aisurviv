@@ -1,0 +1,35 @@
+{
+  "hardCoverWastePrevented": true,
+  "ricochet": {
+    "kind": "ricochet",
+    "aimPoint": {
+      "x": 9.982322330470335,
+      "y": 9.982322330470335
+    },
+    "totalDistance": 28.284271247461902
+  },
+  "barrel": {
+    "kind": "explode",
+    "obstacle": "barrel_01"
+  },
+  "gunLineDodge": {
+    "direction": {
+      "x": 0.21486178267511977,
+      "y": 0.9766444667050899
+    },
+    "risk": 1,
+    "side": 1
+  },
+  "grenade": {
+    "flightSeconds": 1.25,
+    "impactSpeed": 8.570194402391092,
+    "cookMs": 2695,
+    "residualFuseMs": 55,
+    "error": 0.19586946655557114
+  },
+  "offscreenPolicy": {
+    "hackerLegal": true,
+    "hackerWithoutIntent": false,
+    "legitOffscreen": false
+  }
+}

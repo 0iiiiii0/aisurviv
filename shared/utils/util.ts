@@ -56,8 +56,7 @@ export const util = {
 
     toStairsLayer(a: number) {
         // return a >= 2 ? a : (a == 0 ? 2 : 3);
-        //  return a | 0x2;
-        return a & 0x1;
+        return a | 0x2;
     },
 
     random(min: number, max: number, rand = Math.random) {

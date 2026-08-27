@@ -38,6 +38,8 @@
   "index-play-solo": "單人遊戲",
   "index-play-duo": "雙人遊戲",
   "index-play-squad": "四人遊戲",
+  "index-play-duel": "進入單挑競技場",
+  "index-play-potato": "進入馬鈴薯模式",
   "index-join-team": "加入隊伍",
   "index-create-team": "建立隊伍",
   "index-leave-team": "離開隊伍",
@@ -47,6 +49,8 @@
   "index-invite-code": "邀請代碼",
   "index-join-team-help": "有隊伍連結或代碼嗎？在以下區域貼上吧：",
   "index-solo": "單人",
+  "index-duel": "單挑",
+  "index-potato": "馬鈴薯模式",
   "index-duo": "雙人",
   "index-squad": "四人",
   "index-auto-fill": "自動補滿",
@@ -770,5 +774,8 @@
   "Left Mouse": "滑鼠左鍵",
   "Right Mouse": "滑鼠右鍵",
   "Mouse Wheel Up": "滑鼠滾輪向上",
-  "Mouse Wheel Down": "滑鼠滾輪向下"
+  "Mouse Wheel Down": "滑鼠滾輪向下",
+  "game-spectate-free-camera": "自由視角",
+  "game-spectate-player-camera": "玩家視角",
+  "game-spectate-free-help": "WASD/方向鍵移動 · 拖動平移 · 滾輪縮放"
 }

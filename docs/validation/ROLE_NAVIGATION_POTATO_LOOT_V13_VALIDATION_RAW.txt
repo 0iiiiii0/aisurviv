@@ -1,0 +1,222 @@
+===== npm run build =====
+
+> build
+> tsc
+
+exit=0
+===== npm run test:bot-input =====
+
+> test:bot-input
+> node -r ts-node/register src/smartBotInputSmokeTest.ts
+
+SmartBot input safety smoke test passed: mouse distance and world-space movement mapping are valid.
+exit=0
+===== npm run test:bot-brain =====
+
+> test:bot-brain
+> node -r ts-node/register src/smartBotBrainSmokeTest.ts
+
+smart bot brain smoke test passed
+exit=0
+===== npm run test:loot-ai =====
+
+> test:loot-ai
+> node -r ts-node/register src/lootStrategySmokeTest.ts
+
+Loot/resource search strategy smoke test passed
+exit=0
+===== npm run test:resource-sweep =====
+
+> test:resource-sweep
+> node -r ts-node/register src/resourceSweepSmokeTest.ts
+
+Opening resource sweep smoke test passed
+exit=0
+===== npm run test:loot-safety =====
+
+> test:loot-safety
+> node -r ts-node/register src/lootSafetySmokeTest.ts
+
+Loot definition/runtime and anti-tunnelling safety smoke test passed
+exit=0
+===== npm run test:aim-control =====
+
+> test:aim-control
+> node -r ts-node/register src/aimControlSmokeTest.ts
+
+Aim control smoke test passed: reload tracking can turn smoothly without one-frame snapping.
+exit=0
+===== npm run test:bot-combat-heal =====
+
+> test:bot-combat-heal
+> node -r ts-node/register src/botCombatHealSmokeTest.ts
+
+Bot combat/heal smoke test passed: deterministic 1v1 firing, no out-of-range rooting, and cover-gated combat healing.
+exit=0
+===== npm run test:special-roles =====
+
+> test:special-roles
+> node -r ts-node/register src/specialRoleSmokeTest.ts
+
+special role smoke test passed
+exit=0
+===== npm run test:integrated-spec =====
+
+> test:integrated-spec
+> node -r ts-node/register src/integratedLogicSpecSmokeTest.ts
+
+Full integrated logic specification smoke test passed
+exit=0
+===== npm run test:faction-autofill =====
+
+> test:faction-autofill
+> node -r ts-node/register src/factionAutoFillSmokeTest.ts
+
+[36m[2026-07-24 5:00:02 PM][0m [32mGame #fact[0m | Creating
+[36m[2026-07-24 5:00:02 PM][0m [32mGame #fact[0m | Created in 230 ms
+[36m[2026-07-24 5:00:02 PM][0m [32mGame #fact[0m | Player Blue Bot joined game ID faction-autofill-forced-team
+[36m[2026-07-24 5:00:02 PM][0m [32mGame #fact[0m | Player Red Bot joined game ID faction-autofill-forced-team
+Faction auto-fill smoke test passed: one bot every two seconds, five-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.
+exit=0
+===== npm run test:spectator-autofill =====
+
+> test:spectator-autofill
+> node -r ts-node/register src/spectatorAutoFillSmokeTest.ts
+
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Created in 151 ms
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Player First joined game ID spectator-autofill-smoke
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Player Second joined game ID spectator-autofill-smoke
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Player Server Bot joined game ID spectator-autofill-smoke
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Spectator Observer joined game ID spectator-autofill-smoke
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | "Server Bot" left
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | "First" left
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Creating
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Created in 99 ms
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Spectator Early Observer joined game ID spectator-first-packet
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Player First Contestant joined game ID spectator-first-packet
+[36m[2026-07-24 5:00:04 PM][0m [32mGame #spec[0m | Spectator Late Observer joined game ID spectator-first-packet
+Spectator/auto-fill smoke test passed: target metadata, observer-before-bots binding, switching, disconnect fallback, and room counts.
+[36m[2026-07-24 5:00:05 PM][0m [32mGame #spec[0m | Game Ended
+exit=0
+===== npm run test:potato =====
+
+> test:potato
+> node -r ts-node/register src/potatoSmokeTest.ts
+
+Potato weapon rotation smoke test passed.
+exit=0
+===== npm run test:duel-vision =====
+
+> test:duel-vision
+> node -r ts-node/register src/duelVisionSmokeTest.ts
+
+Duel vision/search smoke test passed.
+exit=0
+===== npm run test:all-modes =====
+
+> test:all-modes
+> node -r ts-node/register src/allModesSmokeTest.ts
+
+All-mode AI smoke test passed: 47 playlists / 17 maps / solo-duo-squad-faction-duel.
+exit=0
+===== npm run test:duel =====
+
+> test:duel
+> node -r ts-node/register src/duelSmokeTest.ts
+
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Created in 19 ms
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Player Red joined game ID duel-smoke-test
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Player Blue joined game ID duel-smoke-test
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Spectator Admin Spectator joined game ID duel-smoke-test
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Created in 2 ms
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Player No Boost joined game ID duel-no-adrenaline-smoke-test
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Game Ended
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Creating
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Created in 1 ms
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Player Flare Red joined game ID duel-flare-smoke-test
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Player Flare Blue joined game ID duel-flare-smoke-test
+Duel smoke test passed: 176x136, 3 players, five rounds, final score 3:2; round-bound airstrikes are cleared; single and dual flare guns are safe.
+[36m[2026-07-24 5:00:10 PM][0m [32mGame #duel[0m | Game Ended
+exit=0
+===== npm run test:duel-lobby =====
+
+> test:duel-lobby
+> node -r ts-node/register src/duelLobbySmokeTest.ts
+
+Duel lobby smoke test passed: human invite, AI opponent, customization, start and return flow.
+exit=0
+===== npm run test:admin =====
+
+> test:admin
+> node -r ts-node/register src/adminSmokeTest.ts
+
+Admin smoke test passed: modes, announcement, duel weapons, status, create room and stop room.
+exit=0
+===== npx tsc --noEmit =====
+exit=0
+===== npm run build =====
+
+> build
+> tsc --noEmit && vite build
+
+/mnt/data/work_v13/client/node_modules/rollup/dist/native.js:63
+		throw new Error(
+		      ^
+
+Error: Cannot find module @rollup/rollup-linux-x64-gnu. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+    at requireWithFriendlyError (/mnt/data/work_v13/client/node_modules/rollup/dist/native.js:63:9)
+    at Object.<anonymous> (/mnt/data/work_v13/client/node_modules/rollup/dist/native.js:72:76)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at cjsLoader (node:internal/modules/esm/translators:266:5)
+    at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:200:7) {
+  [cause]: Error: Cannot find module '@rollup/rollup-linux-x64-gnu'
+  Require stack:
+  - /mnt/data/work_v13/client/node_modules/rollup/dist/native.js
+      at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+      at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+      at Function._load (node:internal/modules/cjs/loader:1211:37)
+      at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+      at Module.require (node:internal/modules/cjs/loader:1487:12)
+      at require (node:internal/modules/helpers:135:16)
+      at requireWithFriendlyError (/mnt/data/work_v13/client/node_modules/rollup/dist/native.js:45:10)
+      at Object.<anonymous> (/mnt/data/work_v13/client/node_modules/rollup/dist/native.js:72:76) {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/mnt/data/work_v13/client/node_modules/rollup/dist/native.js' ]
+  }
+}
+
+Node.js v22.16.0
+exit=1
+
+===== post-change all-room auto-fill regression =====
+
+> npm run build
+> tsc
+exit=0
+
+> npm run test:faction-autofill
+Private/invite room scheduler assertion passed.
+Faction auto-fill smoke test passed: one bot every two seconds, five-bot worker batching, balanced assignment, pending reservations, room capacity, and 20+20 hard cap.
+exit=0
+
+> npm run test:duel-lobby
+Duel lobby smoke test passed: human invite, AI opponent, customization, start and return flow.
+exit=0
+
+> npm run test:admin
+Admin smoke test passed: modes, announcement, duel weapons, status, create room and stop room.
+exit=0
+
+> npm run test:spectator-autofill
+Spectator/auto-fill smoke test passed: target metadata, observer-before-bots binding, switching, disconnect fallback, and room counts.
+exit=0

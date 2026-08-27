@@ -86,11 +86,6 @@ export const PerkProperties = {
         speedMult: 1.4,
         distanceMult: 1.3,
     },
-    bonus_assault: {
-        speedMult: 1.1,
-        // bonusDamageMult: 1.08
-        // TODO: weaponManager rewrite, damageMult is sourced from ammoBonusDamageMult rn
-    },
     // map of ammo type to perk that boosts that ammo
     ammoBonuses: {
         "9mm": ["treat_9mm", "bonus_9mm"],

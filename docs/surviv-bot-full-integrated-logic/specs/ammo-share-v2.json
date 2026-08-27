@@ -1,0 +1,13 @@
+{
+  "prefer_does_not_need_dump_all": true,
+  "needs_keep_one_mag": true,
+  "human": {
+    "trigger": "C_RMB",
+    "gift_mark": true,
+    "multi_50v50": true
+  },
+  "bot_bot": {
+    "blackboard": true,
+    "gift_mark": false
+  }
+}

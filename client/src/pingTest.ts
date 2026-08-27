@@ -1,3 +1,5 @@
+import { resolveAdvertisedAddress } from "../../shared/utils/networkAddress.ts";
+
 declare const PING_TEST_URLS: Array<{
     region: string;
     zone: string;
@@ -74,7 +76,13 @@ export class PingTest {
                 continue;
             }
             if (!test.ws) {
-                const ws = new WebSocket(`ws${test.https ? "s" : ""}://${test.url}/ptc`);
+                const address = resolveAdvertisedAddress(
+                    test.url,
+                    window.location.hostname,
+                );
+                const ws = new WebSocket(
+                    `ws${test.https ? "s" : ""}://${address}/ptc`,
+                );
                 ws.binaryType = "arraybuffer";
                 ws.onopen = function() {};
                 ws.onmessage = function(_msg) {

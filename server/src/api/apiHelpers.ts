@@ -39,7 +39,10 @@ export async function verifyTurnsStile(token: string, ip: string): Promise<boole
 }
 
 export async function getFindGamePlayerData(
-    players: Pick<FindGamePrivateBody["playerData"][number], "joinToken" | "userId" | "ip">[],
+    players: Pick<
+        FindGamePrivateBody["playerData"][number],
+        "joinToken" | "userId" | "stashName" | "ip"
+    >[],
 ): Promise<FindGamePrivateBody["playerData"]> {
     const userIds = [
         ...new Set(players.map((p) => p.userId).filter((id) => id !== null)),
@@ -70,9 +73,10 @@ export async function getFindGamePlayerData(
         accountData = Object.fromEntries(query.map((r) => [r.userId, r]));
     }
 
-    return players.map(({ joinToken, userId, ip }) => ({
+    return players.map(({ joinToken, userId, stashName, ip }) => ({
         joinToken,
         userId,
+        stashName,
         ip,
         loadout: userId ? accountData[userId]?.loadout : undefined,
         quests: userId ? (accountData[userId]?.quests ?? []) : [],

@@ -1,0 +1,24 @@
+{
+  "windowBlocked": true,
+  "hardCoverTypes": 3,
+  "forcedTriggerDeadlineMs": 1230,
+  "longRangeVoluntaryInterrupt": true,
+  "closeDirection": {
+    "x": 0.9331233176164143,
+    "y": 0.3595564964237697
+  },
+  "flank": {
+    "point": {
+      "x": 10.32,
+      "y": 4.3
+    },
+    "sign": 1,
+    "score": 0.02736731114670654,
+    "lineClear": true
+  },
+  "mainShellSearchRange": 154,
+  "eventShellSearchRange": 120,
+  "airdropMemoryMs": 45000,
+  "airdropAssociationRadius": 32,
+  "prolongedRecoveryDirectionChanged": true
+}

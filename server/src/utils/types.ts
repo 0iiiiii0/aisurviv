@@ -4,6 +4,7 @@ import { TeamMode } from "../../../shared/gameConfig.ts";
 import { type FindGameMatchData, type FindGamePrivateError, loadoutSchema } from "../../../shared/types/api.ts";
 import { zSpectateFilter } from "../../../shared/types/moderation.ts";
 import type { MatchDataTable } from "../api/db/schema.ts";
+import type { ServerGameConfig as CompatibilityServerGameConfig } from "../game/gameManager.ts";
 
 export const zUpdateRegionBody = z.object({
     regionId: z.string(),
@@ -28,10 +29,7 @@ export interface SaveGameBody {
     matchData: (MatchDataTable & { ip: string; findGameIp: string })[];
 }
 
-export interface ServerGameConfig {
-    readonly mapName: MapDefKey;
-    readonly teamMode: TeamMode;
-}
+export type ServerGameConfig = CompatibilityServerGameConfig;
 
 export const zFindGamePrivateBody = z.object({
     region: z.string(),
@@ -39,10 +37,14 @@ export const zFindGamePrivateBody = z.object({
     autoFill: z.boolean(),
     mapName: z.string(),
     teamMode: z.number(),
+    zombieDifficulty: z.enum(["simple", "normal", "hard"]).optional(),
     playerData: z.array(
         z.object({
             joinToken: z.string(),
             userId: z.string().nullable(),
+            // Authoritative identity resolved by the API from the legacy JSON
+            // account token. Never derive achievement ownership from JoinMsg.
+            stashName: z.string().optional(),
             ip: z.string(),
             loadout: loadoutSchema.optional(),
             quests: z.array(z.string()).optional(),

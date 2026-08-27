@@ -169,7 +169,7 @@ a:active {
 
 #start-row-header {
   /* Main menu logo, don't forget there's also game over logo in game.css */
-  background-image: url(/img/survev_logo_full.png);
+  background-image: url(/img/surviv_logo_full.png);
   background-repeat: no-repeat;
   /* In case of logo change, update this value to width divided by 2 ceiled  */
   background-size: 396px;
@@ -304,6 +304,11 @@ a:active {
 }
 
 #ad-block-left {
+  /* 本部署不在左列投放广告：0.3.12 上游带入的 300x250 广告占位容器
+   * 内部（.surviv-shirts）始终为空，会渲染成一块多余的空白半透明面板，
+   * 在搜打撤菜单下方显示为"多一个框"。这里整体隐藏；日后若要投放
+   * 广告/周边，删除本行 display:none 并填充内容即可。 */
+  display: none;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   box-sizing: border-box;
@@ -321,6 +326,28 @@ a:active {
     --height: 165px;
     --width: 200px;
   }
+
+  .extraction-mode-section {
+    margin-right: 18px;
+    height: auto;
+    width: 200px;
+  }
+}
+
+.ad-block-med-rect {
+  height: 250px;
+  width: 300px;
+}
+
+@media (max-width: 850px), (max-width: 900px) and (-webkit-min-device-pixel-ratio: 3),
+  (max-width: 900px) and (min-resolution: 3dppx) {
+  .ad-block-med-rect {
+    position: absolute;
+    -webkit-transform: scale(0.67);
+    transform: scale(0.67);
+    -webkit-transform-origin: left top;
+    transform-origin: left top;
+  }
 }
 
 .surviv-shirts {
@@ -336,6 +363,25 @@ a:active {
   height: var(--height);
   width: var(--width);
   position: absolute;
+}
+
+.about-game {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: block;
+  height: 250px;
+  width: 300px;
+}
+
+.about-game a {
+  height: 250px;
+  position: absolute;
+  width: 300px;
+}
+
+.about-game p {
+  margin-left: 20px;
 }
 
 /*
@@ -383,6 +429,10 @@ a:active {
 }
 
 #social-share-block {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   margin-right: 30px;
   margin-top: 10px;
   padding: 4px;
@@ -502,6 +552,9 @@ a:active {
     height: 216px;
     padding: 10px;
     width: 210px;
+    /* 小屏菜单内容多（改名/账号登录面板 + 模式按钮），超出部分滚动
+       而不是截断，否则登录入口被裁掉玩家找不到。 */
+    overflow-y: auto;
   }
 }
 
@@ -634,10 +687,26 @@ a:active {
   height: 40px;
   line-height: 38px;
   margin-bottom: 8px;
+  overflow: hidden;
   text-align: center;
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   width: 100%;
   cursor: pointer;
+}
+
+/* 「确认改名」与「排行榜」按钮轮廓：突出显示，贴合圆角。 */
+#btn-leaderboard,
+#btn-name-confirm {
+  box-shadow: 0 0 0 2px #6ec5be, 0 0 8px rgba(110, 197, 190, 0.55);
+}
+
+#btn-leaderboard:hover,
+#btn-leaderboard:active,
+#btn-name-confirm:hover,
+#btn-name-confirm:active {
+  box-shadow: 0 0 0 2px #8fe0d8, 0 0 12px rgba(110, 197, 190, 0.8);
 }
 
 @media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
@@ -1089,6 +1158,522 @@ a:active {
   position: relative;
 }
 
+#extra-mode-buttons {
+  display: contents;
+}
+
+/* 搜打撤专属菜单栏（右侧栏）：开始对局 / 邀请组队 / 仓库配装 */
+.extraction-mode-section {
+  margin-bottom: 10px;
+  margin-right: 30px;
+  padding: 16px 20px;
+  border: 1px solid rgba(110, 197, 190, 0.45);
+  border-radius: 8px;
+  background: rgba(20, 40, 60, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  box-sizing: border-box;
+  /* 高度自适应内容：绝密搜打撤开启后按钮变多，固定 250px 会放不下/溢出。
+     未开启绝密时用 min-height 保持原来的 250px 观感。 */
+  height: auto;
+  min-height: 250px;
+  /* 极小屏幕兜底：超高时框内滚动而不是截断内容；safe center 避免
+     flex 居中溢出时顶部内容被裁掉。 */
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+  justify-content: safe center;
+}
+.extraction-mode-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(110, 197, 190, 0.95);
+  text-shadow: 0 0 6px rgba(160, 220, 200, 0.6);
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.extraction-mode-section .menu-option {
+  text-align: center;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.extraction-mode-section > .extraction-mode-title,
+.extraction-mode-section > .extraction-secret-section,
+.extraction-secret-section > .extraction-mode-title {
+  flex-shrink: 0;
+}
+.extraction-mode-section .extraction-secret-entry {
+  background: linear-gradient(145deg, #8f1d1d, #c0392b) !important;
+  border-color: #e74c3c !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(231, 76, 60, 0.55) !important;
+}
+
+.extraction-secret-section {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(231, 76, 60, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.extraction-secret-title {
+  color: rgba(255, 120, 110, 0.95);
+  text-shadow: 0 0 6px rgba(231, 76, 60, 0.55);
+}
+
+/* 绝密模式进入规则弹窗 */
+.extraction-secret-rule-desc { margin-bottom: 6px; }
+.extraction-secret-rule-weapons {
+  max-height: 42vh;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-right: 4px;
+}
+.extraction-secret-rule-group { margin-bottom: 10px; }
+.extraction-secret-rule-group-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd166;
+  margin-bottom: 4px;
+}
+.extraction-secret-rule-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.extraction-secret-rule-weapon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 72px;
+  padding: 4px;
+  border: 1px solid #3a4356;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.extraction-secret-rule-weapon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+.extraction-secret-rule-weapon span {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.15;
+}
+.extraction-secret-rule-weapon em {
+  font-style: normal;
+  font-size: 9px;
+  color: #ffd166;
+}
+
+/* 搜打撤仓库：独立界面 */
+#extraction-stash-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 10, 16, 0.88);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stash-shell {
+  width: min(1080px, 94vw);
+  height: min(88vh, 820px);
+  background: rgba(10, 18, 28, 0.98);
+  border: 1px solid rgba(110, 197, 190, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.7);
+  color: #d7e6ea;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stash-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(110, 197, 190, 0.25);
+}
+.stash-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(110, 197, 190, 0.95);
+  white-space: nowrap;
+}
+.stash-identity {
+  flex: 1;
+  min-width: 0;
+}
+.stash-identity input {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 5px;
+  color: #e8f4f6;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+#extraction-stash-close {
+  padding: 8px 16px;
+  background: rgba(110, 197, 190, 0.18);
+  border: 1px solid rgba(110, 197, 190, 0.5);
+  border-radius: 5px;
+  color: #bff0ea;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+#extraction-stash-close:hover {
+  background: rgba(110, 197, 190, 0.32);
+}
+.extraction-stash-status {
+  padding: 6px 20px 0;
+  min-height: 20px;
+  font-size: 13px;
+}
+.stash-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* 左栏：小人 + 武器 + 携带 */
+.stash-left {
+  width: 340px;
+  flex: 0 0 340px;
+  border-right: 1px solid rgba(110, 197, 190, 0.25);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+.stash-avatar-wrap {
+  position: relative;
+  height: 232px;
+  background: radial-gradient(circle at 50% 40%, rgba(60, 120, 130, 0.25), rgba(0, 0, 0, 0.35));
+  border: 1px solid rgba(110, 197, 190, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.stash-dummy {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 200px;
+}
+.stash-dummy::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #e8c39a, #b98a5e 70%);
+  border: 2px solid rgba(20, 40, 50, 0.8);
+}
+.stash-dummy::after {
+  content: '';
+  position: absolute;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 78px;
+  height: 120px;
+  border-radius: 22px 22px 10px 10px;
+  background: linear-gradient(180deg, #3f6f76, #2c4f57);
+  border: 2px solid rgba(20, 40, 50, 0.8);
+}
+.stash-equip {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px dashed rgba(110, 197, 190, 0.45);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+.stash-equip.filled {
+  border-style: solid;
+  border-color: rgba(110, 197, 190, 0.75);
+  box-shadow: 0 0 8px rgba(110, 197, 190, 0.35);
+}
+.stash-equip-helmet { top: 6px; left: 50%; transform: translateX(-50%); }
+.stash-equip-chest { top: 88px; left: 50%; transform: translateX(-50%); }
+.stash-equip-backpack { top: 92px; right: 22px; }
+.stash-equip-scope { top: 40px; right: 34px; }
+.stash-weapons {
+  display: flex;
+  gap: 10px;
+}
+.stash-weapon {
+  flex: 1;
+  min-height: 86px;
+  border: 1px solid rgba(110, 197, 190, 0.3);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px;
+}
+.stash-weapon img {
+  height: 92px;
+  max-width: 100%;
+  object-fit: contain;
+}
+.stash-weapon-name {
+  font-size: 11px;
+  color: #cfe8ea;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stash-weapon-ammo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(110, 197, 190, 0.95);
+}
+.stash-weapon-ammo img { height: 12px; }
+.stash-weapon-empty {
+  color: rgba(215, 230, 234, 0.4);
+  font-size: 12px;
+}
+.stash-left-stats {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(110, 197, 190, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+}
+.stash-stats-title {
+  font-size: 13px;
+  color: rgba(160, 220, 200, 0.85);
+  margin-bottom: 6px;
+}
+.stash-stat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+}
+.stash-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.stash-stat img { height: 18px; }
+.stash-stat-empty { color: rgba(215, 230, 234, 0.35); font-size: 12px; }
+
+/* 右栏：仓库物资 */
+.stash-right {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 18px 20px;
+}
+.stash-section { margin-bottom: 16px; }
+.stash-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: rgba(160, 220, 200, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stash-hint {
+  font-size: 11px;
+  color: rgba(215, 230, 234, 0.4);
+  font-weight: 400;
+}
+.stash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+.stash-item {
+  position: relative;
+  border: 1px solid rgba(110, 197, 190, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  padding: 8px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.stash-item:hover {
+  border-color: rgba(110, 197, 190, 0.7);
+  background: rgba(20, 40, 60, 0.5);
+}
+.stash-item.equipped {
+  border-color: #6ec5be;
+  box-shadow: 0 0 8px rgba(110, 197, 190, 0.5);
+}
+.stash-item img {
+    height: 76px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .stash-item.small {
+    min-height: 78px;
+  }
+  .stash-item.small img {
+    height: 38px;
+  }
+  .stash-stepper {
+    display: grid;
+    grid-template-columns: 26px 40px 26px;
+    overflow: hidden;
+    border: 1px solid rgba(110, 197, 190, 0.35);
+    border-radius: 6px;
+    background: rgba(8, 13, 19, 0.9);
+  }
+  .stash-stepper-btn {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: rgba(18, 27, 37, 0.9);
+    color: #8fb0cb;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 26px;
+  }
+  .stash-stepper-btn:hover {
+    background: #1a2a38;
+    color: #c7e7ff;
+  }
+  .stash-item-input {
+    width: 40px;
+    min-width: 0;
+    padding: 3px 2px;
+    border: 0;
+    border-right: 1px solid rgba(44, 57, 71, 0.8);
+    border-left: 1px solid rgba(44, 57, 71, 0.8);
+    border-radius: 0;
+    appearance: textfield;
+    background: rgba(8, 13, 19, 0.9);
+    color: #d7dee6;
+    text-align: center;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .stash-item-input::-webkit-inner-spin-button,
+  .stash-item-input::-webkit-outer-spin-button {
+    margin: 0;
+    appearance: none;
+  }
+.stash-item-name {
+  font-size: 11px;
+  text-align: center;
+  color: #cfe8ea;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stash-item-count {
+  font-size: 12px;
+  color: rgba(110, 197, 190, 0.95);
+  font-weight: 700;
+}
+.stash-item-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  padding: 0;
+  background: rgba(255, 80, 80, 0.25);
+  border: none;
+  border-radius: 4px;
+  color: #ffb4ae;
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0;
+}
+.stash-item:hover .stash-item-remove { opacity: 1; }
+.stash-empty {
+  color: rgba(215, 230, 234, 0.4);
+  font-size: 13px;
+  padding: 6px 0;
+}
+.stash-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(110, 197, 190, 0.2);
+}
+.stash-add-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 197, 190, 0.35);
+  border-radius: 5px;
+  color: #e8f4f6;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.stash-add-row input[type='number'] {
+  width: 72px;
+  flex: 0 0 72px;
+}
+.stash-add-row button {
+  padding: 8px 14px;
+  background: rgba(110, 197, 190, 0.18);
+  border: 1px solid rgba(110, 197, 190, 0.5);
+  border-radius: 5px;
+  color: #bff0ea;
+  cursor: pointer;
+  font-size: 14px;
+}
+.stash-add-row button:hover { background: rgba(110, 197, 190, 0.32); }
+
+@media (max-width: 760px) {
+  .stash-shell { height: 94vh; }
+  .stash-body { flex-direction: column; }
+  .stash-left {
+    width: auto;
+    flex: 0 0 auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(110, 197, 190, 0.25);
+  }
+  .stash-avatar-wrap { height: 190px; }
+  .stash-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+}
 .play-loading-outer {
   position: absolute;
   bottom: 0;
@@ -1135,8 +1720,59 @@ a:active {
   margin-right: 4px;
 }
 
+.player-name-confirm-row {
+  display: flex;
+  align-items: center;
+}
+
+.player-name-confirm-row .player-options-btn {
+  white-space: nowrap;
+}
+
 .player-options-btn {
   display: inline-block;
+}
+
+/* 账号密码登录面板 */
+.player-account-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  margin-right: 4px;
+}
+.player-account-panel .player-name-input {
+  box-sizing: border-box;
+  width: 100%;
+}
+.player-account-actions {
+  display: flex;
+  gap: 6px;
+}
+.player-account-actions .player-options-btn {
+  flex: 1;
+  text-align: center;
+}
+.account-status {
+  min-height: 14px;
+  font-size: 12px;
+  color: #7dffa8;
+}
+.player-account-logged-in {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-display-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: bold;
+  color: #eaf2f8;
 }
 
 #btn-customize {
@@ -1923,6 +2559,100 @@ a:active {
 
 #modal-account-name-change {
   z-index: 4;
+}
+
+/* 登录 / 注册模态框：搜打撤需要登录时弹出，入口明确。 */
+#modal-account-login {
+  z-index: 6;
+}
+/* 僵尸模式大厅：选择单人 / 双人 / 四人 */
+#modal-zombie-lobby {
+  z-index: 6;
+}
+#modal-zombie-lobby > .modal-content {
+  width: 380px;
+}
+#modal-zombie-lobby .modal-body .menu-option {
+  margin-bottom: 8px;
+}
+#modal-zombie-lobby .zombie-difficulty-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+#modal-zombie-lobby .zombie-difficulty-row .menu-option {
+  flex: 1;
+  text-align: center;
+  margin-bottom: 0;
+  opacity: 0.65;
+}
+#modal-zombie-lobby .zombie-difficulty-row .menu-option.selected {
+  opacity: 1;
+  box-shadow: 0 0 0 2px #6ec5be;
+}
+#modal-all-modes {
+  z-index: 6;
+}
+#modal-all-modes > .modal-content {
+  width: min(760px, calc(100vw - 32px));
+  border: 2px solid rgba(110, 197, 190, 0.9);
+  border-radius: 7px;
+}
+#modal-all-modes .modal-body {
+  max-height: min(68vh, 640px);
+  overflow-y: auto;
+}
+#all-modes-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+#all-modes-list .all-modes-entry {
+  display: flex;
+  height: auto;
+  min-height: 42px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(110, 197, 190, 0.7);
+  border-radius: 5px;
+  box-sizing: border-box;
+  align-items: center;
+  line-height: 1.2;
+  text-align: left;
+}
+#all-modes-list .all-modes-entry:hover,
+#all-modes-list .all-modes-entry:focus {
+  border-color: #a9fff8;
+  box-shadow: 0 0 0 1px rgba(169, 255, 248, 0.35);
+}
+.all-modes-entry-label {
+  min-width: 0;
+}
+@media (max-width: 680px) {
+  #all-modes-list {
+    grid-template-columns: 1fr;
+  }
+}
+#modal-account-login > .modal-content {
+  width: 380px;
+}
+#modal-account-login .modal-body-text {
+  font-size: 15px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+#modal-account-login .modal-body .player-name-input {
+  margin-bottom: 8px;
+}
+#modal-account-login .modal-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+#modal-account-login .finish {
+  display: inline-block;
+  padding: 0 18px;
+  cursor: pointer;
 }
 
 @media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
@@ -3528,9 +4258,23 @@ a:active {
   border-bottom: 4px solid #1d252e;
 }
 
+.btn-mode-duel {
+  background-color: #344450;
+  border-bottom: 4px solid #202a31 !important;
+  box-shadow: inset 0 -2px #202a31 !important;
+}
+
+.btn-mode-duel:hover {
+  background-color: #405663;
+}
+
 @media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
   .btn-mode-cobalt {
     border-bottom: 2px solid #1d252e;
+  }
+
+  .btn-mode-duel {
+    border-bottom-width: 2px !important;
   }
 }
 
@@ -3839,6 +4583,10 @@ a:active {
 .news-paragraph {
   display: block;
   margin-top: 6px;
+}
+
+.news-paragraph-custom {
+  white-space: pre-line;
 }
 
 .news-paragraph > .highlight {
@@ -4590,7 +5338,7 @@ a:active {
   display: block !important;
 }
 
-input [type="image"]:focus {
+input[type="image"]:focus {
   border: none;
   outline: 1px solid transparent;
   border-style: none;
@@ -4670,7 +5418,7 @@ input [type="image"]:focus {
 }
 
 .locked-off-icon {
-  background-image: "none";
+  background-image: none;
 }
 
 .unlocked-on-icon {
@@ -6919,10 +7667,16 @@ input [type="image"]:focus {
     transform: translateX(-50%);
   }
 
-  #ad-block-left {
+  .extraction-mode-section {
     position: absolute;
     --width: 275px;
     --height: 230px;
+    width: var(--width);
+    /* 与主规则一致：高度自适应，避免绝密搜打撤内容被 230px 截断 */
+    height: auto;
+    min-height: var(--height);
+    max-height: calc(100vh - 310px);
+    overflow-y: auto;
     top: 292px;
     left: 50%;
     transform: translateX(-50%);
@@ -7177,7 +7931,7 @@ input [type="image"]:focus {
     top: 42px;
   }
 
-  #ad-block-left {
+  .extraction-mode-section {
     top: 266px;
     transform: translateX(-50%) scale(0.9);
   }
@@ -7255,5 +8009,640 @@ input [type="image"]:focus {
   #modal-content-right-emote {
     height: 280px;
     top: 310px;
+  }
+}
+
+
+/* V96: Cyberpunk 2077 style for the Sandevistan mode button on the main menu */
+.mode-button-sandevistan {
+  background-color: #FAFE32 !important;
+  color: #143a35 !important;
+  border-color: rgba(90, 190, 180, .8) !important;
+  box-shadow: 0 0 14px rgba(250, 254, 50, .45) !important;
+  text-indent: 4px;
+}
+.mode-button-sandevistan .sandevistan-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.mode-button-sandevistan .sandevistan-mode-badge i {
+  font-style: normal;
+  font-family: "Segoe UI", ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  line-height: 1;
+  color: rgba(110, 197, 190, .9);
+  text-shadow:
+    0 0 6px rgba(160, 220, 200, .95),
+    0 0 12px rgba(160, 220, 200, .45);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ 首页布局重构（Grid/Flex 三列，统一节奏） ============ */
+:root {
+  --side-pad: 24px;
+}
+
+/* 关键：Header + 三栏从视口顶部开始排列，禁止整体垂直居中——
+   登录前后内容高度不同时布局位置完全一致，Logo 不再被推出视口。 */
+#start-menu-wrapper {
+  overflow-y: auto;
+  align-items: flex-start;
+  padding: 24px 0;
+}
+
+/* Header：独立区域，顶部预留空间，Logo 不被裁切 */
+#start-main {
+  box-sizing: border-box;
+  padding-top: 0;
+  margin-bottom: 96px;
+  width: 100%;
+}
+#start-row-header {
+  height: 140px;
+  margin-bottom: 16px;
+}
+
+/* 主体容器：固定最大宽度水平居中 */
+#start-main-center {
+  width: 1100px;
+  max-width: calc(100vw - 48px);
+  transform: none !important;
+}
+
+/* 三列 Flex 对齐：左 240 / 中 360 / 右 320，顶部严格对齐 */
+#start-row-top {
+  height: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+}
+#start-row-top .menu-column {
+  float: none;
+  margin: 0;
+  flex: 0 0 auto;
+}
+#left-column {
+  width: 240px;
+  min-height: 360px;
+}
+#left-column #extraction-mode-section {
+  width: 240px;
+  min-height: 360px;
+  margin: 0;
+}
+#start-menu {
+  width: 360px;
+  max-height: none;
+  padding: 16px;
+}
+#right-column {
+  width: 320px;
+  min-height: 360px;
+}
+#right-column #news-wrapper {
+  display: block !important;
+}
+#right-column #news-block {
+  width: auto;
+  height: auto;
+  max-height: 420px;
+  margin-left: 0;
+  padding: 16px 24px;
+}
+
+/* 面板背景：提高不透明度，弱化地图干扰 */
+.menu-block {
+  background-color: rgba(0, 0, 0, 0.66);
+}
+#start-menu,
+#news-block {
+  background-color: rgba(10, 20, 30, 0.78);
+}
+
+/* 表单统一宽度与间距：昵称 / 账号 / 服务器选择 */
+#start-menu .play-button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#player-options {
+  flex-direction: column;
+  gap: 8px;
+}
+#player-options > input,
+#player-account-panel input,
+#player-account-panel .player-account-actions,
+#server-select-main {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+}
+/* 账户区压缩：登录前后高度差异最小化，布局位置不因登录状态跳动 */
+#player-account-panel {
+  gap: 4px;
+}
+#player-account-panel .player-account-logged-out,
+#player-account-panel .player-account-change-password {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* 修改密码 / 退出登录 同一行 */
+#player-account-panel .player-account-logged-in {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 覆盖 .menu-option 的 width:100%/display:block，否则两个按钮各自占满一行 */
+#player-account-panel .player-account-logged-in .player-options-btn,
+#player-account-panel .player-account-actions .player-options-btn {
+  display: inline-block;
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+#player-account-panel .account-status {
+  min-height: 14px;
+  font-size: 12px;
+}
+#player-name-confirm-row {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+}
+#player-name-confirm-row .player-options-btn {
+  flex: 1;
+}
+
+/* 服务器选择 + 自定义按钮同行 */
+.server-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.server-row select {
+  flex: 1;
+  margin: 0;
+}
+.server-row #btn-customize {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 40px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* 按钮统一节奏：8px 间距、统一圆角 */
+#start-menu .menu-option,
+#left-column .menu-option {
+  margin-bottom: 8px;
+  border-radius: 5px;
+  height: 40px;
+  line-height: 38px;
+}
+#start-menu .menu-option:last-child {
+  margin-bottom: 0;
+}
+
+/* 模式按钮：两列 Grid */
+#mode-button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#mode-button-grid .menu-option {
+  margin-bottom: 0;
+}
+/* Play Solo 主按钮占整行突出显示 */
+#btn-start-mode-0 {
+  grid-column: 1 / -1;
+}
+#btns-quick-start {
+  display: contents;
+}
+#btns-quick-start .menu-option {
+  margin-bottom: 0;
+}
+#btns-duel-start {
+  display: contents;
+}
+#btns-duel-start .menu-option {
+  margin-bottom: 0;
+}
+#btn-aim-training,
+#btn-all-modes,
+#extra-mode-buttons .menu-option {
+  margin-bottom: 0;
+}
+#btn-all-modes {
+  grid-column: 1 / -1;
+  border: 2px solid #6ec5be;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px rgba(169, 255, 248, 0.18);
+  line-height: 36px;
+}
+#btn-all-modes:hover,
+#btn-all-modes:focus {
+  border-color: #a9fff8;
+  box-shadow: 0 0 0 1px rgba(169, 255, 248, 0.38);
+}
+#extra-mode-buttons {
+  display: contents;
+}
+#extra-mode-buttons .menu-option {
+  margin-bottom: 0;
+}
+#btn-help {
+  margin-bottom: 0;
+}
+
+/* 观战/组队/帮助：保持整行，统一间距 */
+#btns-spectate-start,
+.btns-double-row {
+  margin-top: 8px;
+}
+.btns-double-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.btns-double-row > a {
+  margin-right: 0;
+  margin-bottom: 0;
+}
+
+/* What's New：固定宽侧栏、统一标题间距 */
+#news .news-header {
+  margin-bottom: 16px;
+}
+#news [data-date] {
+  margin-bottom: 16px;
+}
+#news .news-date {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+#news .news-paragraph {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+/* 响应式：三列 → 两列 → 单列 */
+@media (max-width: 1150px) {
+  #start-main-center {
+    width: 100%;
+  }
+  #start-row-top {
+    flex-wrap: wrap;
+  }
+  #right-column {
+    order: 3;
+    width: 100%;
+    min-height: 0;
+  }
+  #right-column #news-block {
+    max-height: 260px;
+  }
+}
+
+/* Desktop/laptop short screens: keep every main-menu action reachable inside
+ * the viewport instead of letting the center panel extend below the page. */
+@media (min-width: 851px) and (max-height: 820px) {
+  #start-menu-wrapper {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  #start-row-header {
+    height: 105px;
+    margin-bottom: 8px;
+  }
+  #start-main {
+    margin-bottom: 16px;
+  }
+  #start-menu {
+    max-height: calc(100vh - 215px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  #left-column #extraction-mode-section,
+  #right-column #news-block {
+    max-height: calc(100vh - 215px);
+  }
+}
+@media (max-width: 850px) {
+  #start-row-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #left-column,
+  #start-menu,
+  #right-column {
+    width: 100%;
+  }
+  #start-main {
+    padding-top: 16px;
+    margin-bottom: 0;
+  }
+  #start-row-header {
+    height: 80px;
+  }
+}
+
+/* ============ V260.10 mobile UI stabilization ============
+ * Keep mobile pages in one document-flow scroll container. This overrides
+ * legacy absolute-position/fixed-height surviv.io mobile rules that conflict
+ * with the newer multi-mode start screen.
+ */
+@media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  #start-menu-wrapper {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+  }
+
+  #start-main {
+    width: 100%;
+    height: auto;
+    min-height: calc(100vh - 20px);
+    min-height: calc(100dvh - 20px);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  #start-main-center {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    transform: none !important;
+  }
+
+  #start-row-header {
+    width: min(220px, 70vw);
+    height: 76px;
+    margin: 0 auto 8px;
+    background-size: contain;
+  }
+
+  #start-row-top {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  #start-row-top > .menu-column {
+    float: none;
+    margin: 0;
+  }
+
+  #start-rotate-reminder {
+    order: 0;
+    position: static;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    margin: 0;
+    transform: none;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* Main actions must be the first usable panel on phones. */
+  #start-menu,
+  #team-menu,
+  #team-mobile-link {
+    order: 1;
+  }
+
+  #left-column {
+    order: 2;
+    width: 100%;
+    min-height: 0;
+  }
+
+  #right-column {
+    order: 3;
+    width: 100%;
+    min-height: 0;
+  }
+
+  /* Remove the legacy 216/230px nested scroll area. */
+  #start-menu {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    box-sizing: border-box;
+    padding: 12px;
+    transform: none;
+    overflow: visible;
+  }
+
+  /* Extraction becomes part of the same page scroll instead of a second
+     nested scroll surface. */
+  #left-column #extraction-mode-section,
+  .extraction-mode-section {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    box-sizing: border-box;
+    margin: 0;
+    transform: none;
+    overflow: visible;
+  }
+
+  /* Team screen: natural height and one-column flow. */
+  #team-menu {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    box-sizing: border-box;
+    padding: 12px;
+    transform: none;
+    overflow: visible;
+  }
+
+  #team-menu-columns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    height: auto;
+    margin-top: 0;
+  }
+
+  #team-menu-members,
+  #team-menu-options {
+    float: none;
+    width: 100%;
+    height: auto;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 8px 0;
+  }
+
+  #team-menu-member-list {
+    width: 100%;
+  }
+
+  .team-menu-member .name {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+
+  #btn-team-leave {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    display: block;
+    width: 100%;
+    min-height: 40px;
+    box-sizing: border-box;
+    margin: 8px 0 0;
+    transform: none;
+    line-height: 38px;
+  }
+
+  #team-mobile-link {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 12px;
+    transform: none;
+  }
+
+  #btn-team-mobile-link-leave {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  /* Fixed-width dialogs were wider than 320/360px phones. */
+  #modal-zombie-lobby > .modal-content,
+  #modal-account-login > .modal-content {
+    width: min(380px, calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    max-height: calc(100vh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #modal-zombie-lobby .zombie-difficulty-row {
+    gap: 5px;
+  }
+
+  #modal-zombie-lobby .zombie-difficulty-row .menu-option {
+    min-width: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  /* Coarse-pointer targets: avoid legacy 28px tap areas. */
+  #start-menu .menu-option,
+  #left-column .menu-option {
+    min-height: 42px;
+    height: 42px;
+    line-height: 40px;
+  }
+
+  .team-menu-option,
+  #btn-start-team,
+  #team-server-select {
+    min-height: 40px;
+  }
+
+  #team-menu .btn-hollow {
+    line-height: 36px;
+  }
+
+  #right-column #news-block {
+    max-height: none;
+  }
+}
+
+/* Short landscape phones need the main actions before any empty side column.
+   Keep the whole screen vertically scrollable rather than forcing a 360px
+   placeholder above the menu. */
+@media (max-width: 850px) and (orientation: landscape),
+  (max-width: 900px) and (min-resolution: 3dppx) and (orientation: landscape) {
+  #start-rotate-reminder {
+    display: none !important;
+  }
+
+  #start-menu-wrapper {
+    padding-top: max(4px, env(safe-area-inset-top));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  #start-row-header {
+    height: 48px;
+    margin-bottom: 4px;
+    background-size: contain;
+  }
+
+  #start-main-center {
+    margin-top: 0;
+    max-width: min(620px, calc(100vw - 20px));
+  }
+
+  #start-row-top {
+    gap: 8px;
   }
 }

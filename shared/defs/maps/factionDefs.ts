@@ -196,7 +196,11 @@ const mapDef: PartialMapDef = {
                 {
                     role: "leader",
                     circleIdx: 0,
-                    wait: 50,
+                    // V126: appoint the commander (and its issued flare gun)
+                    // early so the opening military airdrop can be called from
+                    // the friendly mid-back within the first seconds instead of
+                    // ~50s into the match.
+                    wait: 12,
                 },
                 {
                     role: "lieutenant",
@@ -362,6 +366,18 @@ const mapDef: PartialMapDef = {
             { name: "sledgehammer", count: 1, weight: 1 },
             { name: "pan", count: 1, weight: 0.5 },
         ],
+        tier_faction_outfits: [
+            { name: "outfitCamo", count: 1, weight: 8 },
+            { name: "outfitHeaven", count: 1, weight: 1 },
+            { name: "outfitGhillie", count: 1, weight: 0.5 },
+        ],
+        tier_ghillie: [
+            {
+                name: "outfitGhillie",
+                count: 1,
+                weight: 0.5,
+            },
+        ],
         tier_airdrop_outfits: [
             { name: "", count: 1, weight: 25 },
             { name: "outfitHeaven", count: 1, weight: 1 },
@@ -406,8 +422,8 @@ const mapDef: PartialMapDef = {
             rivers: {
                 weights: [
                     { weight: 1, widths: [20] },
-                    { weight: 1, widths: [20, 4] },
-                    { weight: 1, widths: [20, 8, 4] },
+                    // { weight: 1, widths: [20, 4] },
+                    // { weight: 1, widths: [20, 8, 4] },
                 ],
                 smoothness: 0.15,
             },
@@ -439,7 +455,7 @@ const mapDef: PartialMapDef = {
                 crate_22: 5,
                 crate_03: 8,
                 bush_01: 78,
-                tree_08f: 320,
+                tree_08f: 600,
                 hedgehog_01: 24,
                 container_01: 5,
                 container_02: 5,
@@ -472,6 +488,7 @@ const mapDef: PartialMapDef = {
                 bunker_structure_03: 1,
                 bunker_structure_04: 1,
                 warehouse_complex_01: 1,
+                bridge_lg_structure_01: 3,
                 chest_01: 1,
                 chest_03f: 1,
                 mil_crate_02: { odds: 1 },

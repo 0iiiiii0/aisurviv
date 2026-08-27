@@ -9,7 +9,7 @@ import { math } from "../../../../shared/utils/math.ts";
 import { util } from "../../../../shared/utils/util.ts";
 import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
 import type { Game } from "../game.ts";
-import type { DamageParams, GameObject } from "./gameObject.ts";
+import type { DamageParams, GameObject, TrainingShotToken } from "./gameObject.ts";
 import type { Obstacle } from "./obstacle.ts";
 import type { Player } from "./player.ts";
 
@@ -58,6 +58,7 @@ export interface BulletParams {
     hasModifier?: boolean;
     speedMult?: number;
     distanceMult?: number;
+    trainingShot?: TrainingShotToken;
 }
 
 export class BulletBarn {
@@ -99,6 +100,12 @@ export class BulletBarn {
         this.newBullets.length = 0;
     }
 
+    clearForArenaRound(): void {
+        this.bullets.length = 0;
+        this.newBullets.length = 0;
+        this.damages.length = 0;
+    }
+
     fireBullet(params: BulletParams): Bullet {
         this.game.map.clampToMapBounds(params.pos);
 
@@ -123,6 +130,9 @@ export class BulletBarn {
 }
 
 export class Bullet {
+    private static nextForbiddenTrackingId = 1;
+    readonly forbiddenTrackingId = Bullet.nextForbiddenTrackingId++;
+
     alive = false;
     active = false;
 
@@ -176,6 +186,7 @@ export class Bullet {
     reflected!: boolean;
     canReflect!: boolean;
     damagedObjIds!: Set<number>;
+    trainingShot?: TrainingShotToken;
 
     constructor(public bulletManager: BulletBarn) {}
 
@@ -242,6 +253,7 @@ export class Bullet {
         this.shotSourceType = params.gameSourceType;
         this.mapSourceType = params.mapSourceType ?? "";
         this.damageType = params.damageType;
+        this.trainingShot = params.trainingShot;
         this.damageMult = params.damageMult;
         this.shotFx = params.shotFx ?? false;
         this.shotOffhand = params.shotOffhand ?? false;
@@ -395,6 +407,7 @@ export class Bullet {
                     weaponSourceType: this.shotSourceType,
                     mapSourceType: this.mapSourceType,
                     damageType: this.damageType,
+                    trainingShot: this.trainingShot,
                 },
             );
         }
@@ -455,13 +468,17 @@ export class Bullet {
                     continue;
                 }
 
+                const sourceIsTeammate = this.player
+                    && (this.player.groupId === obj.groupId
+                        || (this.player.game.map.factionMode
+                            && this.player.teamId === obj.teamId));
                 if (
-                    obj.hasPerk("windwalk")
-                    && obj.hasteType != GameConfig.HasteType.Windwalk // can't stack windwalk
+                    !sourceIsTeammate
+                    && obj.hasPerk("windwalk")
+                    && obj.hasteType !== GameConfig.HasteType.Windwalk
                     && v2.distance(this.pos, obj.pos) <= 5
-                    && this.player?.teamId !== obj.teamId // bullet shooter or its teammates cant give the shooter winwalk
                 ) {
-                    obj.giveHaste(GameConfig.HasteType.Windwalk, 3);
+                    obj.giveHaste(GameConfig.HasteType.Windwalk, 4);
                 }
 
                 let panCollision = null;
@@ -608,6 +625,7 @@ export class Bullet {
                     source: this.player,
                     amount: finalDamage * obstacleMult,
                     dir: this.dir,
+                    trainingShot: this.trainingShot,
                 });
 
                 if (mapDef.reflectBullets) {
@@ -638,6 +656,7 @@ export class Bullet {
                         armorPenetration: this.apRounds
                             ? PerkProperties.ap_rounds.armorPenetration
                             : undefined,
+                        trainingShot: this.trainingShot,
                     });
                 }
                 hit = col.collidable;
@@ -696,6 +715,7 @@ export class Bullet {
             varianceT: this.varianceT,
             clipDistance: this.clipDistance,
             distance: distance,
+            trainingShot: this.trainingShot,
         });
     }
 }

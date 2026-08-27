@@ -1,19 +1,26 @@
 import type { MapId } from "../gameConfig.ts";
 import type { Vec2 } from "../utils/v2.ts";
 import type { RoleDef } from "./gameObjects/roleDefs.ts";
+import { AimTraining } from "./maps/aimTrainingDefs.ts";
 import { Main } from "./maps/baseDefs.ts";
 import { Beach } from "./maps/beachDefs.ts";
 import { Birthday } from "./maps/birthdayDefs.ts";
 import { Cobalt } from "./maps/cobaltDefs.ts";
 import { Desert } from "./maps/desertDefs.ts";
+import { DuelAi } from "./maps/duelAiDefs.ts";
+import { Duel } from "./maps/duelDefs.ts";
+import { Extraction } from "./maps/extractionDefs.ts";
+import { ExtractionSecret } from "./maps/extractionSecretDefs.ts";
 import { Faction } from "./maps/factionDefs.ts";
-import { FactionPotato } from "./maps/factionPotatoDefs.ts";
+import { factionPotato } from "./maps/factionPotatoDefs.ts";
 import { Halloween } from "./maps/halloweenDefs.ts";
 import { MainSpring } from "./maps/mainSpringDefs.ts";
 import { MainSummer } from "./maps/mainSummerDefs.ts";
 import { Potato } from "./maps/potatoDefs.ts";
 import { PotatoSpring } from "./maps/potatoSpringDefs.ts";
+import { Sandevistan } from "./maps/sandevistanDefs.ts";
 import { Savannah } from "./maps/savannahDefs.ts";
+import { SpaceCityClassic } from "./maps/spaceCityClassicDefs.ts";
 import { Snow } from "./maps/snowDefs.ts";
 import { testFaction, testNormal } from "./maps/testDefs.ts";
 import { Turkey } from "./maps/turkeyDefs.ts";
@@ -21,6 +28,7 @@ import { Woods } from "./maps/woodsDefs.ts";
 import { WoodsSnow } from "./maps/woodsSnowDefs.ts";
 import { WoodsSpring } from "./maps/woodsSpringDefs.ts";
 import { WoodsSummer } from "./maps/woodsSummerDefs.ts";
+import { Zombie } from "./maps/zombieDefs.ts";
 
 export type Atlas =
     | "loadout"
@@ -39,11 +47,14 @@ export type Atlas =
 
 const _MapDefs = {
     main: Main,
+    extraction: Extraction,
+    extraction_secret: ExtractionSecret,
+    sandevistan: Sandevistan,
     main_spring: MainSpring,
     main_summer: MainSummer,
     desert: Desert,
     faction: Faction,
-    faction_potato: FactionPotato,
+    faction_potato: factionPotato,
     halloween: Halloween,
     potato: Potato,
     potato_spring: PotatoSpring,
@@ -62,6 +73,12 @@ const _MapDefs = {
     test_normal: testNormal,
     test_faction: testFaction,
     /* STRIP_FROM_PROD_CLIENT:END */
+    duel: Duel,
+    duel_ai: DuelAi,
+    aim_training: AimTraining,
+    zombie: Zombie,
+
+    space_city: SpaceCityClassic,
 } satisfies Record<string, MapDef>;
 
 export type MapDefKey = keyof typeof _MapDefs;
@@ -126,6 +143,13 @@ export interface MapDef {
         perkModeRoles?: string[];
         turkeyMode?: boolean;
         spookyKillSounds?: boolean;
+        sandevistanMode?: boolean;
+        /** 搜打撤: loot the map and extract through the active point. */
+        extractionMode?: boolean;
+        /** Secret extraction (绝密搜打撤) playlist flag. */
+        extractionSecretMode?: boolean;
+        /** 僵尸模式：大批量低占用近战僵尸追逐玩家，撑到时限获胜。 */
+        zombieMode?: boolean;
     };
     gameConfig: {
         planes: {
@@ -169,6 +193,50 @@ export interface MapDef {
         bleedDamage: number;
         bleedDamageMult: number;
     };
+    arena?: {
+        lockPlayersUntilFull?: boolean;
+        rounds?: {
+            total: number;
+            resetDelay: number;
+        };
+        gas?: {
+            duration: number;
+            damage: number;
+        };
+        startingLoadout?: {
+            weapons: Array<{
+                type: string;
+                ammo?: number;
+            }>;
+            activeWeaponSlot?: number;
+            backpack?: string;
+            helmet?: string;
+            chest?: string;
+            scope?: string;
+            boost?: number;
+            perks?: string[];
+            inventory?: Record<string, number>;
+        };
+        emblem: {
+            image: string;
+            size: number;
+            alpha: number;
+            leftColor: number;
+            rightColor: number;
+        };
+        playerSpawns: Vec2[];
+        objects: Array<{
+            type: string;
+            pos: Vec2;
+            ori?: number;
+            scale?: number;
+        }>;
+        loot: Array<{
+            type: string;
+            pos: Vec2;
+            count: number;
+        }>;
+    };
     lootTable: Record<
         string,
         Array<{
@@ -197,7 +265,7 @@ export interface MapDef {
                     centerObj?: string;
                     riverMaskRad?: number;
                     spawnBound: {
-                        pos: Vec2;
+                        pos: Vec2 | (() => Vec2);
                         rad: number;
                     };
                 }>;

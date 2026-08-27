@@ -1,0 +1,516 @@
+{
+  "version": 27,
+  "source": "ai-match-recordings(4).zip",
+  "integrity": {
+    "extractedFiles": 45,
+    "jsonlFiles": 18,
+    "sessions": 9,
+    "matches": 3,
+    "jsonlLines": 47751,
+    "parseFailures": 0,
+    "frames": 26857,
+    "events": 20894,
+    "bots": 60
+  },
+  "navigation": {
+    "pathRecoveries": 2308,
+    "recoveriesNearExteriorShells": 1730,
+    "exteriorShellRecoverySharePct": 74.96,
+    "stationaryWindows": 4385,
+    "topShellTypes": [
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "warehouse_wall_edge",
+        "recoveries": 183
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "brick_wall_ext_4",
+        "recoveries": 144
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "brick_wall_ext_16",
+        "recoveries": 140
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "shack_wall_side_left",
+        "recoveries": 138
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "warehouse_wall_side",
+        "recoveries": 111
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "brick_wall_ext_3",
+        "recoveries": 106
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "brick_wall_ext_9",
+        "recoveries": 86
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "brick_wall_ext_5",
+        "recoveries": 56
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "container_wall_top",
+        "recoveries": 56
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "metal_wall_ext_8",
+        "recoveries": 55
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "shack_wall_side_right",
+        "recoveries": 50
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "metal_wall_ext_43",
+        "recoveries": 42
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "container_wall_side",
+        "recoveries": 41
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "warehouse_wall_side",
+        "recoveries": 39
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "brick_wall_ext_5",
+        "recoveries": 38
+      }
+    ]
+  },
+  "equipment": {
+    "botsNeverArmed": 17,
+    "botsUnarmedOver30s": 25,
+    "longestUnarmedMs": 319313
+  },
+  "weaponSearchReplay": {
+    "segmentsIncluded": 38,
+    "oldTotalMs": 605743,
+    "v27CappedTotalMs": 335519,
+    "reductionPct": 44.61,
+    "oldLongestMs": 170442,
+    "v27LongestMs": 12000,
+    "note": "Policy replay over recorded long-resource segments, not a full physics replay."
+  },
+  "resourceAbandonment": {
+    "abandonReasons": {
+      "no-distance-progress": 492,
+      "repeated-path-recovery": 83,
+      "commitment-timeout": 19
+    },
+    "topRepeatedTargets": [
+      [
+        "crate:7141",
+        72
+      ],
+      [
+        "loot:4788",
+        17
+      ],
+      [
+        "loot:1473",
+        11
+      ],
+      [
+        "loot:4785",
+        9
+      ],
+      [
+        "loot:4790",
+        9
+      ],
+      [
+        "loot:1472",
+        9
+      ],
+      [
+        "loot:1737",
+        8
+      ],
+      [
+        "loot:986",
+        8
+      ],
+      [
+        "loot:4789",
+        8
+      ],
+      [
+        "loot:4792",
+        7
+      ],
+      [
+        "crate:1974",
+        7
+      ],
+      [
+        "loot:4068",
+        6
+      ],
+      [
+        "crate:957",
+        6
+      ],
+      [
+        "loot:3829",
+        6
+      ],
+      [
+        "crate:1976",
+        6
+      ]
+    ],
+    "newBackoff": "Exponential cooldown per target, capped at 90 seconds."
+  },
+  "resourceObservations": {
+    "topNearby": [
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "crate_01",
+        "opportunityFrames": 5911,
+        "targetFrames": 659,
+        "destroyedObjects": 124,
+        "healthChangedObjects": 58
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "crate_04",
+        "opportunityFrames": 4178,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "barrel_01",
+        "opportunityFrames": 4009,
+        "targetFrames": 0,
+        "destroyedObjects": 13,
+        "healthChangedObjects": 12
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "drawers_01",
+        "opportunityFrames": 2226,
+        "targetFrames": 391,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "crate_01",
+        "opportunityFrames": 1300,
+        "targetFrames": 510,
+        "destroyedObjects": 35,
+        "healthChangedObjects": 27
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "toilet_01",
+        "opportunityFrames": 1064,
+        "targetFrames": 237,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "barrel_01",
+        "opportunityFrames": 1013,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 4
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "refrigerator_01",
+        "opportunityFrames": 782,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "crate_06",
+        "opportunityFrames": 620,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "oven_01",
+        "opportunityFrames": 515,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 1
+      },
+      {
+        "match": "4d2df7a3520ee1e38c25cb8aa49be0ef1385cf70",
+        "type": "crate_01",
+        "opportunityFrames": 484,
+        "targetFrames": 168,
+        "destroyedObjects": 13,
+        "healthChangedObjects": 8
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "crate_04",
+        "opportunityFrames": 481,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "597569b247a609d8738096d888a286ba6d3b8955",
+        "type": "toilet_01",
+        "opportunityFrames": 369,
+        "targetFrames": 139,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "4d2df7a3520ee1e38c25cb8aa49be0ef1385cf70",
+        "type": "crate_04",
+        "opportunityFrames": 369,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      },
+      {
+        "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+        "type": "table_01",
+        "opportunityFrames": 341,
+        "targetFrames": 0,
+        "destroyedObjects": 0,
+        "healthChangedObjects": 0
+      }
+    ],
+    "trueMissedResources": [
+      "crate_14",
+      "crate_04",
+      "crate_06",
+      "airdrop payload crate_10-13"
+    ],
+    "falseResourceCandidatesExcluded": [
+      "refrigerator_01 (not destructible)",
+      "oven_01 (explosive/no loot)",
+      "barrel_01 (explosive/no loot)"
+    ]
+  },
+  "airdropObservations": [
+    {
+      "match": "597569b247a609d8738096d888a286ba6d3b8955",
+      "objectId": 100,
+      "type": "crate_14",
+      "sightings": 219,
+      "bots": [
+        3,
+        7
+      ],
+      "minDistance": 22.208213538356407,
+      "targetedFrames": 0,
+      "aliveSightings": 219,
+      "deadSightings": 0,
+      "states": {
+        "loot": 37,
+        "explore": 1,
+        "break-crate": 91,
+        "gas": 40,
+        "combat": 38,
+        "flush": 6,
+        "counterfire": 6
+      }
+    },
+    {
+      "match": "597569b247a609d8738096d888a286ba6d3b8955",
+      "objectId": 60,
+      "type": "crate_14",
+      "sightings": 20,
+      "bots": [
+        3
+      ],
+      "minDistance": 36.989121022187085,
+      "targetedFrames": 0,
+      "aliveSightings": 20,
+      "deadSightings": 0,
+      "states": {
+        "loot": 10,
+        "break-crate": 10
+      }
+    },
+    {
+      "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+      "objectId": 4623,
+      "type": "airdrop_crate_03",
+      "sightings": 31,
+      "bots": [
+        12,
+        14,
+        16,
+        18,
+        24,
+        28
+      ],
+      "minDistance": 33.18424701656519,
+      "targetedFrames": 0,
+      "aliveSightings": 0,
+      "deadSightings": 31,
+      "states": {
+        "gas": 17,
+        "loot": 10,
+        "regroup": 4
+      }
+    },
+    {
+      "match": "1f2a69cb14af8d21ba83809b839620ee46ca21c7",
+      "objectId": 4705,
+      "type": "crate_12",
+      "sightings": 28,
+      "bots": [
+        12,
+        14,
+        16,
+        18,
+        24,
+        28
+      ],
+      "minDistance": 34.20048102502496,
+      "targetedFrames": 0,
+      "aliveSightings": 0,
+      "deadSightings": 28,
+      "states": {
+        "gas": 15,
+        "loot": 10,
+        "regroup": 3
+      }
+    }
+  ],
+  "airstrikeObservation": {
+    "recordedAirstrikeFrames": 0,
+    "recordedAirstrikeEvents": {},
+    "limitation": "The supplied recordings contain no populated airstrike warning frames, so the single-strike fix was verified from the server warning path and deterministic simulation."
+  },
+  "simulation": {
+    "version": 27,
+    "simulation": "airstrike-resource-navigation deterministic validation",
+    "buildingShell": {
+      "warehouseWallRadius": 3.2557641192199416,
+      "brickWallRadius": 2.0615528128088303,
+      "historicalFalseGapDetected": true,
+      "correctedShellBlocked": true
+    },
+    "airstrike": {
+      "criticalThreat": {
+        "highestPriority": true,
+        "impactInMs": 650,
+        "insideHighDamage": true
+      },
+      "alternateRouteClear": true,
+      "alternateTarget": {
+        "x": 31.949549106720887,
+        "y": 11.628684873072736
+      },
+      "singleStrikeBotsWarned": 40,
+      "singleStrikeBotsRoutedOutside": 40,
+      "strobePrediction": {
+        "pos": {
+          "x": 40.33261440515366,
+          "y": 31.45232960036812
+        },
+        "rad": 17,
+        "duration": 5.4,
+        "impactIn": 2.15,
+        "highDamageRad": 11.5
+      }
+    },
+    "resources": {
+      "throwableCrate": {
+        "type": "crate_14",
+        "obstacleType": "crate",
+        "resourceClass": "container",
+        "health": 75,
+        "lootEntries": 1,
+        "expectedLootUnits": 1,
+        "expectedLootValue": 11.5,
+        "priorityBias": 34,
+        "contactRadius": 2.25,
+        "dangerous": false,
+        "armorPlated": false,
+        "stonePlated": false,
+        "swapWeaponOnDestroy": false
+      },
+      "platedAmmoCrate": {
+        "type": "crate_04",
+        "obstacleType": "crate",
+        "resourceClass": "container",
+        "health": 225,
+        "lootEntries": 1,
+        "expectedLootUnits": 1,
+        "expectedLootValue": 11.5,
+        "priorityBias": 30,
+        "contactRadius": 2.25,
+        "dangerous": false,
+        "armorPlated": true,
+        "stonePlated": false,
+        "swapWeaponOnDestroy": false
+      },
+      "airdropPayload": {
+        "type": "crate_12",
+        "obstacleType": "crate",
+        "resourceClass": "container",
+        "health": 500,
+        "lootEntries": 10,
+        "expectedLootUnits": 30,
+        "expectedLootValue": 240,
+        "priorityBias": 18,
+        "contactRadius": 3.5,
+        "dangerous": false,
+        "armorPlated": false,
+        "stonePlated": false,
+        "swapWeaponOnDestroy": false
+      },
+      "falseResourceTypesExcluded": [
+        "oven_01",
+        "barrel_01",
+        "refrigerator_01"
+      ]
+    },
+    "airdrop": {
+      "standardShellsSupported": [
+        "airdrop_crate_01",
+        "airdrop_crate_02",
+        "airdrop_crate_03",
+        "airdrop_crate_04"
+      ],
+      "payloadsSupported": [
+        "crate_10",
+        "crate_11",
+        "crate_12",
+        "crate_13"
+      ]
+    },
+    "result": "PASS"
+  },
+  "tests": {
+    "total": 39,
+    "passed": 39,
+    "failed": 0
+  }
+}
